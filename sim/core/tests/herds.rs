@@ -341,3 +341,18 @@ fn a_keepers_level_fences_more_pastures() {
     assert_eq!(h.pastures, most + 2, "fenced to its most: {h:?}");
     assert!(h.count_of(0) > 16.0 * (most + 1) as f64, "a flock beyond the Novice's room: {h:?}");
 }
+
+/// A town fences its first pasture of its free money, whatever its wagons and buildings keep back; another only beyond
+/// that (`rules::farms::fences`): seed 1717's Pyrewood and Goldshire, their reserves 12 to 27 emeralds, kept 16 animals
+/// each in no pasture's room for 50 days with 6 to 15 emeralds free.
+#[test]
+fn a_town_fences_its_first_pasture_past_its_reserve() {
+    use enterprise_core::fixed::Fixed;
+    use enterprise_core::rules::farms::fences;
+    let (fence, money, reserve) = (Fixed::emeralds(4), Fixed::emeralds(10), Fixed::emeralds(17));
+    assert!(fences(16.0, 0, true, money, reserve, fence), "its first, though its reserve is more than it has");
+    assert!(!fences(0.0, 0, false, money, reserve, fence), "no animals, no pasture");
+    assert!(!fences(32.0, 1, true, money, reserve, fence), "a second only past the reserve");
+    assert!(fences(32.0, 1, true, Fixed::emeralds(22), reserve, fence), "and past it, a second");
+    assert!(!fences(10.0, 1, false, Fixed::emeralds(99), reserve, fence), "not before the first is full");
+}

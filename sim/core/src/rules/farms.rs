@@ -71,6 +71,14 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
 
 /// What a town keeps back before it builds (a field, a pasture, a stall, a mine, a hall or wall, a home, a lesson): its
 /// [`reserve`] and what the wagons coming to sell to it carry ([`Trades::arrival_reserve`]), which its trade may spend.
+/// Does a town with `animals` in `pastures` (`full`: its herd at nine tenths of their room) fence another with `money`
+/// past its `reserve`, the fence costing `fence` (its Accountant's say comes after)? Its first of its free money,
+/// whatever its wagons and buildings keep back: seed 1717's Pyrewood and Goldshire, their reserves 12 to 27 emeralds,
+/// kept 16 animals each in no pasture's room for 50 days with 6 to 15 free. Another, only beyond the reserve.
+pub fn fences(animals: f64, pastures: u32, full: bool, money: Fixed, reserve: Fixed, fence: Fixed) -> bool {
+    animals > 0.0 && (pastures == 0 || full && money - reserve >= fence)
+}
+
 pub fn build_reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
     reserve(content, trades, farm) + trades.arrival_reserve
 }
@@ -372,8 +380,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             let most = crate::herds::pastures_most(&content, roster);
             let full = herds.pastures > 0 && herds.pastures < most && animals >= 0.9 * herds.capacity(&content);
             let fence = Fixed::ceil(FIELD_EMERALDS);
-            if animals > 0.0 && (herds.pastures == 0 || full)
-                && money.0 - build_reserve(&content, trades, Some(farm)) >= fence
+            if fences(animals, herds.pastures, full, money.0, build_reserve(&content, trades, Some(farm)), fence)
                 && Accountant::approve(&content, &mut book, t, now, super::free(&content, trades, &money, &bills, t, now),
                     &mut budget, Reason::Other("a pasture".into()), fence) {
                 herds.pastures += 1;

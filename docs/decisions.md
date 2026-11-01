@@ -1252,6 +1252,15 @@ mod's), but no road ever chose it. Then: build them first.
     to 0.76, mood 0.77 to 1.30; 23 towns (27), the towns' money 85 to 106; the first town's wool 1,437 to 1,008 (what's
     left kept for a neighbour's lockers that bid none). No test of its own: a two-town scene's wagon waited for a
     fuller load; the replay of the run before showed the same.
+  - **Fixed: a town fences its first pasture of its free money (John, 2026-11-01: "Flocks").** It fenced only with a
+    pasture's 4 emeralds beyond its build reserve (its wagons' food, what's coming to sell, a home), which ran 12 to 27
+    in Pyrewood and Goldshire: each kept 16 animals in an unfenced herd's room for 50 days with 6 to 15 emeralds free.
+    Its first now needs only its Accountant's say; another, the reserve as before (`rules::farms::fences`, its own
+    test: a town test couldn't hold a reserve up, the core working them out again each step). The bid study from its
+    day-1 point: towns with a pasture 4 to 7, cows 181 to 211, Goldshire's herd 16 to 32 in two pastures; sheep 291 to
+    167 (the first town's Shepherd level 1, not 4: three pastures, not six); Pyrewood fenced one and its herd fell to 8,
+    short of wheat to feed it. The larger towns' furnishings 0.68 to 0.67, reading 0.55 to 0.70, treats 0.76 to 0.84,
+    mood 1.30 to 0.98; 29 towns (23), the towns' money 106 to 132.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
