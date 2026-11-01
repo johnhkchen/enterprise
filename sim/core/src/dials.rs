@@ -311,6 +311,9 @@ dials! {
     shelf_reading: f64 = 0.5,
     library_sockets: u32 = 6,
     cod_per_fisher_level: f64 = 4.0,
+    /// The share of a town's fallow and untended plots its herds graze (`Herds::grazing`): 0 keeps them to their
+    /// pastures, as before grazing.
+    graze_share: f64 = 1.0,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
     farmer_idle_emeralds: f64 = 0.5,
     /// Chokepoints (`chokepoints`): towns review their tolls and posts themselves (off: they keep what the host sets),

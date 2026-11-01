@@ -1290,6 +1290,12 @@ mod's), but no road ever chose it. Then: build them first.
     as they come by them). And a town fences a pasture only with its price in the treasury: the full sweep's seed 57
     fenced on 0.31 the day it borrowed its savings for a stall and its lockers spent them, its Accountant's budget set
     at the day's first look (`rules::farms`; the study ran before it, a guard that seldom bites).
+  - **Measured: grazing, on and off, two runs each (John, 2026-11-01: "Runs").** The dial `graze_share` (1: the share of
+    the fallow and untended plots the herds graze; 0, none). The bid study from day 0, at 0 twice and 1 twice: the
+    herd towns of eight villagers or more 1.86 and 1.73 off, 1.62 and 1.88 on; cows 273 and 205 off, 104 and 435 on;
+    the herdless larger towns 1.69 off (one run had any), 0.53 and 0.71 on. Two runs alike differ as much as off and
+    on: grazing's effect is under the runs' noise, and the grazing run's fall was Tarren Mill's stall, not its herds.
+    Grazing stays on.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

@@ -380,7 +380,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         // the herds stopped at one pasture's sixteen, and the leather for clothing left none for books.
         if let Some(herds) = herds.as_deref_mut() {
             // The plots its Farmers leave, the herds' to graze (`Herds::grazing`).
-            herds.grazing = farm.fallow as f64 + farm.idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
+            herds.grazing = content.dials.graze_share.max(0.0)
+                * (farm.fallow as f64 + farm.idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY);
             let animals: f64 = herds.count.iter().sum();
             let most = crate::herds::pastures_most(&content, roster);
             let full = herds.pastures > 0 && herds.pastures < most && animals >= 0.9 * herds.capacity(&content);
