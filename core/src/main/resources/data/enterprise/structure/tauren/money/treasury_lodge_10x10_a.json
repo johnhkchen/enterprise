@@ -1,0 +1,53 @@
+{
+  "id": "enterprise:tauren/money/treasury_lodge_10x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "money",
+  "slot": "bank",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

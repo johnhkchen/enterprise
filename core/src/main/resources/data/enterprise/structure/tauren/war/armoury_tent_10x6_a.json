@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:tauren/war/armoury_tent_10x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "war",
+  "slot": "armoury",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    2
+  ],
+  "footprint": [
+    10,
+    6
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

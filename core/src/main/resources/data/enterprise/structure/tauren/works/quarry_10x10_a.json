@@ -1,0 +1,42 @@
+{
+  "id": "enterprise:tauren/works/quarry_10x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "works",
+  "slot": "quarry",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 16,
+  "ground": 3,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        4,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [],
+  "notes": "sunk: layer 3 is the surface (the ground's level); layers below it are the cut"
+}
