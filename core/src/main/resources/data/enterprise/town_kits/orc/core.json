@@ -179,6 +179,98 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "farmer_hut_14x10_a",
+      "part": "enterprise:orc/workshop/farmer_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:farmer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "scribe_lodge_14x10_a",
+      "part": "enterprise:orc/workshop/scribe_lodge_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:librarian",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:lectern"
+      ]
+    },
+    {
+      "id": "mason_yard_14x10_a",
+      "part": "enterprise:orc/workshop/mason_yard_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:mason",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "fisher_hut_14x10_a",
+      "part": "enterprise:orc/workshop/fisher_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:fisherman",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:barrel"
+      ]
     }
   ],
   "held": [],

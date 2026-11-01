@@ -1,0 +1,100 @@
+{
+  "id": "enterprise:goblin/workshop/workshop_mason_12x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        7,
+        6
+      ],
+      "foot": [
+        10,
+        7,
+        6
+      ]
+    },
+    {
+      "head": [
+        11,
+        7,
+        4
+      ],
+      "foot": [
+        10,
+        7,
+        4
+      ]
+    },
+    {
+      "head": [
+        8,
+        7,
+        3
+      ],
+      "foot": [
+        9,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        10,
+        3,
+        9
+      ],
+      "block": "minecraft:stonecutter"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        11,
+        3,
+        9
+      ],
+      "for": [
+        10,
+        3,
+        9
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:mason"
+}

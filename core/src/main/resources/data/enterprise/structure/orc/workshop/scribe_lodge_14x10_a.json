@@ -1,0 +1,79 @@
+{
+  "id": "enterprise:orc/workshop/scribe_lodge_14x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        4,
+        3,
+        6
+      ],
+      "foot": [
+        5,
+        3,
+        6
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        1
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        12,
+        3,
+        6
+      ],
+      "block": "minecraft:lectern"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:librarian"
+}
