@@ -77,6 +77,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         // in 90 days).
         let roads = routes.iter()
             .any(|(r, st)| (r.from_id == town.id || r.to_id == town.id) && crate::jobs::carries(&content, st, now));
+        let routed = routes.iter().any(|(r, _)| r.from_id == town.id || r.to_id == town.id);
         let mut far: Vec<usize> = routes.iter().map(|(r, _)| r)
             .filter_map(|r| if r.from_id == town.id { Some(r.to_id) } else if r.to_id == town.id { Some(r.from_id) } else { None })
             .collect();
@@ -93,7 +94,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         let people = &mut *people;
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,
-            roster: &mut roster, lockers: &mut lockers, roads, far, herd: herds.map_or(&[][..], |h| &h.count[..]) };
+            roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: herds.map_or(&[][..], |h| &h.count[..]) };
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         let idle = place.roster.hands.iter().any(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
         match employ(&content, &mut books, &bills, &signals, now, &mut place) {

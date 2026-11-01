@@ -295,15 +295,16 @@ fn a_route_that_stays_keeps_no_hands_from_the_next() {
 
 #[test]
 fn no_merchant_at_the_desk_no_caravan_and_no_training() {
-    // A roster with no Merchant at its desk (`Caravans.dispatch` 210: "no Merchant at the hub").
+    // A roster with no Merchant at its desk (`Caravans.dispatch` 210: "no Merchant at the hub"), and no one idle to take
+    // it (a Nitwit takes no trade; an idle adult would: `jobs::to_the_desk`).
     let mut s = network(2.0, 20.0, 192.0, &["cartographer", "none"]);
-    s.set_roster(HUB, &[("cartographer", 2), ("none", 1)]);
+    s.set_roster(HUB, &[("cartographer", 2), ("nitwit", 1)]);
     s.set_offers(HUB, 0, Vec::new());
     assert_eq!(s.roster(HUB).merchant, None);
     s.advance(LOOK);
     assert!(!s.route(0).on_the_road, "nobody sends it");
     assert_eq!(s.road_food(0).stayed, Some(Stay::NoMerchant));
-    assert_eq!(s.hand(HUB, 1).unwrap().0, "none", "and nobody's commissioned to train");
+    assert_eq!(s.hand(HUB, 1).unwrap().0, "nitwit", "and nobody's commissioned to train");
     assert_eq!(s.train_squad(HUB), None);
 }
 

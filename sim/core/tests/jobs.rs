@@ -590,3 +590,24 @@ fn a_maker_short_of_an_input_draws_the_trade_that_makes_it() {
     assert!(input_marbles(&c, &met, 500.0, &librarian, &stock).is_empty(), "leather in hand: none");
     assert!(input_marbles(&c, &met, 500.0, &roster_of(&c, &[]), &stock).is_empty(), "no Librarian: comfort_marbles' work");
 }
+
+#[test]
+fn a_market_that_lost_its_merchant_puts_an_idle_hand_at_its_desk() {
+    // Its Merchant gone (Pyrewood's suffocated at its conversion): a road, no desk's hand, idle adults.
+    let mut s = Society::new(content());
+    s.seed(1);
+    let t = s.add_town("Pyrewood", 10.0);
+    let other = s.add_town("Corin's Crossing", 10.0);
+    s.add_route(t, other, 1.0, 0.0, 4.0);
+    s.set_roster(t, &[("none", 1), ("farmer", 1), ("none", 1)]);
+    let start = s.totals();
+    let (hand, trade, retrained) = s.review_jobs(t).expect("a Merchant");
+    assert_eq!((hand, trade.as_str(), retrained), (0, "merchant", false));
+    assert_eq!(s.roster(t).merchant, Some(0), "the desk's hand");
+    assert_eq!(s.town(t).money, 8.0, "the signing fee");
+    s.conserved(&start).unwrap();
+    // A village (no road) has no desk to lose: its idle stay idle till settlers bring one.
+    let village = s.add_town("Hamlet", 10.0);
+    s.set_roster(village, &[("none", 1)]);
+    assert!(s.review_jobs(village).is_none());
+}

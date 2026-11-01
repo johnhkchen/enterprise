@@ -1303,7 +1303,12 @@ mod's), but no road ever chose it. Then: build them first.
     villagers, and 5 to 11 a run died at the first tick after. Now, after the conversion, each work laid and each
     look's farmland, every creature in a block within the plan's reach is stood on the nearest open ground
     (`Grounds.unbury`, its game test). Seed 1717, one run: 85 stood out at setup, 1 or 2 deaths left (two runs; not
-    traced), every town of more than 3 with its Merchant on day 60. A town whose Merchant dies still never has another.
+    traced), every town of more than 3 with its Merchant on day 60.
+  - **Built: a market that has lost its Merchant puts an idle adult at its desk (John, 2026-11-01: "Jobless takes the
+    desk").** A town with a route and no Merchant (a village has neither) signs an idle adult on as its Merchant for a
+    caravan lead's signing fee, as a squad signs one (`jobs::to_the_desk`, its test); the host writes the trade to its
+    villager (`HandLevel`), who takes the free desk as any villager its trade's workstation. Before, it hired no one
+    and sent no wagon for good.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

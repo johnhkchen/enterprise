@@ -329,6 +329,8 @@ pub struct Place<'a> {
     pub lockers: &'a mut Lockers,
     /// Whether a route starts or ends at the town.
     pub roads: bool,
+    /// Whether one does, carrying or not: a market, not a village (`settlers`: a village has no Merchant and no route).
+    pub routed: bool,
     /// What the towns down its roads want, as marbles ([`far_marbles`]).
     pub far: Marbles,
     /// Its herds, how many of each kind (by place in [`Content::animals`]).
@@ -398,11 +400,33 @@ fn slack(content: &Content, place: &Place) -> Option<usize> {
     })
 }
 
+/// A market that has lost its Merchant (seed 1717's Pyrewood's suffocated at its conversion, its desk then idle for
+/// good: no one hired, no wagon sent) puts an idle adult at its desk for a caravan lead's signing fee (John: "Jobless
+/// takes the desk"): signed on as a squad signs one, it keeps the trade with no workstation of its own but the desk.
+fn to_the_desk(content: &Content, books: &mut Books, now: u64, place: &mut Place) -> Option<Hired> {
+    let trade = content.trade(crate::roster::MERCHANT)?;
+    let hand = place.roster.hands.iter()
+        .position(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none))?;
+    let fee = crate::fixed::Fixed::ceil(content.dials.signing_emeralds);
+    if *place.money < fee {
+        return None;
+    }
+    post(books.ledger, books.book, Side::treasury(place.town, place.money), Side::outside(), fee,
+        crate::rules::squad::signing(), now, content.day_ticks);
+    crate::squad::sign_on(content, place.roster, Some(&mut *place.lockers), hand, trade);
+    place.roster.hands[hand].xp = 1;
+    place.roster.merchant = Some(hand);
+    Some(Hired { hand, trade, retrained: false })
+}
+
 /// The review of a town's idle hands (`Jobs.employ`): an unemployed adult, or failing one a slack hand, takes a trade,
 /// a contract's first, else drawn from the bag, if the town can pay for its stall. At most one a call. A town without a
 /// desk (a Merchant) puts up no stalls.
 pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Signals, now: u64, place: &mut Place)
         -> Option<Hired> {
+    if place.roster.merchant.is_none() && place.routed {
+        return to_the_desk(content, books, now, place);
+    }
     place.roster.merchant?;
     place.lockers.sync(content, place.roster);
     let idle = place.roster.hands.iter()
@@ -540,6 +564,11 @@ impl crate::society::Society {
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
     }
 
+    /// Whether a route starts or ends at the town, carrying or not.
+    pub fn has_routes(&self, town: usize) -> bool {
+        self.routes.iter().filter_map(|&r| self.world.get::<Route>(r)).any(|r| r.from_id == town || r.to_id == town)
+    }
+
     /// Whether a route starts or ends at the town.
     pub fn has_roads(&self, town: usize) -> bool {
         let now = self.now();
@@ -553,6 +582,7 @@ impl crate::society::Society {
         let e = self.towns[town];
         let now = self.now();
         let roads = self.has_roads(town);
+        let routed = self.has_routes(town);
         let far_demands = self.far_demands(town);
         let mut roster = self.world.get::<Roster>(e)?.clone();
         let mut lockers = self.world.get::<Lockers>(e)?.clone();
@@ -575,7 +605,7 @@ impl crate::society::Society {
             let herd = herd.clone();
             let mut place = Place { town, money: &mut money.0, purse: &mut purse, deposits: &mut deposits,
                 budget: &mut budget, stock: &stock, trades: &trades, farm: &farm, met: &met,
-                roster: &mut roster, lockers: &mut lockers, roads, far, herd: &herd };
+                roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: &herd };
             let hired = employ(self.content(), &mut books, &bills, &signals, now, &mut place);
             people.purse = purse;
             hired
