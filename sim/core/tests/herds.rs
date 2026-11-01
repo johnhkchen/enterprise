@@ -316,3 +316,28 @@ fn a_flock_no_one_culls_leaves_the_cows_their_share() {
     assert!(count(&c, &h, "cow") > 17.0 && stock.0[LEATHER] > 5.0, "the cows grow into theirs and give hides: {h:?} {}",
         stock.0[LEATHER]);
 }
+
+// A keeper's level beyond a Novice's fences one more pasture: a Journeyman (3) Shepherd's flock has two more than
+// a Novice's (John: "let herd size scale with villager level as well").
+#[test]
+fn a_keepers_level_fences_more_pastures() {
+    let c = content();
+    let shepherd = |level: u8| enterprise_core::roster::Roster::new(&c, vec![
+        enterprise_core::roster::Hand::new(&c, c.trade("shepherd").unwrap(), level)]);
+    let most = c.dials.pastures_max;
+    assert_eq!(enterprise_core::herds::pastures_most(&c, Some(&shepherd(1))), most, "a Novice's");
+    assert_eq!(enterprise_core::herds::pastures_most(&c, Some(&shepherd(3))), most + 2, "a Journeyman's: two more");
+    let mut s = Society::new(content());
+    let t = s.add_town("Alder", 100.0);
+    s.set_people(t, 3.0, 3.0, 10.0);
+    s.set_roster(t, &[("shepherd", 3), ("farmer", 1)]);
+    s.set_plots(t, WHEAT, 0);
+    s.deliver(t, WHEAT, 640.0);
+    for day in 1..=60 {
+        s.deliver(t, WHEAT, 32.0);
+        s.advance(day * DAY + 1);
+    }
+    let h = s.herds(t);
+    assert_eq!(h.pastures, most + 2, "fenced to its most: {h:?}");
+    assert!(h.count_of(0) > 16.0 * (most + 1) as f64, "a flock beyond the Novice's room: {h:?}");
+}

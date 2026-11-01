@@ -160,6 +160,16 @@ impl Herds {
     }
 }
 
+/// The pastures a town fences at most: `pastures_max`, and one more for each level its keepers (Shepherds, Butchers,
+/// Leatherworkers at home) have beyond a Novice's, as a Farmer's level gives him plots (John: "let herd size scale with
+/// villager level as well").
+pub fn pastures_most(content: &Content, roster: Option<&Roster>) -> u32 {
+    let keepers: Vec<_> = ["shepherd", "butcher", "leatherworker"].iter().filter_map(|n| content.trade(n)).collect();
+    let beyond: u32 = roster.map_or(0, |r| r.hands.iter().filter(|h| !h.away && keepers.contains(&h.trade))
+        .map(|h| h.level.max(1) as u32 - 1).sum());
+    content.dials.pastures_max + beyond
+}
+
 fn kind_named(content: &Content, name: &str) -> Option<usize> {
     content.animals.iter().position(|a| a.name == name)
 }

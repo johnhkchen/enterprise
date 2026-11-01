@@ -188,6 +188,34 @@ pub fn comfort_marbles(content: &Content, met: &[f64], savings: f64, roster: &Ro
     marbles
 }
 
+/// Marbles for an input the comforts the town lacks wait on (not as the mod): each kind short of its ration whose
+/// maker the town has, short of an input none of its trades make, puts in its share (as [`comfort_marbles`]) for the
+/// trade that would make the input ([`maker_of`]) where the town has none of it. Seed 1717's first town, its Librarian
+/// with 2,000 paper and no leather for books, drew no Leatherworker once its clothing was met: a Leatherworker's
+/// marbles were clothing's alone.
+pub fn input_marbles(content: &Content, met: &[f64], savings: f64, roster: &Roster, stock: &Stock) -> Marbles {
+    let mut marbles = Marbles::new();
+    let recipes = crate::services::recipes(content);
+    let made_here = |g: GoodId| content.conversions.iter().any(|c| c.output == g && crate::workshop::can_do(c, roster));
+    for c in &content.conversions {
+        let Some(kind) = content.goods.get(c.output).and_then(|g| g.comfort) else { continue };
+        let lacking = 1.0 - met.get(kind).copied().unwrap_or(0.0);
+        if lacking <= 0.01 || !crate::workshop::can_do(c, roster) {
+            continue;
+        }
+        for &(g, n) in &c.inputs {
+            if stock.0.get(g).copied().unwrap_or(0.0) >= n || made_here(g) {
+                continue;
+            }
+            let Some(t) = maker_of(content, &recipes, g).filter(|&t| job_trade(content, t).is_some()) else { continue };
+            if roster.count(t) == 0 {
+                put(&mut marbles, t, lacking * savings * content.dials.comfort_marbles);
+            }
+        }
+    }
+    marbles
+}
+
 /// A marble drawn from the bag: each trade as likely as its share of the marbles; none from an empty bag
 /// (`Jobs.draw`).
 pub fn draw(bag: &[(TradeId, f64)], rng: &mut Rng) -> Option<TradeId> {
@@ -228,6 +256,9 @@ pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock
         savings: f64, roster: &Roster) -> Marbles {
     let mut all = signals.of(town);
     for (t, m) in comfort_marbles(content, met, savings, roster) {
+        put(&mut all, t, m);
+    }
+    for (t, m) in input_marbles(content, met, savings, roster, stock) {
         put(&mut all, t, m);
     }
     bag(content, &supply(content, &farm.per_day, stock), roster, &farm.idle, signals.build_work_of(town), &all)

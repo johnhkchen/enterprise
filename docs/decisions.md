@@ -1155,6 +1155,15 @@ mod's), but no road ever chose it. Then: build them first.
     room over the kinds kept), and one beyond its share in a full pasture dwindles to it. The same bid study from its
     day-10 point: clothing met 0 to 0.21, reading 0 to 0.017, treats 0.14 to 0.29, mood -0.18 to 0.15; the cows in
     three towns (44, 7, 8). Reading still waits on leather: 4,063 paper in stock at day 60.
+  - **Built: a maker short of an input draws its maker, and keepers' levels fence pastures (John, 2026-11-01: "Cows,
+    and maybe let herd size scale with villager level as well").** A Leatherworker's marbles were clothing's alone: the
+    first town's fell to none once its clothing was met (day 25), its Librarian holding 2,000 paper and no leather. A
+    comfort short whose maker the town has, short of an input none of its trades make, puts its comfort marbles on
+    the input's maker (`jobs::input_marbles`). A town fences `pastures_max` (3) and one more for each level its
+    Shepherds, Butchers and Leatherworkers have beyond a Novice's (`herds::pastures_most`). The bid study from its
+    day-40 point (the 40 days before alike): reading 0.017 to 0.026, leather in stock 5 to 9, treats 0.29 to 0.33,
+    mood 0.15 to 0.22, the cows' town fencing 4; no new Leatherworker in the 20 days. The draw is the Farmers': the
+    first town's untended plots (3,848 of cane counted, 12 fields planted) put 420 of its 494 marbles on a Farmer.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

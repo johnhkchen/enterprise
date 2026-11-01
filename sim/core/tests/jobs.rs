@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use enterprise_core::cash_book::{Account, Reason};
-use enterprise_core::jobs::{bag, comfort_marbles, draw, Marbles};
+use enterprise_core::jobs::{bag, comfort_marbles, draw, input_marbles, Marbles};
 use enterprise_core::roster::{Hand, Roster};
 use enterprise_core::state::{Dice, Rng};
 use enterprise_core::{Content, Good, Society};
@@ -558,4 +558,23 @@ fn a_herd_with_no_keeper_trains_one() {
     assert!(s.set_herd(t, "cow", 120.0)); // 118 hides beyond the breeding stock, a sixth each: 19.7 emeralds
     let (_, trade, _) = s.review_jobs(t).expect("a stall");
     assert_eq!(trade, "leatherworker");
+}
+
+// A comfort lacking whose maker the town has, short of an input none of its trades make, draws the input's maker: seed
+// 1717's first town, its Librarian holding 2,000 paper and no leather, drew no Leatherworker once its clothing was met.
+#[test]
+fn a_maker_short_of_an_input_draws_the_trade_that_makes_it() {
+    let c = content();
+    let mut met = vec![1.0; 5];
+    met[c.comfort("reading").unwrap()] = 0.0;
+    let librarian = roster_of(&c, &["librarian"]);
+    let mut stock = enterprise_core::state::Stock(vec![0.0; N]);
+    stock.0[PAPER] = 2000.0;
+    let share = c.dials.comfort_marbles;
+    let m = input_marbles(&c, &met, 500.0, &librarian, &stock);
+    assert!((marbles(&c, &m, "leatherworker") - 500.0 * share).abs() < 1e-9, "no leather for books: a Leatherworker's");
+    assert_eq!(marbles(&c, &m, "librarian"), 0.0, "the paper's in hand");
+    stock.0[LEATHER] = 1.0;
+    assert!(input_marbles(&c, &met, 500.0, &librarian, &stock).is_empty(), "leather in hand: none");
+    assert!(input_marbles(&c, &met, 500.0, &roster_of(&c, &[]), &stock).is_empty(), "no Librarian: comfort_marbles' work");
 }

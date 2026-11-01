@@ -230,7 +230,8 @@ dials! {
     pasture_animals: u32 = 16,
     /// Blocks of grass inside a laid pasture's fence an animal needs (`herds.rs`).
     grass_per_animal: f64 = 4.0,
-    /// Pastures a town fences at most, a new one once its herd fills those it has.
+    /// Pastures a town fences at most with Novice keepers, a new one once its herd fills those it has; one more a level
+    /// its keepers have beyond (`herds::pastures_most`).
     pastures_max: u32 = 3,
     /// The share a fed herd grows by a day, while there's room.
     breed_per_day: f64 = 0.15,

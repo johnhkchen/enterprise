@@ -369,8 +369,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         // the herds stopped at one pasture's sixteen, and the leather for clothing left none for books.
         if let Some(herds) = herds.as_deref_mut() {
             let animals: f64 = herds.count.iter().sum();
-            let full = herds.pastures > 0 && herds.pastures < content.dials.pastures_max
-                && animals >= 0.9 * herds.capacity(&content);
+            let most = crate::herds::pastures_most(&content, roster);
+            let full = herds.pastures > 0 && herds.pastures < most && animals >= 0.9 * herds.capacity(&content);
             let fence = Fixed::ceil(FIELD_EMERALDS);
             if animals > 0.0 && (herds.pastures == 0 || full)
                 && money.0 - build_reserve(&content, trades, Some(farm)) >= fence
