@@ -18,7 +18,8 @@
 //! [`execute`]; since `packing`) puts goods on pallets by the grouping key (shipper, consignee, contract, payment, handling:
 //! [`PalletKey`](crate::pallet::PalletKey)), packages of each good's own kind (`Good.package`: crate, barrel, bundle, or
 //! none), goods of one key sharing a pallet up to its kind's caps. A package is the town's own empty first (a returnable
-//! kind), then a new one it pays `crate_emeralds` for, as far as it can spare beyond its reserve; what it can't package
+//! kind), then a new one it pays `crate_emeralds` for, as far as it can spare beyond its reserve (where the host has
+//! Lumberjacks, none: its crates are made at home or bought of a neighbour, [`local_crates`]); what it can't package
 //! rides loose on its pallet under its bill ([`How::OWED`]), or stays in stock where only what can be crated goes
 //! ([`How::CRATED`]). A farm's earmark tops up the open pallet of its key first ([`How::TOP_UP`]). Every bill of lading is a
 //! document drawn up at the shipper's
@@ -266,6 +267,9 @@ pub struct Shipper<'a> {
     pub paperwork: &'a mut Paperwork,
 }
 
+/// The crate as a good: a Lumberjack's, six to the emerald (`lockers.rs`), traded between towns (`rules/market.rs`).
+pub const CRATE: &str = "crate";
+
 fn crates_reason() -> Reason {
     Reason::Other("crates".into())
 }
@@ -276,11 +280,16 @@ fn scribe_reason() -> Reason {
 
 /// Has a package of `kind` for a shipment: the town's own empty one first (a returnable kind), else a new one it pays for
 /// (`crate_emeralds` a returnable package, the kind's own price a bundle) as far as it can spare beyond its reserve
-/// (`Crates.pack`).
+/// (`Crates.pack`). Where the host has Lumberjacks to make crates ([`local_crates`]), a returnable package is the
+/// town's own or none: its crates are its Lumberjacks' or a neighbour's (`rules/lockers.rs`, `rules/market.rs`), none
+/// bought abroad.
 fn acquire(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, shipper: &mut Shipper, kind: usize) -> bool {
     let returnable = content.packages.get(kind).is_none_or(|k| k.returnable);
     if returnable && shipper.store.take_empty() {
         return true;
+    }
+    if returnable && local_crates(content) {
+        return false;
     }
     let cost = crate::fixed::Fixed::ceil(if returnable { content.dials.crate_emeralds } else { content.packages[kind].emeralds });
     if shipper.spare >= cost && *shipper.money >= cost {
@@ -292,6 +301,12 @@ fn acquire(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64
         return true;
     }
     false
+}
+
+/// Whether a town's crates are made at home and traded between towns (John: "replace that mechanic with local
+/// carpenters and local regional crate trade"): the host has the crate as a good and Lumberjacks who sell it.
+pub fn local_crates(content: &Content) -> bool {
+    content.good(CRATE).is_some() && content.trade(crate::roster::LUMBERJACK).is_some()
 }
 
 /// Packs `count` of a good for sale in packages of its kind: a lot, no papers and no pallet. The town's own empties first,

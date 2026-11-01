@@ -1357,8 +1357,15 @@ mod's), but no road ever chose it. Then: build them first.
   lumberjack, and they'll grow the type of lumber they like").** Crates are bought for emeralds, not made of logs:
   the Lumberjack sells them six to the emerald (`enterprise:crate` is a good, worth a sixth). It buys logs, the wood
   its town's Lumberjacks like ten to the emerald and any other twenty. That wood is rolled once, with the town's dice,
-  at its first felling, from the logs the host has; its woodlots grow it, in the core and in the world. A town's own
-  crates for its wagons are still bought abroad at `crate_emeralds`.
+  at its first felling, from the logs the host has; its woodlots grow it, in the core and in the world.
+- **A town's crates are made at home or bought of a neighbour, never abroad (John, 2026-11-02: "I wanted to replace
+  that mechanic with local carpenters and local regional crate trade").** Where the host has Lumberjacks and the crate
+  as a good (`cargo::local_crates`), a package for a shipment is one of the town's empties or none (the goods ride
+  loose): no crate is bought from outside at `crate_emeralds`. A town's Merchant buys crates of its own Lumberjack, six
+  to the emerald, as many as it keeps empty to ship with (`empties_kept`, 16; in whole trades, the last rounded up),
+  and as many again where a town down its roads bids more for them than they're worth; its crates join its empties.
+  A town with no Lumberjack bids for them on the market, as many as it keeps, at up to twice their worth
+  (`crate_ceiling`), for wagons from a town that makes them to bring.
 - **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
   any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
   the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still

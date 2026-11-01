@@ -33,7 +33,12 @@ with John the same day:
    logs, the wood its town's Lumberjacks like ten to the emerald and any other twenty (`Lockers::like_wood`). The wood
    is rolled with the town's dice at its first felling from the logs the host has (`kit::Kits::wood`), its woodlots
    fell it, and the host grows its tree (`Answer::Land`'s `wood`; `Woodlots.wood`: oak where a single sapling grows
-   none). Halls already take timber; a town's own crates for its wagons are still bought at `crate_emeralds`.
+   none). Halls already take timber.
+5. **Crates made at home, traded between towns** (built; John: "replace that mechanic with local carpenters and
+   local regional crate trade"): no crate is bought abroad. A town's Merchant buys its crates of its Lumberjack, as
+   many as it keeps empty and as many again where a neighbour bids for them (`rules/lockers.rs`); a town with no
+   Lumberjack bids for them at up to twice their worth (`crate_ceiling`, `rules/market.rs`); short of crates, goods
+   ride loose.
 
 ## Timber (John: "gate building creation behind lumberjacks")
 

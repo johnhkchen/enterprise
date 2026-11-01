@@ -455,3 +455,35 @@ fn a_library_full_of_shelves_reads_for_the_whole_town() {
     assert_eq!((p.library_shelves, p.home_shelves), (6, 0), "the library's six first");
     assert!((p.comfort_met[reading] - 0.5).abs() < 1e-9, "twelve read half a day's on them: {:?}", p.comfort_met);
 }
+
+/// A town's crates are its Lumberjack's, six to the emerald (John: "replace that mechanic with local carpenters and local
+/// regional crate trade"): its Merchant buys as many as it keeps empty to ship with, and none is bought abroad.
+#[test]
+fn a_town_buys_its_crates_of_its_lumberjack() {
+    let c = Content::new(vec![Good::new("crate", 1.0 / 6.0, 16), Good::new("oak_log", 0.125, 64)], DAY);
+    let kept = c.dials.empties_kept;
+    let mut s = Society::new(c);
+    let t = s.add_town("Sawpit", 100.0);
+    s.set_people(t, 4.0, 4.0, 20.0);
+    s.set_roster(t, &[("lumberjack", 1), ("merchant", 1), ("none", 1), ("none", 1)]);
+    s.advance(2 * DAY);
+    let e = s.world.resource::<Towns>().0[t];
+    let empties = s.world.get::<enterprise_core::cargo::Shipments>(e).unwrap().empties;
+    let paid: f64 = s.cash_book(t, 400).iter().filter(|(_, w, _)| w == "lockers: bought crate").map(|(_, _, e)| -e.to_f64()).sum();
+    assert_eq!(empties, kept, "as many as it keeps, into its empties");
+    assert!(paid > 0.0 && paid <= (kept as f64 / 6.0).ceil() + 1.0, "six to the emerald: {paid}");
+}
+
+/// A town with no Lumberjack bids for crates on the market, at up to `crate_ceiling` times their worth, for wagons from
+/// a town that makes them to bring.
+#[test]
+fn a_town_with_no_lumberjack_bids_for_crates() {
+    let c = Content::new(vec![Good::new("crate", 1.0 / 6.0, 16), Good::new("oak_log", 0.125, 64)], DAY);
+    let mut s = Society::new(c);
+    let t = s.add_town("Bare Hill", 100.0);
+    s.set_people(t, 4.0, 4.0, 20.0);
+    s.set_roster(t, &[("merchant", 1), ("none", 1)]);
+    s.advance(2 * DAY);
+    let (each, want) = s.bid(t, 0).expect("it bids for crates");
+    assert!(each > 0.0 && each <= 2.0 / 6.0 + 1e-9 && want >= 1.0, "{each} each for {want}");
+}

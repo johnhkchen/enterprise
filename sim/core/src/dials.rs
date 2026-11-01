@@ -338,8 +338,11 @@ dials! {
     max_posts_per_route: u32 = 6,
     forget_after_reviews: u32 = 4,
     // crates-and-papers (`cargo.rs`: `cargo/Crates.java`, `cargo/Paperwork.java`)
-    /// What a new crate costs (`Crates.CRATE_EMERALDS`: a log's worth of wood and the work).
+    /// What a new crate costs (`Crates.CRATE_EMERALDS`: a log's worth of wood and the work), bought abroad where the
+    /// host has no Lumberjacks to make them (`cargo::local_crates`).
     crate_emeralds: f64 = 0.125,
+    /// What a town with no Lumberjack bids for a crate at most, so many times its worth (`rules/market.rs`).
+    crate_ceiling: f64 = 2.0,
     /// Empty crates a town keeps to ship with; the rest go back with a wagon (`Crates.EMPTIES_KEPT`).
     empties_kept: u32 = 16,
     /// Crates of shipments a town's warehouse has room for (the mod counts its chests' free slots): a farm with none

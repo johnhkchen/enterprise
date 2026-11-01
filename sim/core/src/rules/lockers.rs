@@ -43,7 +43,8 @@ pub fn follow(content: Res<Content>,
 #[allow(clippy::type_complexity)]
 pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         seed: Res<Rng>, mut dice: ResMut<Dice>, market: Res<crate::market::Market>, routes: Query<&Route>,
-        mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &mut People, Option<&crate::works::Works>)>) {
+        mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &mut People, Option<&crate::works::Works>,
+            Option<&mut crate::cargo::Shipments>)>) {
     // What each town could sell a good for down its roads, as its wagons saw the far ends bid, less the haul there
     // (in the routes' order: the best is the best whatever the order).
     let mut abroad: std::collections::BTreeMap<usize, std::collections::BTreeMap<usize, f64>> = Default::default();
@@ -58,7 +59,8 @@ pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
     }
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
-    for (town, mut roster, mut lockers, mut stock, mut money, mut people, works) in order {
+    let crate_good = content.good(crate::cargo::CRATE).filter(|_| crate::cargo::local_crates(&content));
+    for (town, mut roster, mut lockers, mut stock, mut money, mut people, works, mut shipments) in order {
         lockers.workshop_keeps = crate::workshop::keeps(&content, &roster, &people, &stock);
         lockers.comfort_short = crate::workshop::bought_in(&content, &roster, &people, &stock);
         lockers.reagents = content.goods.iter().position(|g| g.name.rsplit(':').next() == Some(crate::people::SHELF))
@@ -77,8 +79,30 @@ pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
                 }
             }
         }
+        // Its crates (John: "replace that mechanic with local carpenters and local regional crate trade"): its Merchant
+        // buys them of its Lumberjacks, as many as it keeps empty to ship with, and as many again to sell where a town
+        // down its roads bids more for them than they're worth; the town's crates join its empties after.
+        let kept = content.dials.empties_kept as f64;
+        if let (Some(c), Some(ship)) = (crate_good, shipments.as_deref()) {
+            let sells_on = content.dials.market
+                && abroad.get(&town.id).and_then(|f| f.get(&c)).is_some_and(|&net| net > content.goods[c].value);
+            let want = kept * if sells_on { 2.0 } else { 1.0 } - ship.empties as f64 - stock.0[c];
+            // (Whole trades of it, the last rounded up: what's over stays in stock, for sale.)
+            let lot = content.trade(crate::roster::LUMBERJACK).and_then(|l| content.trades[l].offers.iter()
+                .find(|o| o.sells && o.good == c)).map_or(1.0, |o| o.count.max(1) as f64);
+            let want = (want / lot).ceil() * lot;
+            if want >= 1.0 {
+                lockers.reagents.push((c, want));
+            }
+        }
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         catch_up(&content, &mut books, clock.now, town.id, &mut roster, &mut lockers, &mut stock, &mut money);
+        if let (Some(c), Some(ship)) = (crate_good, shipments.as_deref_mut()) {
+            let n = stock.0[c].floor().min(kept - ship.empties as f64).max(0.0);
+            stock.0[c] -= n;
+            ledger.used[c] += n;
+            ship.empties += n as u32;
+        }
         lockers.workshop_keeps.clear(); // worked out at each restock, never kept
         lockers.comfort_short.clear();
         lockers.reagents.clear();

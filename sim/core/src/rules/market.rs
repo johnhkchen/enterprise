@@ -25,7 +25,8 @@ pub fn register(schedule: &mut Schedule) {
 #[allow(clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut market: ResMut<Market>,
         (orders, mint): (Res<crate::orders::Orders>, Res<crate::mint::Mint>),
-        towns: Query<(&Town, &Stock, &People, &Trades, &Money, Option<&Roster>, Option<&crate::farms::Farm>)>) {
+        towns: Query<(&Town, &Stock, &People, &Trades, &Money, Option<&Roster>, Option<&crate::farms::Farm>,
+            Option<&crate::cargo::Shipments>)>) {
     if !content.dials.market {
         return;
     }
@@ -33,7 +34,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
     let n = content.goods.len();
     let rate = mint.rate(clock.now, content.day_ticks);
     for &e in &order.0 {
-        let Ok((town, stock, people, trades, money, roster, farm)) = towns.get(e) else { continue };
+        let Ok((town, stock, people, trades, money, roster, farm, shipments)) = towns.get(e) else { continue };
         let t = town.id;
         let last = market.reviewed.get(&t).copied();
         if last == Some(today) {
@@ -60,6 +61,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
         // A player's buying vendor at its shop is a bid of the town's (`docs/markets-plan.md` 7): at its price, for what
         // its purse pays (and its vendor has room for), once the town has a Merchant to pass the goods on.
         let mut direct = direct;
+        // Its crates, where it has no Lumberjack to make them (John: "local regional crate trade"): as many as it keeps
+        // empty to ship with, at up to `crate_ceiling` times their worth.
+        if let (Some(c), Some(ship)) = (content.good(crate::cargo::CRATE).filter(|_| crate::cargo::local_crates(&content)), shipments) {
+            let lumberjack = content.trade(crate::roster::LUMBERJACK);
+            if roster.is_none_or(|r| crate::kit::at_home(r, lumberjack).next().is_none()) {
+                let want = (content.dials.empties_kept as f64 - ship.empties as f64 - stock.0[c]).max(0.0).ceil();
+                direct[c] = Use { want, ceiling: content.goods[c].value * content.dials.crate_ceiling };
+            }
+        }
         if roster.is_some_and(|r| r.merchant_level().is_some()) {
             for o in orders.orders.iter().filter(|o| o.town == t && o.lot >= 1.0 && o.price > 0.0) {
                 let lots = (o.purse / o.price).floor().min(o.room.unwrap_or(f64::INFINITY)).max(0.0);
