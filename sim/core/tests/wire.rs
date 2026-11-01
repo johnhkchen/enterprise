@@ -102,7 +102,8 @@ fn a_pack_makes_the_content_the_core_would_for_its_goods() {
     let goods = vec![
         Good::new("minecraft:wheat", 0.05, 64).crop(),
         Good::new("minecraft:bread", 0.2, 64).food(5.0).saturation(6.0),
-        Good::new("minecraft:book", 0.5, 64).comfort(Content::COMFORTS.iter().position(|k| *k == "reading").unwrap()),
+        // (a book serving the mod's ten villager-days, as a pack with no comfort files has it: `people::MOD_COMFORTS`)
+        Good::new("minecraft:book", 0.5, 64).comfort(Content::COMFORTS.iter().position(|k| *k == "reading").unwrap()).serves(10.0, 1.0),
         Good::new("minecraft:cooked_beef", 0.3, 64).food(8.0).saturation(12.8).meat(),
     ];
     // (a pack that lists no recipes or animals brings none: the core's own are for hosts that bring no pack)

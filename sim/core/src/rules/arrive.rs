@@ -107,7 +107,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             let outlet = outlets[g];
             let (own, room) = match comfort {
                 Some(kind) => {
-                    let own = ((comfort_par(&content, &people) - comfort_held(&content, &stock, kind)) / value).ceil().max(0.0);
+                    let own = ((comfort_par(&content, &people) - comfort_held(&content, &stock, kind)) / content.comfort_worth(g))
+                        .ceil().max(0.0);
                     (own, own + outlet.filter(|o| crate::desires::worth_buying(&content, value, o)).map_or(0.0, |o| o.units))
                 }
                 None => {
@@ -219,8 +220,8 @@ fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, p
         route: &Route, g: usize, kind: usize, own: f64, on_hand: f64, (seller, buyer): (u8, u8), bid: Option<f64>,
         (now, day): (u64, u64)) -> (f64, f64) {
     let savings = people.purse.at_least_zero();
-    let value = content.goods[g].value.max(1e-9);
-    let credit = (-people.comfort_owed[kind]).max(0.0) / value;
+    let covers = content.comfort_worth(g);
+    let credit = (-people.comfort_owed[kind]).max(0.0) / covers;
     let mut n = wagon.cargo[g].min((own - credit).floor());
     if n <= 0.0 || !savings.is_positive() {
         return (0.0, 0.0);
@@ -234,7 +235,7 @@ fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, p
     }
     wagon.cargo[g] -= n;
     ledger.used[g] += n;
-    people.comfort_owed[kind] -= n * value;
+    people.comfort_owed[kind] -= n * covers;
     let paid = Fixed::ceil(n * each).min(savings);
     post(ledger, book, Side::households(route.to_id, &mut people.purse), Side::wagon(route.seq, &mut wagon.purse), paid,
         Reason::Sale, now, day);

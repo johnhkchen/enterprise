@@ -35,6 +35,9 @@ pub struct ContentPack {
     /// The crops a field can grow (the game's crop files, `data/<namespace>/crops/<id>.json`): none, the mod's six for
     /// the goods the pack has (wheat, carrot, potato, beetroot, cane and berries).
     pub crops: Vec<PackCrop>,
+    /// What each comfort good serves (the game's comfort files, `data/<namespace>/comforts/<id>.json`): none, the
+    /// mod's (a book ten villager-days, a book and quill five); a comfort no file names covers its worth in rations.
+    pub comfort_goods: Vec<PackComfort>,
 }
 
 impl ContentPack {
@@ -51,8 +54,19 @@ impl ContentPack {
             dials: Vec::new(),
             packages: Vec::new(),
             crops: Vec::new(),
+            comfort_goods: Vec::new(),
         }
     }
+}
+
+/// What a comfort good serves, as its file has it (`docs/markets-plan.md` 6): the good (one of the pack's comforts);
+/// the villager-days of its kind one serves (a book is passed round and read again: ten); and its quality (1 plain: a
+/// day met with it lifts the mood so many plain days', up to two).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackComfort {
+    pub good: String,
+    pub days: f64,
+    pub quality: f64,
 }
 
 /// A crop a field can grow, as its file has it (`docs/markets-plan.md` 5): its good; whether it shares farmland with
@@ -426,6 +440,31 @@ impl Content {
             }
             if let (Some(good), Some(sold_as)) = (good, sold_as) {
                 crops.push(crate::farms::Crop { good, rotation: c.rotation, sold_as, water: c.water, cash: c.cash, fit, made_into });
+            }
+        }
+
+        // What each comfort good serves: its file's, or the mod's where the pack sends none.
+        let mods: Vec<PackComfort> = crate::people::MOD_COMFORTS.iter()
+            .filter_map(|&(name, days, quality)| pack.goods.iter().find(|g| g.name.rsplit(':').next() == Some(name))
+                .map(|g| PackComfort { good: g.name.clone(), days, quality }))
+            .collect();
+        let files = if pack.comfort_goods.is_empty() { &mods } else { &pack.comfort_goods };
+        for (i, c) in files.iter().enumerate() {
+            let mut bad = |what: String| wrong.push(format!("comfort file {i} ({:?}): {what}", c.good));
+            match good_at(&c.good) {
+                None => bad("no good called that".to_string()),
+                Some(_) if files[..i].iter().any(|d| d.good == c.good) => bad("a good another file is".to_string()),
+                Some(g) if goods[g].comfort.is_none() => bad("not a comfort (its kind is its tag's)".to_string()),
+                Some(g) => {
+                    goods[g].comfort_days = Some(c.days);
+                    goods[g].quality = c.quality;
+                }
+            }
+            if !amount(c.days) {
+                bad(format!("serves {} days, not a number above nothing", c.days));
+            }
+            if !(c.quality.is_finite() && (1.0..=2.0).contains(&c.quality)) {
+                bad(format!("quality {}, not a number from 1 to 2", c.quality));
             }
         }
 

@@ -28,6 +28,7 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.AddReloadListenerEvent e) -> {
             dev.b28.enterprise.territory.Kits.forget();
             dev.b28.enterprise.territory.CropFiles.forget();
+            dev.b28.enterprise.territory.ComfortFiles.forget();
         });
         NeoForge.EVENT_BUS.addListener(LedgerCommand::register);
         NeoForge.EVENT_BUS.addListener(Dials::onServerStarted);

@@ -6,7 +6,7 @@
       "note": "a society from a pack with paper and Merchants",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Create": {
             "pack": {
@@ -151,13 +151,14 @@
                 }
               ],
               "packages": [],
-              "crops": []
+              "crops": [],
+              "comfort_goods": []
             },
             "seed": 7
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e40000007",
+      "request_postcard": "01a2b4effaf5c390cc4500c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e4000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -170,7 +171,7 @@
       "note": "three towns, Hub, Far and Mid; Hub with its Merchant and a villager of no trade to lead its wagon, Far with its Merchant, books and paper; bread and money in each; pallets of up to 27 stacks",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -296,7 +297,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030f070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c648601773607034d696400136d696e6563726166743a6f766572776f726c645e77360f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d66617201000100000000000060400101010000000000006040010102000000000000504001010600000000005094400200a08d060201a08d060202a09c010e0c70616c6c65745f736c6f7473010000000000003b400e0d70616c6c65745f776569676874010000000000003b40",
+      "request_postcard": "01a2b4effaf5c390cc45030f070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c648601773607034d696400136d696e6563726166743a6f766572776f726c645e77360f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d66617201000100000000000060400101010000000000006040010102000000000000504001010600000000005094400200a08d060201a08d060202a09c010e0c70616c6c65745f736c6f7473010000000000003b400e0d70616c6c65745f776569676874010000000000003b40",
       "response": {
         "Done": {
           "outputs": [],
@@ -309,7 +310,7 @@
       "note": "Far packs 1,200 paper for Mid and 100 for Hub",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -341,7 +342,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103021d010201060000000000c092401d010001060000000000005940",
+      "request_postcard": "01a2b4effaf5c390cc4503021d010201060000000000c092401d010001060000000000005940",
       "response": {
         "Done": {
           "outputs": [
@@ -399,7 +400,7 @@
       "note": "Far's pallets",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -412,7 +413,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010c01",
+      "request_postcard": "01a2b4effaf5c390cc4504010c01",
       "response": {
         "Done": {
           "outputs": [],
@@ -507,7 +508,7 @@
       "note": "what Far's chests take with two slots free: only Hub's, whole",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -527,7 +528,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010e00136d696e6563726166743a6f766572776f726c648601773602",
+      "request_postcard": "01a2b4effaf5c390cc4504010e00136d696e6563726166743a6f766572776f726c648601773602",
       "response": {
         "Done": {
           "outputs": [],
@@ -584,7 +585,7 @@
       "note": "with four: both",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -604,7 +605,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010e00136d696e6563726166743a6f766572776f726c648601773604",
+      "request_postcard": "01a2b4effaf5c390cc4504010e00136d696e6563726166743a6f766572776f726c648601773604",
       "response": {
         "Done": {
           "outputs": [],
@@ -701,7 +702,7 @@
       "note": "the host put both in Far's chests",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -733,7 +734,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103021e00136d696e6563726166743a6f766572776f726c6486017736001e00136d696e6563726166743a6f766572776f726c648601773601",
+      "request_postcard": "01a2b4effaf5c390cc4503021e00136d696e6563726166743a6f766572776f726c6486017736001e00136d696e6563726166743a6f766572776f726c648601773601",
       "response": {
         "Done": {
           "outputs": [],
@@ -746,7 +747,7 @@
       "note": "nothing more to put there",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -766,7 +767,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010e00136d696e6563726166743a6f766572776f726c64860177361b",
+      "request_postcard": "01a2b4effaf5c390cc4504010e00136d696e6563726166743a6f766572776f726c64860177361b",
       "response": {
         "Done": {
           "outputs": [],
@@ -792,7 +793,7 @@
       "note": "a player carries Mid's pallet to Hub's desk: it waits there, packed",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -806,7 +807,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103010b0000",
+      "request_postcard": "01a2b4effaf5c390cc4503010b0000",
       "response": {
         "Done": {
           "outputs": [
@@ -830,7 +831,7 @@
       "note": "Hub holds it, shown nowhere yet; Mid's inbound",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -860,7 +861,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104030c000c020e00136d696e6563726166743a6f766572776f726c643677361b",
+      "request_postcard": "01a2b4effaf5c390cc4504030c000c020e00136d696e6563726166743a6f766572776f726c643677361b",
       "response": {
         "Done": {
           "outputs": [],
@@ -1066,7 +1067,7 @@
       "note": "and on to Mid with two of its three crates",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1088,7 +1089,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103020c0200000c020002",
+      "request_postcard": "01a2b4effaf5c390cc4503020c0200000c020002",
       "response": {
         "Done": {
           "outputs": [],
@@ -1101,7 +1102,7 @@
       "note": "Mid's next look: received short",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1114,7 +1115,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030100b009",
+      "request_postcard": "01a2b4effaf5c390cc45030100b009",
       "response": {
         "Done": {
           "outputs": [
@@ -1138,7 +1139,7 @@
       "note": "Mid's paper, and the crate that didn't come lost in the books",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1161,7 +1162,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01040300020c020d00",
+      "request_postcard": "01a2b4effaf5c390cc45040300020c020d00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1210,7 +1211,7 @@
       "note": "Hub's host starts wagons to Far",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1225,7 +1226,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103011c000101",
+      "request_postcard": "01a2b4effaf5c390cc4503011c000101",
       "response": {
         "Done": {
           "outputs": [],
@@ -1238,7 +1239,7 @@
       "note": "a look",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1251,7 +1252,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030100e012",
+      "request_postcard": "01a2b4effaf5c390cc45030100e012",
       "response": {
         "Done": {
           "outputs": [
@@ -1293,7 +1294,7 @@
       "note": "Hub's wagon's manifest",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1306,7 +1307,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010f00",
+      "request_postcard": "01a2b4effaf5c390cc4504010f00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1327,7 +1328,7 @@
       "note": "a look",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1340,7 +1341,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030100901c",
+      "request_postcard": "01a2b4effaf5c390cc45030100901c",
       "response": {
         "Done": {
           "outputs": [
@@ -1371,7 +1372,7 @@
       "note": "Hub's wagon's manifest",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1384,7 +1385,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010f00",
+      "request_postcard": "01a2b4effaf5c390cc4504010f00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1440,7 +1441,7 @@
       "note": "a look",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1453,7 +1454,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030100c025",
+      "request_postcard": "01a2b4effaf5c390cc45030100c025",
       "response": {
         "Done": {
           "outputs": [
@@ -1493,7 +1494,7 @@
       "note": "Hub's wagon's manifest",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1506,7 +1507,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010f00",
+      "request_postcard": "01a2b4effaf5c390cc4504010f00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1527,7 +1528,7 @@
       "note": "home: Hub's paper, every pallet gone",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1545,7 +1546,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01040200000c00",
+      "request_postcard": "01a2b4effaf5c390cc45040200000c00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1588,15 +1589,15 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": "Save"
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0102",
+      "request_postcard": "01a2b4effaf5c390cc4502",
       "saved": {
         "format": 1,
-        "schema": 12309602202559612832,
-        "blob_len": 8480,
-        "blob_fnv": "242b4e65b72735bf"
+        "schema": 5014830887588321826,
+        "blob_len": 8586,
+        "blob_fnv": "d44986a606f37911"
       }
     },
     {
@@ -1614,7 +1615,7 @@
       "note": "the same after the load",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1627,7 +1628,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010c01",
+      "request_postcard": "01a2b4effaf5c390cc4504010c01",
       "response": {
         "Done": {
           "outputs": [],
@@ -1656,7 +1657,7 @@
       "note": "a pallet stowed at a point that isn't a desk: refused",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1676,7 +1677,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103011e00136d696e6563726166743a6f766572776f726c640a770a00",
+      "request_postcard": "01a2b4effaf5c390cc4503011e00136d696e6563726166743a6f766572776f726c640a770a00",
       "response": {
         "Refused": {
           "why": {
@@ -1693,7 +1694,7 @@
       "note": "goods packed for the town itself: refused",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -1708,7 +1709,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103011d010100",
+      "request_postcard": "01a2b4effaf5c390cc4503011d010100",
       "response": {
         "Refused": {
           "why": {
@@ -1725,7 +1726,7 @@
       "note": "the manifest of a route that isn't there",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -1738,7 +1739,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0104010f09",
+      "request_postcard": "01a2b4effaf5c390cc4504010f09",
       "response": {
         "Refused": {
           "why": {

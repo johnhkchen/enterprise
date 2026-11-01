@@ -468,7 +468,7 @@ impl Society {
                     None => f64::INFINITY, // a good its lockers use: none for sale
                     Some(_) => {
                         let people = self.world.get::<crate::state::People>(self.towns[town]).expect("a town");
-                        (crate::people::comfort_keep(content, people) / content.goods[g].value.max(1e-9)).ceil()
+                        (crate::people::comfort_keep(content, people) / content.comfort_worth(g)).ceil()
                     }
                 }
             };

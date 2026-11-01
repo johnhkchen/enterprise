@@ -442,7 +442,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
                 // Comforts the towns it supplies are short of: they keep their own.
                 let aboard = super::cargo::aboard_of(&pallets, route.seq, wagon, g);
                 wanted = wanted.max(o.units - stocktakes.on_hand(route.from_id, g) - aboard);
-                their_par = (comfort_keep(&content, people) / value.max(1e-9)).ceil();
+                their_par = (comfort_keep(&content, people) / content.comfort_worth(g)).ceil();
             }
             let mut surplus = (held - their_par).min(wanted);
             let points = crate::road::points(&content, g);

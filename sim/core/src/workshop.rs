@@ -164,7 +164,7 @@ pub fn bought_in(content: &Content, roster: &Roster, people: &People, stock: &St
     (0..content.comforts.len()).map(|kind| {
         let makes: f64 = content.conversions.iter().filter(|c| can_do(c, roster) && content.goods[c.output].comfort == Some(kind))
             .map(|c| c.inputs.iter().map(|&(g, m)| whole(stock.0[g] / m)).fold(f64::INFINITY, f64::min).min(64.0)
-                * c.out * content.goods[c.output].value)
+                * c.out * content.comfort_worth(c.output))
             .sum();
         let short = (par - comfort_held(content, stock, kind) - makes).max(0.0).min(purse);
         purse -= short;
@@ -175,7 +175,7 @@ pub fn bought_in(content: &Content, roster: &Roster, people: &People, stock: &St
 /// How many more of a comfort the town wants: its par less what it holds of the kind, in items (`comfortWanted`).
 pub fn comfort_wanted(content: &Content, people: &People, stock: &Stock, kind: usize, output: GoodId) -> f64 {
     let short = comfort_par(content, people) - comfort_held(content, stock, kind);
-    if short <= 0.0 { 0.0 } else { (short / content.goods[output].value.max(1e-9) - 1e-9).ceil() }
+    if short <= 0.0 { 0.0 } else { (short / content.comfort_worth(output) - 1e-9).ceil() }
 }
 
 /// How many more of `output` the town wants (`Workshop.potential`'s `wanted`): a comfort up to the town's par, and as
@@ -306,7 +306,7 @@ pub fn input_demand(content: &Content, roster: &Roster, villagers: f64, routes_o
         if let Some(kind) = content.goods[c.output].comfort.filter(|_| can_do(c, roster)) {
             let value = content.goods[c.output].value;
             let eager = 1.0 + (content.dials.desire_most - 1.0) * (1.0 - met.get(kind).copied().unwrap_or(1.0).clamp(0.0, 1.0));
-            frontier.push((i, villagers * content.dials.ration * towns / value.max(1e-9), value * eager));
+            frontier.push((i, villagers * content.dials.ration * towns / content.comfort_worth(c.output), value * eager));
         }
     }
     // Two steps back: A d, then A (A d).

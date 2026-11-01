@@ -30,12 +30,25 @@ pub struct Good {
     pub package: crate::pallet::PackageKindId,
     /// What it needs of handling: plain by default.
     pub handling: crate::pallet::Handling,
+    /// A comfort's: the villager-days of its kind one serves (its file's, `docs/markets-plan.md` 6: a book is passed
+    /// round and read again); none, its worth in rations (`Content::comfort_worth`).
+    #[serde(default)]
+    pub comfort_days: Option<f64>,
+    /// A comfort's quality (1 plain): a day met with it lifts the mood so many plain days' (the mood's
+    /// `People::comfort_fine`, up to a second one).
+    #[serde(default = "plain")]
+    pub quality: f64,
+}
+
+fn plain() -> f64 {
+    1.0
 }
 
 impl Good {
     pub fn new(name: &str, value: f64, stack: u32) -> Self {
         Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false, saturation: 0.0, meat: false,
-            weight: 1.0 / stack.max(1) as f64, package: crate::pallet::CRATE, handling: Default::default() }
+            weight: 1.0 / stack.max(1) as f64, package: crate::pallet::CRATE, handling: Default::default(),
+            comfort_days: None, quality: 1.0 }
     }
 
     /// Weighs `weight` a piece.
@@ -47,6 +60,13 @@ impl Good {
     /// A comfort of the kind at `kind` in [`Content::comforts`].
     pub fn comfort(mut self, kind: usize) -> Self {
         self.comfort = Some(kind);
+        self
+    }
+
+    /// A comfort serving `days` villager-days of its kind a piece, at `quality`.
+    pub fn serves(mut self, days: f64, quality: f64) -> Self {
+        self.comfort_days = Some(days);
+        self.quality = quality;
         self
     }
 
@@ -118,6 +138,14 @@ impl Content {
     }
 
     /// The kind of comfort called `name`.
+    /// What a piece of a comfort covers of its kind's rations, in emeralds' worth (the rations' unit, `ration` a
+    /// villager a day): its villager-days at the ration where its file gives them, else its worth. A book worth a
+    /// quarter of an emerald serves ten villager-days, a ration's emerald.
+    pub fn comfort_worth(&self, good: GoodId) -> f64 {
+        let g = &self.goods[good];
+        g.comfort_days.map_or(g.value, |d| d * self.dials.ration).max(1e-9)
+    }
+
     pub fn comfort(&self, name: &str) -> Option<usize> {
         self.comforts.iter().position(|k| k == name)
     }

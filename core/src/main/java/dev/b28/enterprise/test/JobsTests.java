@@ -101,6 +101,22 @@ public final class JobsTests {
      * Crops are files (docs/markets-plan.md 5): the mod's six in their order, and one a datapack adds (torchflowers here,
      * cotton once its mod is in) read like them, planted for what's bought of it and sent to the core with its land.
      */
+    /**
+     * The comfort files say what a piece serves (data/enterprise/comforts/): a book ten villager-days, a book and quill
+     * five, both read from the mod's resources and sent to the core with the content pack.
+     */
+    @GameTest(template = "floor")
+    public static void theComfortFilesGoToTheCore(GameTestHelper helper) {
+        var files = dev.b28.enterprise.territory.ComfortFiles.all();
+        var book = files.stream().filter(c -> c.item() == net.minecraft.world.item.Items.BOOK).findFirst();
+        helper.assertTrue(book.isPresent() && book.get().days() == 10 && book.get().quality() == 1, "the book's file: " + files);
+        var pack = dev.b28.enterprise.binding.ModPack.of().comfortGoods();
+        helper.assertTrue(pack.stream().anyMatch(c -> c.good().equals("minecraft:book") && c.days() == 10)
+                && pack.stream().anyMatch(c -> c.good().equals("minecraft:writable_book") && c.days() == 5),
+                "the pack takes them to the core: " + pack);
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void aCropAddedByFileIsPlantedAndGoesToTheCore(GameTestHelper helper) {
         var crops = dev.b28.enterprise.territory.CropFiles.crops();

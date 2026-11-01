@@ -14,9 +14,14 @@ use crate::fixed::Fixed;
 use crate::rules::Step;
 use crate::state::*;
 
+/// The mod's comfort files, for a pack that sends none: good (bare name), villager-days a piece serves, quality. A book
+/// is passed round and read again (ten days, John: "reading is being consumed too aggressively"), a book and quill
+/// written in for half that; the rest cover their worth in rations.
+pub const MOD_COMFORTS: [(&str, f64, f64); 2] = [("book", 10.0, 1.0), ("writable_book", 5.0, 1.0)];
+
 /// What a town holds of a kind of comfort, in emeralds' worth.
 pub fn comfort_held(content: &Content, stock: &Stock, kind: usize) -> f64 {
-    content.goods.iter().enumerate().filter(|(_, g)| g.comfort == Some(kind)).map(|(i, g)| stock.0[i] * g.value).sum()
+    content.goods.iter().enumerate().filter(|(_, g)| g.comfort == Some(kind)).map(|(i, _)| stock.0[i] * content.comfort_worth(i)).sum()
 }
 
 /// What a town aims to hold of each kind of comfort, in emeralds' worth: `comfort_days` of its people's rations.
@@ -164,6 +169,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         }
         if people.fine_banked.len() != k {
             people.fine_banked = vec![0.0; k];
+            people.fine_cover = vec![0.0; k];
         }
         // (The finer pieces the warehouse still holds: its wagons and lockers move them as plain ones.)
         for (&g, n) in people.fine.iter_mut() {
@@ -203,28 +209,37 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
             let mut used = 0.0;
             let mut finer = 0.0;
+            let mut cover = 0.0;
             for i in goods {
                 if owed <= 0.0 {
                     break;
                 }
-                let value = content.goods[i].value.max(1e-9);
-                let n = stock.0[i].min((owed / value).ceil());
+                // (What a piece covers of the rations, `comfort_worth`, and what it costs, its worth.)
+                let (value, covers) = (content.goods[i].value.max(1e-9), content.comfort_worth(i));
+                let n = stock.0[i].min((owed / covers).ceil());
                 stock.0[i] -= n;
                 ledger.used[i] += n;
-                owed -= n * value;
-                // The finer pieces first: each worth `fine_quality` plain ones, and paid for so.
+                owed -= n * covers;
+                cover += n * covers;
+                // Its quality's lift, and the finer pieces first: each worth `fine_quality` plain ones, and paid for so.
+                finer += n * covers * (content.goods[i].quality - 1.0).max(0.0);
                 let f = people.fine.get(&i).copied().unwrap_or(0.0).min(n);
                 if f > 0.0 {
                     *people.fine.get_mut(&i).unwrap() -= f;
-                    finer += f * value * (d.fine_quality - 1.0).max(0.0);
+                    finer += f * covers * (d.fine_quality - 1.0).max(0.0);
                 }
                 used += n * value + f * value * (d.fine_quality - 1.0).max(0.0);
             }
-            // The finer pieces' comfort is banked as they're put on and taken as their days pass, a day's ration at most.
+            // The finer pieces' comfort is banked as they're put on, with the rations they cover, and taken as those
+            // rations are used: a book of 1.5 read over ten days lifts each of them by half.
             people.fine_banked[kind] += finer;
-            let lift = people.fine_banked[kind].min(due);
+            people.fine_cover[kind] += cover;
+            let met = (due - owed.max(0.0)).max(0.0);
+            let share = if people.fine_cover[kind] > 0.0 { (met / people.fine_cover[kind]).min(1.0) } else { 0.0 };
+            let lift = people.fine_banked[kind] * share;
             people.fine_banked[kind] -= lift;
-            people.comfort_fine[kind] = if due > 0.0 { lift / due } else { 0.0 };
+            people.fine_cover[kind] -= met.min(people.fine_cover[kind]);
+            people.comfort_fine[kind] = if due > 0.0 { (lift / due).min(1.0) } else { 0.0 };
             // Their worth rounded up to the thousandth (a price the households pay), as far as their purse goes.
             let pays = Fixed::ceil(used).min(people.purse.at_least_zero());
             post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,

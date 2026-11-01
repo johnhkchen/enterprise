@@ -117,7 +117,8 @@
     "animals": [],
     "dials": [],
     "packages": [],
-    "crops": []
+    "crops": [],
+    "comfort_goods": []
   },
   {
     "day_ticks": 1,
@@ -151,7 +152,8 @@
     "animals": [],
     "dials": [],
     "packages": [],
-    "crops": []
+    "crops": [],
+    "comfort_goods": []
   },
   {
     "day_ticks": 18446744073709551615,
@@ -208,7 +210,8 @@
     "animals": [],
     "dials": [],
     "packages": [],
-    "crops": []
+    "crops": [],
+    "comfort_goods": []
   },
   {
     "day_ticks": 0,
@@ -1543,7 +1546,8 @@
     "animals": [],
     "dials": [],
     "packages": [],
-    "crops": []
+    "crops": [],
+    "comfort_goods": []
   },
   {
     "day_ticks": 24000,
@@ -1881,6 +1885,18 @@
         ],
         "made_into": []
       }
+    ],
+    "comfort_goods": [
+      {
+        "good": "test:book",
+        "days": 10.0,
+        "quality": 1.0
+      },
+      {
+        "good": "test:jeans",
+        "days": 30.5,
+        "quality": 2.0
+      }
     ]
   },
   {
@@ -1892,6 +1908,7 @@
     "animals": [],
     "dials": [],
     "packages": [],
-    "crops": []
+    "crops": [],
+    "comfort_goods": []
   }
 ]

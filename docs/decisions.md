@@ -1210,6 +1210,21 @@ mod's), but no road ever chose it. Then: build them first.
     last at 40: clothing met (by villagers) 0.01 to 0.75, treats 0.56 to 0.69, reading 0.24 to 0.10 (the hides go to
     clothing first), mood 0.43 to 1.18, 155 villagers to 164 in 23 towns each; 33 lots of leggings bought in for 86
     emeralds, the households paying 905 for their comforts; the towns' money 179 to 119.
+  - **Built: what a comfort serves is its file's, apart from its worth (John, 2026-11-01: "the trick here would be to
+    properly assign happiness values to different items that serve it at different degrees. It seems like in this
+    case, reading is being consumed too aggressively").** A comfort covered its worth in rations (a tenth of an emerald
+    a villager a day): a book, worth a quarter, 2.5 villager-days, a hide each; a pair of boots 40 for four, so a hide
+    went four times as far in clothing, and a town of 16 read 6.4 hides a day. Each comfort good may have a file
+    (`data/enterprise/comforts/<id>.json`, `ComfortFiles`: the villager-days a piece serves, its quality from 1 to 2;
+    its kind its tag's), sent with the content pack (`PackComfort`; the mod's, `people::MOD_COMFORTS`, where a pack sends
+    none): a book ten villager-days, a book and quill five. What a piece covers (`Content::comfort_worth`) is what the
+    rations, the par, the workshop, the wagons and the lockers weigh it by; the households pay its worth, as before. A
+    quality above 1 lifts the mood by its excess as the rations it covers are used (`People::fine_banked`, `fine_cover`;
+    a book of 1.5 read over ten days, half a day's more each). Bookshelves are next, as reagents a home or a library
+    takes for reading (John: "the bookshelf can act as an upgrade reagent, for things like building a library at a town
+    or upgrading a home to increase its passive reading happiness (think gem slots from WoW/warcraft)"). The bid study
+    at 40, fresh from day 0, against the last: reading met (by villagers) 0.10 to 0.36, clothing 0.75 to 0.68, treats
+    0.69 to 0.75, mood 1.18 to 1.68, 164 villagers to 169 in 21 towns (23), the towns' money 119 to 250.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

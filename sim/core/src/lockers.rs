@@ -595,7 +595,7 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
         let o = &offers[k];
         if o.sells && !o.procured && !o.training && !o.on {
             let Some(c) = kind(k) else { continue };
-            let each = o.count as f64 * content.goods[o.good].value;
+            let each = o.count as f64 * content.comfort_worth(o.good);
             let left = short.get(c).copied().unwrap_or(0.0);
             *r = (*r).min((left / each.max(1e-9)).ceil().max(0.0) as u32);
             if let Some(l) = short.get_mut(c) {

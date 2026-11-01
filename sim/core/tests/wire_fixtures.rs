@@ -167,10 +167,15 @@ fn packs() -> Vec<ContentPack> {
         ContentPack::new(0, (0..130).map(|i| PackGood::new(&format!("test:good_{i}"), 1.0 + i as f64, 64)).collect()),
         ContentPack { day_ticks: 24_000, goods: goods(), comforts: vec!["reading".into(), "treats".into(), String::new()],
             trades: vec!["merchant".into(), "farmer".into(), "none".into(), "nitwit".into()], recipes: recipes(), animals: animals(),
-            dials: pack_dials(), packages: pack_packages(), crops: pack_crops() },
+            dials: pack_dials(), packages: pack_packages(), crops: pack_crops(), comfort_goods: pack_comforts() },
         ContentPack { day_ticks: 1, goods: vec![], comforts: vec![], trades: vec![], recipes: vec![], animals: vec![], dials: vec![],
-            packages: vec![], crops: vec![] },
+            packages: vec![], crops: vec![], comfort_goods: vec![] },
     ]
+}
+
+fn pack_comforts() -> Vec<PackComfort> {
+    vec![PackComfort { good: "test:book".into(), days: 10.0, quality: 1.0 },
+        PackComfort { good: "test:jeans".into(), days: 30.5, quality: 2.0 }]
 }
 
 fn pack_crops() -> Vec<PackCrop> {
@@ -976,6 +981,7 @@ fixtures! {
     ground_view_fixtures: GroundView = ground_views();
     pack_package_fixtures: PackPackage = pack_packages();
     pack_crop_fixtures: PackCrop = pack_crops();
+    pack_comfort_fixtures: PackComfort = pack_comforts();
     pack_fit_fixtures: PackFit = vec![PackFit { land: "desert".into(), fit: 1.0 }, PackFit { land: String::new(), fit: f64::MAX }];
     pack_made_fixtures: PackMade = vec![PackMade { good: "test:paper".into(), from: 1.0, makes: 1.0 },
         PackMade { good: "x".repeat(300), from: f64::MIN_POSITIVE, makes: f64::MAX }];

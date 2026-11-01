@@ -410,6 +410,9 @@ ContentPack:
     - crops:
         SEQ:
           TYPENAME: PackCrop
+    - comfort_goods:
+        SEQ:
+          TYPENAME: PackComfort
 ContractLine:
   STRUCT:
     - id: U32
@@ -1097,6 +1100,11 @@ PackAnimal:
         OPTION: STR
     - hide:
         OPTION: STR
+PackComfort:
+  STRUCT:
+    - good: STR
+    - days: F64
+    - quality: F64
 PackCrop:
   STRUCT:
     - good: STR

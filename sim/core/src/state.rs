@@ -151,6 +151,9 @@ pub struct People {
     /// the days they cover pass (a pair of boots is days of clothing).
     #[serde(default)]
     pub fine_banked: Vec<f64>,
+    /// The rations the pieces behind `fine_banked` cover, in emeralds' worth: the lift is taken as they're used.
+    #[serde(default)]
+    pub fine_cover: Vec<f64>,
 }
 
 /// What a town holds of each good.

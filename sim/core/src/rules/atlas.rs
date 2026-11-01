@@ -134,9 +134,8 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
             if left <= 0.0 || collected.contains(&g) {
                 continue;
             }
-            let value = content.goods[g].value.max(1e-9);
             let why = match content.goods[g].comfort {
-                Some(kind) if (comfort_par(&content, people) - comfort_held(&content, stock, kind)) / value <= 0.0 =>
+                Some(kind) if (comfort_par(&content, people) - comfort_held(&content, stock, kind)) / content.comfort_worth(g) <= 0.0 =>
                     Why::UnsoldFull(Some(kind)),
                 Some(_) => Why::UnsoldCantPay,
                 None if trades.uses[g] > 0.0 || trades.capacity.get(g).is_some_and(|c| *c > 0.0)

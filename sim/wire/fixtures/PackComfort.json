@@ -1,0 +1,12 @@
+[
+  {
+    "good": "test:book",
+    "days": 10.0,
+    "quality": 1.0
+  },
+  {
+    "good": "test:jeans",
+    "days": 30.5,
+    "quality": 2.0
+  }
+]

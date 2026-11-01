@@ -197,3 +197,35 @@ fn grown_villagers_earn_new_money_and_spend_it_on_their_towns_comforts() {
     none.advance(10 * DAY);
     assert_eq!(none.town(0).money, 0.0, "the dial off: nothing comes in");
 }
+
+/// A comfort's file says what a piece serves, apart from its worth (John: "properly assign happiness values to different
+/// items that serve it at different degrees"): a book passed round serves ten villager-days, so ten villagers read
+/// for ten days on ten books worth 0.25 each, where at their worth (2.5 villager-days a book) they'd need forty; its
+/// quality lifts the mood beyond a plain day's.
+#[test]
+fn a_book_serves_the_villager_days_its_file_gives() {
+    let read = |days: Option<(f64, f64)>| {
+        let reading = Content::COMFORTS.iter().position(|k| *k == "reading").unwrap();
+        let mut book = Good::new("book", 0.25, 16).comfort(reading);
+        if let Some((d, q)) = days {
+            book = book.serves(d, q);
+        }
+        let mut s = Society::new(Content::new(vec![book, Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)], DAY));
+        s.content_mut().dials.standing_orders = false;
+        let t = s.add_town("Meadowworth", 20.0);
+        s.set_people(t, 10.0, 10.0, 10.0);
+        s.deliver(t, 0, 10.0);
+        s.deliver(t, 2, 64.0);
+        let e = s.world.resource::<enterprise_core::state::Towns>().0[t];
+        s.world.get_mut::<enterprise_core::state::People>(e).unwrap().purse = enterprise_core::fixed::Fixed::emeralds(50);
+        s.advance(5 * DAY);
+        let p = s.town(t).people;
+        (s.town(t).stock[0], p.comfort_met[reading], p.comfort_fine[reading])
+    };
+    let (left, met, _) = read(None);
+    assert_eq!((left, met), (0.0, 0.0), "at its worth, ten books last two and a half days of ten readers");
+    let (left, met, fine) = read(Some((10.0, 1.0)));
+    assert!(left >= 4.0 && met == 1.0 && fine == 0.0, "ten days a book: five days read, half left: {left} {met} {fine}");
+    let (_, met, fine) = read(Some((10.0, 1.5)));
+    assert!(met == 1.0 && (fine - 0.5).abs() < 1e-9, "of quality 1.5: half a plain day more: {met} {fine}");
+}

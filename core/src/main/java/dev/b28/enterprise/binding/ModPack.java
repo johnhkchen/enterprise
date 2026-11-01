@@ -4,6 +4,7 @@ import dev.b28.enterprise.Dials;
 import dev.b28.enterprise.army.Army;
 import dev.b28.enterprise.caravan.Squad;
 import dev.b28.enterprise.money.Prices;
+import dev.b28.enterprise.territory.ComfortFiles;
 import dev.b28.enterprise.territory.Comforts;
 import dev.b28.enterprise.territory.CropFiles;
 import dev.b28.enterprise.territory.Husbandry;
@@ -14,6 +15,7 @@ import dev.b28.enterprise.wire.ContentPack;
 import dev.b28.enterprise.wire.GoodFlag;
 import dev.b28.enterprise.wire.PackAmount;
 import dev.b28.enterprise.wire.PackAnimal;
+import dev.b28.enterprise.wire.PackComfort;
 import dev.b28.enterprise.wire.PackCrop;
 import dev.b28.enterprise.wire.PackFit;
 import dev.b28.enterprise.wire.PackMade;
@@ -162,7 +164,19 @@ public final class ModPack {
         if (kinds.isEmpty()) {
             throw new IllegalStateException("no item tags under enterprise:comforts/: the tags aren't loaded yet");
         }
-        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials(), PACKAGES, crops);
+        // What each comfort good serves: the comfort files of the goods it has (the core refuses one naming a good it lacks).
+        java.util.Set<String> have = goods.stream().map(PackGood::name).collect(java.util.stream.Collectors.toSet());
+        // (And of the comforts: a file naming an item no comfort tag has is left out, with why, not the pack refused.)
+        List<PackComfort> comforts = new ArrayList<>();
+        for (ComfortFiles.Comfort c : ComfortFiles.all()) {
+            if (Comforts.kindOf(c.item()).isEmpty()) {
+                dev.b28.enterprise.Enterprise.LOGGER.warn("Comfort file {} left out: {} is no comfort (no enterprise:comforts/ tag)",
+                        c.id(), id(c.item()));
+            } else if (have.contains(id(c.item()))) {
+                comforts.add(new PackComfort(id(c.item()), c.days(), c.quality()));
+            }
+        }
+        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials(), PACKAGES, crops, comforts);
     }
 
     private static PackGood good(String id, Item item) {

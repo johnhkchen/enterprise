@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Create": {
             "pack": {
@@ -86,13 +86,14 @@
               "animals": [],
               "dials": [],
               "packages": [],
-              "crops": []
+              "crops": [],
+              "comfort_goods": []
             },
             "seed": 7
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e6974776974000000000007",
+      "request_postcard": "01a2b4effaf5c390cc4500c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -105,7 +106,7 @@
       "note": "a town at its desk, a locker for it, some money paid in",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -143,7 +144,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103030707417368666f726400136d696e6563726166743a6f766572776f726c643677360801136d696e6563726166743a6f766572776f726c643c773600020080f104",
+      "request_postcard": "01a2b4effaf5c390cc4503030707417368666f726400136d696e6563726166743a6f766572776f726c643677360801136d696e6563726166743a6f766572776f726c643c773600020080f104",
       "response": {
         "Done": {
           "outputs": [],
@@ -156,7 +157,7 @@
       "note": "a player delivers wheat and books",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -178,7 +179,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01030201000000000000000044400100020000000000000840",
+      "request_postcard": "01a2b4effaf5c390cc45030201000000000000000044400100020000000000000840",
       "response": {
         "Done": {
           "outputs": [],
@@ -191,7 +192,7 @@
       "note": "its stock and points",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -205,7 +206,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa010402000001",
+      "request_postcard": "01a2b4effaf5c390cc450402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -256,7 +257,7 @@
       "note": "a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat and 3 books delivered, which are moved into its chests",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -286,7 +287,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103010a00136d696e6563726166743a6f766572776f726c6436773602000000000000003e400100000000000014401b",
+      "request_postcard": "01a2b4effaf5c390cc4503010a00136d696e6563726166743a6f766572776f726c6436773602000000000000003e400100000000000014401b",
       "response": {
         "Done": {
           "outputs": [
@@ -326,7 +327,7 @@
       "note": "the locker is counted apart, a good listed twice is summed",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -356,7 +357,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103010a01136d696e6563726166743a6f766572776f726c643c77360201000000000000f03f0100000000000000401b",
+      "request_postcard": "01a2b4effaf5c390cc4503010a01136d696e6563726166743a6f766572776f726c643c77360201000000000000f03f0100000000000000401b",
       "response": {
         "Done": {
           "outputs": [],
@@ -369,7 +370,7 @@
       "note": "a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -408,7 +409,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103020a00136d696e6563726166743a6f766572776f726c64367736030000000000000049400100000000000014400200000000000014401900c0b204",
+      "request_postcard": "01a2b4effaf5c390cc4503020a00136d696e6563726166743a6f766572776f726c64367736030000000000000049400100000000000014400200000000000014401900c0b204",
       "response": {
         "Done": {
           "outputs": [],
@@ -421,7 +422,7 @@
       "note": "the stock after the stocktakes",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -435,7 +436,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa010402000001",
+      "request_postcard": "01a2b4effaf5c390cc450402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -486,15 +487,15 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": "Save"
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0102",
+      "request_postcard": "01a2b4effaf5c390cc4502",
       "saved": {
         "format": 1,
-        "schema": 12309602202559612832,
-        "blob_len": 5093,
-        "blob_fnv": "4b5e72a4438ba585"
+        "schema": 5014830887588321826,
+        "blob_len": 5138,
+        "blob_fnv": "0860ae2ddd7c9160"
       }
     },
     {
@@ -512,7 +513,7 @@
       "note": "asked again after the load",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -526,7 +527,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa010402000001",
+      "request_postcard": "01a2b4effaf5c390cc450402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -577,7 +578,7 @@
       "note": "the goods by number, as the save keeps them (what a host maps its items by after a load)",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -586,7 +587,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa01040102",
+      "request_postcard": "01a2b4effaf5c390cc45040102",
       "response": {
         "Done": {
           "outputs": [],
@@ -610,7 +611,7 @@
       "note": "it runs on: five more days",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Apply": {
             "inputs": [
@@ -623,7 +624,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa0103010080dc0b",
+      "request_postcard": "01a2b4effaf5c390cc4503010080dc0b",
       "response": {
         "Done": {
           "outputs": [],
@@ -636,7 +637,7 @@
       "note": "and answers",
       "request": {
         "abi": 1,
-        "schema": 12309602202559612832,
+        "schema": 5014830887588321826,
         "command": {
           "Ask": {
             "queries": [
@@ -650,7 +651,7 @@
           }
         }
       },
-      "request_postcard": "01a08fba8fbfbf9feaaa010402000001",
+      "request_postcard": "01a2b4effaf5c390cc450402000001",
       "response": {
         "Done": {
           "outputs": [],
