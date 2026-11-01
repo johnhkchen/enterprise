@@ -1,6 +1,6 @@
 {
   "kingdom": "orc",
-  "rev": 8,
+  "rev": 9,
   "about": "Orc war-town: town rules for a kit race. Every building is a whole delivered part from town_kits/orc/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/orc.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "orc/core",
   "tiers": {
@@ -687,6 +687,47 @@
         6
       ],
       "from": "town"
+    }
+  },
+  "landmarks": {
+    "landmark:abbey": {
+      "asset": "enterprise:orc/landmark/abbey_30x48_a",
+      "footprint": [
+        30,
+        48
+      ],
+      "lot": [
+        32,
+        50
+      ],
+      "from": "town",
+      "about": "one part on its whole lot of merged wards; the lot's outer ring is yard (the placer's ground), the part its body"
+    },
+    "landmark:keep": {
+      "asset": "enterprise:orc/landmark/keep_30x30_a",
+      "footprint": [
+        30,
+        30
+      ],
+      "lot": [
+        32,
+        32
+      ],
+      "from": "city",
+      "about": "one part on its whole lot of merged wards; the lot's outer ring is yard (the placer's ground), the part its body"
+    },
+    "landmark:palace": {
+      "asset": "enterprise:orc/landmark/palace_30x48_a",
+      "footprint": [
+        30,
+        48
+      ],
+      "lot": [
+        32,
+        50
+      ],
+      "from": "capital",
+      "about": "one part on its whole lot of merged wards; the lot's outer ring is yard (the placer's ground), the part its body"
     }
   },
   "land": {

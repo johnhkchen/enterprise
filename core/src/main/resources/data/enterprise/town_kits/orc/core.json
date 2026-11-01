@@ -1223,6 +1223,54 @@
       "workstations": []
     },
     {
+      "id": "abbey_30x48_a",
+      "part": "enterprise:orc/landmark/abbey_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:abbey",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        30,
+        36,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "keep_30x30_a",
+      "part": "enterprise:orc/landmark/keep_30x30_a",
+      "kind": "landmark",
+      "slot": "landmark:keep",
+      "tiers": [
+        "city"
+      ],
+      "size": [
+        30,
+        32,
+        30
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "palace_30x48_a",
+      "part": "enterprise:orc/landmark/palace_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:palace",
+      "tiers": [
+        "capital"
+      ],
+      "size": [
+        30,
+        36,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
       "id": "filler_1_a",
       "part": "enterprise:orc/wall/filler_1_a",
       "kind": "part",

@@ -1,0 +1,49 @@
+{
+  "id": "enterprise:orc/landmark/keep_30x30_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "landmark",
+  "slot": "landmark:keep",
+  "tiers": [
+    "city"
+  ],
+  "palette": "base",
+  "footprint": [
+    30,
+    30
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        15,
+        3,
+        20
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        14,
+        3,
+        20
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
