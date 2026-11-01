@@ -1,0 +1,53 @@
+{
+  "id": "enterprise:orc/war/armoury_10x6_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "war",
+  "slot": "armoury",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    2
+  ],
+  "footprint": [
+    10,
+    6
+  ],
+  "height": 14,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        5,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

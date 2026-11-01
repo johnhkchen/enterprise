@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:orc/money/bank_10x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "money",
+  "slot": "bank",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

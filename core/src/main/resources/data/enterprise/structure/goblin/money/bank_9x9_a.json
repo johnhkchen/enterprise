@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/money/bank_9x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "money",
+  "slot": "bank",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    11
+  ],
+  "height": 22,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

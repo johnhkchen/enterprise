@@ -819,6 +819,208 @@
       "workstations": []
     },
     {
+      "id": "mint_11x11_a",
+      "part": "enterprise:goblin/money/mint_11x11_a",
+      "kind": "money",
+      "slot": "mint",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        13,
+        24,
+        13
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bank_9x9_a",
+      "part": "enterprise:goblin/money/bank_9x9_a",
+      "kind": "money",
+      "slot": "bank",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        11,
+        22,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "exchange_11x9_a",
+      "part": "enterprise:goblin/money/exchange_11x9_a",
+      "kind": "money",
+      "slot": "exchange",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        13,
+        20,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "mine_head_5x5_a",
+      "part": "enterprise:goblin/works/mine_head_5x5_a",
+      "kind": "works",
+      "slot": "mine:head",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        7,
+        32,
+        7
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "quarry_9x9_a",
+      "part": "enterprise:goblin/works/quarry_9x9_a",
+      "kind": "works",
+      "slot": "quarry",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        19,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "woodyard_7x7_a",
+      "part": "enterprise:goblin/works/woodyard_7x7_a",
+      "kind": "works",
+      "slot": "woodyard",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        18,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bakery_7x7_a",
+      "part": "enterprise:goblin/comfort/bakery_7x7_a",
+      "kind": "comfort",
+      "slot": "comfort:treats",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        22,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "reading_room_7x7_a",
+      "part": "enterprise:goblin/comfort/reading_room_7x7_a",
+      "kind": "comfort",
+      "slot": "comfort:reading",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        26,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "tailor_7x7_a",
+      "part": "enterprise:goblin/comfort/tailor_7x7_a",
+      "kind": "comfort",
+      "slot": "comfort:clothing",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        26,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "chandler_7x7_a",
+      "part": "enterprise:goblin/comfort/chandler_7x7_a",
+      "kind": "comfort",
+      "slot": "comfort:furnishings",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        26,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "barracks_13x11_a",
+      "part": "enterprise:goblin/war/barracks_13x11_a",
+      "kind": "war",
+      "slot": "barracks",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        15,
+        24,
+        13
+      ],
+      "beds": 8,
+      "workstations": []
+    },
+    {
+      "id": "armoury_9x7_a",
+      "part": "enterprise:goblin/war/armoury_9x7_a",
+      "kind": "war",
+      "slot": "armoury",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        11,
+        22,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
       "id": "filler_1_a",
       "part": "enterprise:goblin/wall/filler_1_a",
       "kind": "part",

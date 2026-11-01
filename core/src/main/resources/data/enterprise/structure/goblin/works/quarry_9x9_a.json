@@ -1,0 +1,38 @@
+{
+  "id": "enterprise:goblin/works/quarry_9x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "works",
+  "slot": "quarry",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    11
+  ],
+  "height": 19,
+  "ground": 7,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [],
+  "notes": "sunk: layer 7 is the surface (the ground's level); layers below it are the cut"
+}

@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/money/mint_11x11_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "money",
+  "slot": "mint",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    13,
+    13
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

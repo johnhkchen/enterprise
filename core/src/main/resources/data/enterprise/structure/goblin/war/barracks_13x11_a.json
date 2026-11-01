@@ -1,0 +1,137 @@
+{
+  "id": "enterprise:goblin/war/barracks_13x11_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "war",
+  "slot": "barracks",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    15,
+    13
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        9,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        12,
+        7,
+        10
+      ],
+      "foot": [
+        12,
+        7,
+        9
+      ]
+    },
+    {
+      "head": [
+        12,
+        7,
+        2
+      ],
+      "foot": [
+        12,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        7,
+        10
+      ],
+      "foot": [
+        10,
+        7,
+        9
+      ]
+    },
+    {
+      "head": [
+        10,
+        7,
+        2
+      ],
+      "foot": [
+        10,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        8,
+        7,
+        10
+      ],
+      "foot": [
+        8,
+        7,
+        9
+      ]
+    },
+    {
+      "head": [
+        8,
+        7,
+        2
+      ],
+      "foot": [
+        8,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        10
+      ],
+      "foot": [
+        6,
+        7,
+        9
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        2
+      ],
+      "foot": [
+        6,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

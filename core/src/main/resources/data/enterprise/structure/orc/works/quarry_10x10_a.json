@@ -1,0 +1,42 @@
+{
+  "id": "enterprise:orc/works/quarry_10x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "works",
+  "slot": "quarry",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 15,
+  "ground": 5,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        9,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [],
+  "notes": "sunk: layer 5 is the surface (the ground's level); layers below it are the cut"
+}

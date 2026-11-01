@@ -1,6 +1,6 @@
 {
   "kingdom": "goblin",
-  "rev": 6,
+  "rev": 7,
   "about": "Goblin trade-port: town rules for a kit race. Every building is a whole delivered part from town_kits/goblin/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/goblin.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "goblin/core",
   "tiers": {
@@ -405,6 +405,105 @@
       "tiling": "tileSide(L, gates), as Lordaeron's stone kit: a corner at each end, a gatehouse on each avenue, a tower about every 24, curtains of 8 and 4 between and fillers of 1-3 to close; a step (east half a block up, mirror it for the other way) where the ground climbs a block"
     },
     "city": "as town"
+  },
+  "trades": {
+    "mint": {
+      "asset": "enterprise:goblin/money/mint_11x11_a",
+      "footprint": [
+        13,
+        13
+      ],
+      "from": "town"
+    },
+    "bank": {
+      "asset": "enterprise:goblin/money/bank_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "town"
+    },
+    "exchange": {
+      "asset": "enterprise:goblin/money/exchange_11x9_a",
+      "footprint": [
+        13,
+        11
+      ],
+      "from": "town"
+    },
+    "mine:head": {
+      "asset": "enterprise:goblin/works/mine_head_5x5_a",
+      "footprint": [
+        7,
+        7
+      ],
+      "from": "hamlet"
+    },
+    "quarry": {
+      "asset": "enterprise:goblin/works/quarry_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "hamlet"
+    },
+    "woodyard": {
+      "asset": "enterprise:goblin/works/woodyard_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "hamlet"
+    },
+    "comfort:treats": {
+      "asset": "enterprise:goblin/comfort/bakery_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "comfort:reading": {
+      "asset": "enterprise:goblin/comfort/reading_room_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "comfort:clothing": {
+      "asset": "enterprise:goblin/comfort/tailor_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "comfort:furnishings": {
+      "asset": "enterprise:goblin/comfort/chandler_7x7_a",
+      "footprint": [
+        9,
+        11
+      ],
+      "from": "village"
+    },
+    "barracks": {
+      "asset": "enterprise:goblin/war/barracks_13x11_a",
+      "footprint": [
+        15,
+        13
+      ],
+      "from": "town",
+      "beds": 8
+    },
+    "armoury": {
+      "asset": "enterprise:goblin/war/armoury_9x7_a",
+      "footprint": [
+        11,
+        9
+      ],
+      "from": "town"
+    }
   },
   "land": {
     "barn": {

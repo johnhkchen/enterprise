@@ -1,0 +1,126 @@
+{
+  "id": "enterprise:orc/war/barracks_14x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "war",
+  "slot": "barracks",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        6,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        3,
+        7
+      ],
+      "foot": [
+        10,
+        3,
+        7
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        7
+      ],
+      "foot": [
+        3,
+        3,
+        7
+      ]
+    },
+    {
+      "head": [
+        11,
+        3,
+        2
+      ],
+      "foot": [
+        10,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        8,
+        3,
+        2
+      ],
+      "foot": [
+        7,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        5,
+        3,
+        2
+      ],
+      "foot": [
+        4,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        6
+      ],
+      "foot": [
+        2,
+        3,
+        5
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

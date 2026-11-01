@@ -1,0 +1,41 @@
+{
+  "id": "enterprise:goblin/comfort/chandler_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "comfort",
+  "slot": "comfort:furnishings",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    11
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
