@@ -17,14 +17,14 @@
     10,
     10
   ],
-  "height": 17,
+  "height": 14,
   "ground": 2,
   "mirror": true,
   "entrances": [
     {
       "at": [
         5,
-        9,
+        5,
         9
       ],
       "facing": "south",
