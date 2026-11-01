@@ -1,0 +1,42 @@
+{
+  "id": "enterprise:goblin/works/woodyard_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "works",
+  "slot": "woodyard",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "enterprise:orc/works/mine_head_6x6_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "works",
+  "slot": "mine:head",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 22,
+  "ground": 8,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        9,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "notes": "sunk: layer 8 is the surface (the ground's level); layers below it are the cut"
+}

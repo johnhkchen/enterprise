@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/money/exchange_11x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "money",
+  "slot": "exchange",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    13,
+    11
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

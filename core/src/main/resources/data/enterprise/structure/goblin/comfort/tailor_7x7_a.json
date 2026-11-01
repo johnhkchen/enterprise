@@ -1,0 +1,41 @@
+{
+  "id": "enterprise:goblin/comfort/tailor_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "comfort",
+  "slot": "comfort:clothing",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

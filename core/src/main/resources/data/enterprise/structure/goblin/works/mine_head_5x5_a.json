@@ -1,0 +1,43 @@
+{
+  "id": "enterprise:goblin/works/mine_head_5x5_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "works",
+  "slot": "mine:head",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 32,
+  "ground": 9,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "notes": "sunk: layer 9 is the surface (the ground's level); layers below it are the cut"
+}
