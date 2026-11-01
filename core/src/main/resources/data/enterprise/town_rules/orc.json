@@ -1,6 +1,6 @@
 {
   "kingdom": "orc",
-  "rev": 2,
+  "rev": 3,
   "about": "Orc war-town: town rules for a kit race. Every building is a whole delivered part from town_kits/orc/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/orc.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "orc/core",
   "tiers": {
@@ -215,6 +215,58 @@
           10
         ],
         "beds": 3
+      },
+      {
+        "slot": "workshop:cleric",
+        "asset": "enterprise:orc/workshop/shrine_hut_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:fletcher",
+        "asset": "enterprise:orc/workshop/bowyer_hut_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:butcher",
+        "asset": "enterprise:orc/workshop/butcher_hut_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:shepherd",
+        "asset": "enterprise:orc/workshop/herder_hut_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
       }
     ],
     "on": "plots fronting an avenue or the forum, nearest the forum first"
@@ -295,6 +347,23 @@
   "earthworks": {
     "set": "orc/earthworks",
     "about": "retaining walls, steps and cut faces on Lordaeron's earthworks contract"
+  },
+  "farmstead": {
+    "asset": "enterprise:orc/farmstead/farmstead_19x18_a",
+    "footprint": [
+      19,
+      18
+    ],
+    "beds": 5,
+    "at": "the head of a holding's first field, as Lordaeron's farmstead"
+  },
+  "fields": {
+    "set": "orc/fields",
+    "about": "crop plots, edges and corners on Lordaeron's fields contract, in this race's materials"
+  },
+  "harbour": {
+    "set": "orc/harbour",
+    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; no harbour buildings yet"
   },
   "founding": {
     "set": "orc/founding",

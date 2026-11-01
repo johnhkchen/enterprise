@@ -271,6 +271,111 @@
       "workstations": [
         "minecraft:barrel"
       ]
+    },
+    {
+      "id": "shrine_hut_14x10_a",
+      "part": "enterprise:orc/workshop/shrine_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:cleric",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:brewing_stand"
+      ]
+    },
+    {
+      "id": "bowyer_hut_14x10_a",
+      "part": "enterprise:orc/workshop/bowyer_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:fletcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:fletching_table"
+      ]
+    },
+    {
+      "id": "butcher_hut_14x10_a",
+      "part": "enterprise:orc/workshop/butcher_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:butcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:smoker"
+      ]
+    },
+    {
+      "id": "herder_hut_14x10_a",
+      "part": "enterprise:orc/workshop/herder_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:shepherd",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:loom"
+      ]
+    },
+    {
+      "id": "farmstead_19x18_a",
+      "part": "enterprise:orc/farmstead/farmstead_19x18_a",
+      "kind": "farmstead",
+      "slot": "farmstead",
+      "size": [
+        19,
+        18,
+        18
+      ],
+      "beds": 5,
+      "workstations": []
     }
   ],
   "held": [],

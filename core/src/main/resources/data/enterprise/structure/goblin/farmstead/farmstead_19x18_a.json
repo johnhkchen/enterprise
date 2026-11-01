@@ -1,0 +1,86 @@
+{
+  "id": "enterprise:goblin/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "farmstead",
+  "palette": "base",
+  "footprint": [
+    19,
+    18
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        13,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        17,
+        7,
+        6
+      ],
+      "foot": [
+        17,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        17,
+        7,
+        2
+      ],
+      "foot": [
+        17,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        16,
+        7,
+        1
+      ],
+      "foot": [
+        16,
+        7,
+        2
+      ]
+    },
+    {
+      "head": [
+        14,
+        7,
+        1
+      ],
+      "foot": [
+        14,
+        7,
+        2
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}
