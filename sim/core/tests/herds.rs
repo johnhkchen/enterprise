@@ -296,3 +296,23 @@ fn a_town_fences_another_pasture_when_its_herd_fills_the_ones_it_has() {
     assert_eq!(paid, -12.0, "four emeralds a pasture");
     s.conserved(&before).unwrap();
 }
+
+// Each kind kept has its share of the pastures: seed 1717's first town kept 131 sheep and 12 cows in a pasture for 144,
+// its cows never grown to the 54 a Leatherworker culls beyond, and the network made no leather in 60 days.
+#[test]
+fn a_flock_no_one_culls_leaves_the_cows_their_share() {
+    let c = content();
+    let mut led = ledger(&c);
+    let mut stock = stocked(&c, WHEAT, 10_000.0);
+    let mut h = herd_of(&c, "sheep", 46.0);
+    h.pastures = 3; // room for 48
+    h.count[c.animals.iter().position(|a| a.name == "cow").unwrap()] = 2.0;
+    let keepers = Keepers { shepherd: true, butcher: false, leatherworker: true };
+    for _ in 0..120 {
+        // 30 days, tended four times a day
+        tend(&c, &mut h, keepers, 0.25, &mut stock, &mut led);
+    }
+    assert!(count(&c, &h, "sheep") < 27.0, "the flock dwindles toward its half of the room (24): {h:?}");
+    assert!(count(&c, &h, "cow") > 17.0 && stock.0[LEATHER] > 5.0, "the cows grow into theirs and give hides: {h:?} {}",
+        stock.0[LEATHER]);
+}

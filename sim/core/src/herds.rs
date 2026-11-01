@@ -229,8 +229,12 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
     let capacity = herds.capacity(content);
     let mut total: f64 = herds.count.iter().sum();
     let kept = herds.count.iter().filter(|&&c| c >= 1.0).count();
+    // Each kind kept its share of the room: a flock no Butcher culls doesn't breed into the cows' (seed 1717's first
+    // town: 131 sheep and 12 cows in a pasture for 144, its cows never reaching the 54 a Leatherworker culls beyond, and
+    // no leather in the network by day 60).
+    let share = capacity / kept.max(1) as f64;
     // Each kind's share of the room the cull leaves: the herd fills that much before it's culled.
-    let keep = d.breeding_stock.max(d.cull_share * capacity / kept.max(1) as f64);
+    let keep = d.breeding_stock.max(d.cull_share * share);
     for (k, a) in content.animals.iter().enumerate() {
         let mut count = herds.count[k];
         if count <= 0.0 {
@@ -252,10 +256,16 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
         }
         due -= eaten;
         if due < 1.0 {
-            let room = (capacity - total).max(0.0);
+            let room = (share - count).max(0.0);
             let born = room.min(count * d.breed_per_day * days);
             count += born;
             total += born;
+            // A kind beyond its share in a crowded pasture dwindles to it, as a hungry one does.
+            if total > capacity && count > share {
+                let lost = (count - share).min((count - share) * d.starve_per_day * days);
+                count -= lost;
+                total -= lost;
+            }
         } else {
             // Short of feed: it dwindles by how much of this tending's share went uneaten, and doesn't eat it back.
             let fed = (1.0 - (due - 1.0) / need).max(0.0);

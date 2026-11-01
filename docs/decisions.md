@@ -1148,6 +1148,13 @@ mod's), but no road ever chose it. Then: build them first.
     cane a day (0), cane tended in days 30-60 3,057 to 5,152, cane plots 31,590 to 3,075; reading met 0.054 to 0 and
     mood -0.11 to -0.18, one run each: reading waits on leather (paper 2,143 and 5,788 in stock at day 60, leather 3
     and 0).
+  - **Fixed: each kind kept has its share of the pastures (John, 2026-11-01: "Leather next. Seems like there's less
+    pastures than needed?").** Not the pastures' number: the first town had fenced its three, room for 144, but its
+    131 sheep (no town had a Butcher to cull them) left its cows room for 12, and a Leatherworker culls cows only beyond
+    three quarters of their share (54): no hide in 60 days. A kind breeds into its own share of the room now (the
+    room over the kinds kept), and one beyond its share in a full pasture dwindles to it. The same bid study from its
+    day-10 point: clothing met 0 to 0.21, reading 0 to 0.017, treats 0.14 to 0.29, mood -0.18 to 0.15; the cows in
+    three towns (44, 7, 8). Reading still waits on leather: 4,063 paper in stock at day 60.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
