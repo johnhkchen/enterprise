@@ -1,0 +1,91 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/artificer_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        8,
+        7
+      ],
+      "foot": [
+        10,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        11,
+        8,
+        4
+      ],
+      "foot": [
+        10,
+        8,
+        4
+      ]
+    },
+    {
+      "head": [
+        11,
+        8,
+        2
+      ],
+      "foot": [
+        10,
+        8,
+        2
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        10,
+        3,
+        7
+      ],
+      "block": "minecraft:smithing_table"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:toolsmith"
+}

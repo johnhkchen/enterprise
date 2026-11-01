@@ -1,0 +1,79 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/atelier_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 29,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        5,
+        8,
+        2
+      ],
+      "foot": [
+        5,
+        8,
+        3
+      ]
+    },
+    {
+      "head": [
+        2,
+        8,
+        2
+      ],
+      "foot": [
+        2,
+        8,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        4,
+        3,
+        5
+      ],
+      "block": "minecraft:stonecutter"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:mason"
+}

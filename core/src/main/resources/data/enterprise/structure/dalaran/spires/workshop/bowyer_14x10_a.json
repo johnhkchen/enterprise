@@ -1,0 +1,91 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/bowyer_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        8,
+        7
+      ],
+      "foot": [
+        6,
+        8,
+        6
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        7
+      ],
+      "foot": [
+        4,
+        8,
+        6
+      ]
+    },
+    {
+      "head": [
+        7,
+        8,
+        4
+      ],
+      "foot": [
+        6,
+        8,
+        4
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        5,
+        3,
+        7
+      ],
+      "block": "minecraft:fletching_table"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:fletcher"
+}

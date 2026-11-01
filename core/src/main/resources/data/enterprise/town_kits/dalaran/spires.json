@@ -177,6 +177,216 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "herbalist_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/herbalist_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:farmer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        27,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "scriptorium_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/scriptorium_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:librarian",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        28,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:lectern"
+      ]
+    },
+    {
+      "id": "atelier_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/atelier_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:mason",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        29,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "bowyer_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/bowyer_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:fletcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        26,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:fletching_table"
+      ]
+    },
+    {
+      "id": "butcher_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/butcher_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:butcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        26,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:smoker"
+      ]
+    },
+    {
+      "id": "weaver_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/weaver_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:shepherd",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        26,
+        10
+      ],
+      "beds": 4,
+      "workstations": [
+        "minecraft:loom"
+      ]
+    },
+    {
+      "id": "leatherworks_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/leatherworks_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:leatherworker",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        26,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:cauldron"
+      ]
+    },
+    {
+      "id": "artificer_14x10_a",
+      "part": "enterprise:dalaran/spires/workshop/artificer_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:toolsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        32,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:smithing_table"
+      ]
+    },
+    {
+      "id": "camp_9x7_a",
+      "part": "enterprise:dalaran/spires/founding/camp_9x7_a",
+      "kind": "part",
+      "slot": "wall:curtain",
+      "size": [
+        11,
+        17,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "farmstead_19x18_a",
+      "part": "enterprise:dalaran/spires/farmstead/farmstead_19x18_a",
+      "kind": "farmstead",
+      "slot": "farmstead",
+      "size": [
+        19,
+        28,
+        18
+      ],
+      "beds": 2,
+      "workstations": []
     }
   ],
   "held": [],
