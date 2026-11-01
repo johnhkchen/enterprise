@@ -82,7 +82,7 @@ final class StockChests {
                     for (ItemStack inner : contents(stack)) {
                         add(held, inner);
                     }
-                } else {
+                } else if (plain(stack)) {
                     add(held, stack);
                 }
             }
@@ -172,7 +172,7 @@ final class StockChests {
         for (IItemHandlerModifiable h : handlers) {
             for (int slot = 0; slot < h.getSlots() && left > 0; slot++) {
                 ItemStack stack = h.getStackInSlot(slot);
-                if (stack.is(item)) {
+                if (stack.is(item) && plain(stack)) {
                     left -= h.extractItem(slot, (int) Math.min(left, stack.getCount()), false).getCount();
                 }
             }
@@ -314,6 +314,18 @@ final class StockChests {
             }
         }
         return true;
+    }
+
+    /**
+     * A stack that is the chests' goods as it stands: anything but a package of the core's pallets or a crate with goods
+     * or papers in it (an empty crate is the crate good, a Lumberjack's; a full one is someone's shipment).
+     */
+    static boolean plain(ItemStack stack) {
+        if (dev.b28.enterprise.cargo.Cargo.isPackage(stack)) {
+            return false;
+        }
+        return !dev.b28.enterprise.cargo.Crates.isCrate(stack) || dev.b28.enterprise.cargo.Crates.goods(stack).isEmpty()
+                && dev.b28.enterprise.cargo.Crates.papers(stack).documents().isEmpty();
     }
 
     /** A shulker box (one to a slot): the chests' goods in it are theirs. */

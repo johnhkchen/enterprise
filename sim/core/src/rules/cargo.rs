@@ -44,6 +44,7 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         reckon.in_set(Step::Touch).after(crate::people::live),
+        stow.in_set(Step::Work).after(super::lockers::restock).before(super::training::crate_work),
         earmark.in_set(Step::Work).after(super::farms::work).after(crate::herds::tend_towns)
             .before(super::workshop::work).before(super::lockers::restock),
         plan_crated.in_set(Step::PlanOwed).before(super::contracts::plan_owed),
@@ -58,6 +59,18 @@ pub fn register(schedule: &mut Schedule) {
         relot.in_set(Step::Sell).after(super::arrive::sell),
         unload.in_set(Step::Turn).after(super::road::feed).after(super::squad::come_home).before(super::arrive::turn),
     ));
+}
+
+/// Each town's crates in stock join its empties (`cargo::stow_crates`), in town order.
+pub(crate) fn stow(content: Res<Content>, mut ledger: ResMut<Ledger>, mut towns: Query<(&Town, &mut Stock, &mut Shipments)>) {
+    if !cargo::local_crates(&content) {
+        return;
+    }
+    let mut order: Vec<_> = towns.iter_mut().collect();
+    order.sort_by_key(|(town, ..)| town.id);
+    for (_, mut stock, mut store) in order {
+        cargo::stow_crates(&content, &mut ledger, &mut stock.0, &mut store);
+    }
 }
 
 /// Each town's paperwork reckoned as it's touched, in town order: stationery from its stock, a scribe for the rest.

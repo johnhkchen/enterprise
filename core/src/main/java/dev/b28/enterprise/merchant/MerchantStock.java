@@ -127,7 +127,7 @@ public final class MerchantStock {
             ItemStack stack = handler.getStackInSlot(slot);
             if (isBox(stack)) {
                 contents(stack).forEach(inner -> add(totals, inner));
-            } else {
+            } else if (plain(stack)) {
                 add(totals, stack);
             }
         }
@@ -145,7 +145,7 @@ public final class MerchantStock {
         int total = 0;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
-            if (cost.test(stack)) {
+            if (plain(stack) && cost.test(stack)) {
                 total += stack.getCount();
             } else if (isBox(stack)) {
                 for (ItemStack inner : contents(stack)) {
@@ -163,7 +163,7 @@ public final class MerchantStock {
         List<ItemStack> found = new java.util.ArrayList<>();
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
-            if (cost.test(stack)) {
+            if (plain(stack) && cost.test(stack)) {
                 found.add(stack.copy());
             } else if (isBox(stack)) {
                 contents(stack).stream().filter(cost::test).forEach(inner -> found.add(inner.copy()));
@@ -177,7 +177,7 @@ public final class MerchantStock {
         NonNullList<ItemStack> taken = NonNullList.create();
         for (int slot = 0; slot < handler.getSlots() && amount > 0; slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
-            if (cost.test(stack)) {
+            if (plain(stack) && cost.test(stack)) {
                 ItemStack piece = handler.extractItem(slot, Math.min(amount, stack.getCount()), false);
                 amount -= piece.getCount();
                 taken.add(piece);
@@ -333,6 +333,19 @@ public final class MerchantStock {
             stacks.add(handler.getStackInSlot(slot));
         }
         return stacks;
+    }
+
+    /**
+     * A stack that is stock as it stands: anything but a crate with goods or papers in it or a package of the core's
+     * pallets. An empty crate is stock, a good (`enterprise:crate`: a Lumberjack's, traded between towns); a crate of
+     * goods is someone's shipment or a box ({@link #isBox}), never the crate good.
+     */
+    private static boolean plain(ItemStack stack) {
+        if (dev.b28.enterprise.cargo.Cargo.isPackage(stack)) {
+            return false;
+        }
+        return !dev.b28.enterprise.cargo.Crates.isCrate(stack) || dev.b28.enterprise.cargo.Crates.goods(stack).isEmpty()
+                && dev.b28.enterprise.cargo.Crates.papers(stack).documents().isEmpty();
     }
 
     /**

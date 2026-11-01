@@ -56,7 +56,7 @@ pub(crate) fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeship
 /// The pupil's paid work crated for the buyer, in town order, where the buyer can collect it (a wagon of the buyer's calls,
 /// or a hub the town's wagons reach runs to the buyer: `stranded.rs`).
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
-fn crate_work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
+pub(crate) fn crate_work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>, routes: Query<(&Route, &RouteState, Option<&RoutePath>)>,
         places: Query<(&Town, &crate::freight::Hub)>,
         mut towns: Query<(&Town, &mut Lockers, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {

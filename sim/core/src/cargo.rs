@@ -303,6 +303,19 @@ fn acquire(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64
     false
 }
 
+/// A town's crates in stock join its empties, as many as it keeps to ship with (`empties_kept`; the rest stay in stock,
+/// for sale), where its crates are made at home ([`local_crates`]): bought of its Lumberjack, a neighbour's wagon or a
+/// player.
+pub fn stow_crates(content: &Content, ledger: &mut Ledger, stock: &mut [f64], store: &mut Shipments) {
+    let Some(c) = content.good(CRATE).filter(|_| local_crates(content)) else { return };
+    let n = stock[c].floor().min(content.dials.empties_kept as f64 - store.empties as f64).max(0.0);
+    if n >= 1.0 {
+        stock[c] -= n;
+        ledger.used[c] += n;
+        store.empties += n as u32;
+    }
+}
+
 /// Whether a town's crates are made at home and traded between towns (John: "replace that mechanic with local
 /// carpenters and local regional crate trade"): the host has the crate as a good and Lumberjacks who sell it.
 pub fn local_crates(content: &Content) -> bool {
@@ -909,6 +922,7 @@ impl Society {
         let mut stock = self.world.get::<Stock>(e).expect("a town").0.clone();
         let mut store = self.shipments(town);
         let mut paperwork = self.paperwork(town);
+        stow_crates(&content, &mut self.world.resource_mut::<Ledger>(), &mut stock, &mut store);
         let mut held = stock.clone();
         let lines: Vec<(GoodId, f64)> = lines.iter().map(|&(g, n)| {
             let n = n.min(held[g].floor()).max(0.0);
