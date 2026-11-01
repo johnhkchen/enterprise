@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:nightelf/hall/customs_house_13x10_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "hall",
+  "slot": "harbour:customs_house",
+  "use": [
+    "sea"
+  ],
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    15,
+    12
+  ],
+  "height": 28,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        11
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

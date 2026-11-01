@@ -1,0 +1,84 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_fletcher_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        7,
+        7,
+        2
+      ],
+      "foot": [
+        7,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        4,
+        7,
+        2
+      ],
+      "foot": [
+        4,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        7,
+        3,
+        8
+      ],
+      "block": "minecraft:fletching_table"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:fletcher"
+}

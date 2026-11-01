@@ -1,0 +1,87 @@
+{
+  "id": "enterprise:nightelf/workshop/workshop_shepherd_12x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    15,
+    11
+  ],
+  "height": 22,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        7,
+        7
+      ],
+      "foot": [
+        11,
+        7,
+        6
+      ]
+    },
+    {
+      "head": [
+        11,
+        7,
+        4
+      ],
+      "foot": [
+        11,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        7
+      ],
+      "foot": [
+        8,
+        7,
+        7
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        7
+      ],
+      "block": "minecraft:loom"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:shepherd"
+}

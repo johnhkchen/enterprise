@@ -1,0 +1,96 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_cartographer_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 28,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        6,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        2,
+        8,
+        8
+      ],
+      "foot": [
+        3,
+        8,
+        8
+      ]
+    },
+    {
+      "head": [
+        2,
+        8,
+        2
+      ],
+      "foot": [
+        3,
+        8,
+        2
+      ]
+    },
+    {
+      "head": [
+        7,
+        8,
+        7
+      ],
+      "foot": [
+        6,
+        8,
+        7
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        7,
+        3,
+        5
+      ],
+      "block": "minecraft:cartography_table"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:cartographer"
+}

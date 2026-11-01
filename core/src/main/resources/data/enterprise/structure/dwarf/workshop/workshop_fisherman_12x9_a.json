@@ -33,6 +33,15 @@
       ],
       "facing": "south",
       "width": 1
+    },
+    {
+      "at": [
+        8,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
     }
   ],
   "beds": [

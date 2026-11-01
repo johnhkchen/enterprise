@@ -1,0 +1,109 @@
+{
+  "id": "enterprise:nightelf/workshop/workshop_toolsmith_12x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        7,
+        7,
+        8
+      ],
+      "foot": [
+        7,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        5,
+        7,
+        8
+      ],
+      "foot": [
+        5,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        3,
+        7,
+        8
+      ],
+      "foot": [
+        3,
+        7,
+        7
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        6,
+        3,
+        2
+      ],
+      "block": "minecraft:smithing_table"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        7,
+        3,
+        2
+      ],
+      "for": [
+        6,
+        3,
+        2
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:toolsmith"
+}

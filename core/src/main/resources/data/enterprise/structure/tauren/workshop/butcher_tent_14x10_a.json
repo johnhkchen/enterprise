@@ -1,0 +1,88 @@
+{
+  "id": "enterprise:tauren/workshop/butcher_tent_14x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        2,
+        3,
+        4
+      ],
+      "foot": [
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        2
+      ],
+      "foot": [
+        2,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        8,
+        3,
+        5
+      ],
+      "block": "minecraft:smoker"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:butcher"
+}

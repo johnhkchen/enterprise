@@ -239,6 +239,186 @@
       "workstations": [
         "minecraft:barrel"
       ]
+    },
+    {
+      "id": "workshop_cleric_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_cleric_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:cleric",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        19,
+        11
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:brewing_stand"
+      ]
+    },
+    {
+      "id": "workshop_butcher_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_butcher_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:butcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        16,
+        26,
+        11
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:smoker"
+      ]
+    },
+    {
+      "id": "workshop_shepherd_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_shepherd_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:shepherd",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        15,
+        22,
+        11
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:loom"
+      ]
+    },
+    {
+      "id": "workshop_cartographer_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_cartographer_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:cartographer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        28,
+        11
+      ],
+      "beds": 4,
+      "workstations": [
+        "minecraft:cartography_table"
+      ]
+    },
+    {
+      "id": "workshop_leatherworker_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_leatherworker_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:leatherworker",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        12,
+        18,
+        9
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:cauldron"
+      ]
+    },
+    {
+      "id": "workshop_toolsmith_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_toolsmith_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:toolsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        11
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:smithing_table"
+      ]
+    },
+    {
+      "id": "workshop_weaponsmith_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_weaponsmith_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:weaponsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        22,
+        13
+      ],
+      "beds": 4,
+      "workstations": [
+        "minecraft:grindstone"
+      ]
+    },
+    {
+      "id": "farmstead_19x18_a",
+      "part": "enterprise:nightelf/farmstead/farmstead_19x18_a",
+      "kind": "farmstead",
+      "slot": "farmstead",
+      "size": [
+        21,
+        24,
+        20
+      ],
+      "beds": 2,
+      "workstations": []
+    },
+    {
+      "id": "customs_house_13x10_a",
+      "part": "enterprise:nightelf/hall/customs_house_13x10_a",
+      "kind": "hall",
+      "slot": "harbour:customs_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        15,
+        28,
+        12
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "warehouse_13x7_a",
+      "part": "enterprise:nightelf/hall/warehouse_13x7_a",
+      "kind": "hall",
+      "slot": "harbour:warehouse",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        15,
+        32,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
     }
   ],
   "held": [],

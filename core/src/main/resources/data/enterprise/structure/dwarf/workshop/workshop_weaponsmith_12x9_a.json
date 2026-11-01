@@ -1,0 +1,87 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_weaponsmith_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        7,
+        7,
+        8
+      ],
+      "foot": [
+        7,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        6
+      ],
+      "foot": [
+        7,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        2
+      ],
+      "foot": [
+        7,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "block": "minecraft:grindstone"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:weaponsmith"
+}
