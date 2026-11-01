@@ -26,6 +26,7 @@ public final class Prices {
             // Goods villagers buy
             Map.entry("minecraft:paper", 24.0),
             Map.entry("minecraft:book", 4.0),
+            Map.entry("minecraft:bookshelf", 1.0), // three books and two logs: a home's or a library's reagent
             Map.entry("minecraft:ink_sac", 5.0),
             Map.entry("minecraft:writable_book", 2.0),
             Map.entry("minecraft:stick", 32.0),

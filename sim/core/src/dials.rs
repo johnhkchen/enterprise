@@ -304,6 +304,12 @@ dials! {
     /// two), and the households pay its worth times it (John: "we'd want the happiness boost to make buying equipment
     /// from leather workers worth it, especially due to the dye and enchantment bonus").
     fine_quality: f64 = 1.5,
+    /// Bookshelves as reagents (John: "upgrading a home to increase its passive reading happiness (think gem slots from
+    /// WoW/warcraft)"; "building a library at a town"): a home has a socket a bed, a built library `library_sockets`; a
+    /// shelf set in a home's reads for the villager of its bed, a library's for its share of the town, each this share
+    /// of a day's reading ration, for good. Books cover the rest.
+    shelf_reading: f64 = 0.5,
+    library_sockets: u32 = 6,
     cod_per_fisher_level: f64 = 4.0,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
     farmer_idle_emeralds: f64 = 0.5,

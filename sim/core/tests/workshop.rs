@@ -364,3 +364,25 @@ fn the_boots_hold_the_hides_the_books_would_take() {
     assert_eq!(on(5.0).1, 1.0, "five: the boots, and the hide over...");
     assert!(on(5.0).0 <= 1.0, "...held for the next pair or a book");
 }
+
+/// The Librarian joins books its town has read its fill of, three and two logs, into a shelf for an empty socket; not
+/// while its people are short of reading (they'd rather read them), and the trade sells it shelves first (`lockers.rs`).
+#[test]
+fn a_librarian_shelves_the_books_its_town_has_read_its_fill_of() {
+    let mut goods = content().goods;
+    goods.push(Good::new("oak_log", 0.125, 64));
+    goods.push(Good::new("bookshelf", 1.0, 64));
+    let (log, shelf) = (goods.len() - 2, goods.len() - 1);
+    let make = |books: f64| {
+        let mut s = Society::new(Content::new(goods.clone(), DAY));
+        let t = s.add_town("Meadowworth", 0.0);
+        s.set_people(t, 2.0, 2.0, 20.0);
+        s.set_roster(t, &[("librarian", 1), ("none", 1)]);
+        s.deliver(t, BOOK, books);
+        s.deliver(t, log, 8.0);
+        s.advance(DAY);
+        made(&s, shelf)
+    };
+    assert_eq!(make(2.0), 0.0, "two books: read, none shelved");
+    assert!(make(40.0) >= 1.0, "forty, more than its people read: shelved for its homes' sockets");
+}

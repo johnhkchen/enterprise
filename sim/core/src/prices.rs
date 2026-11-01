@@ -27,6 +27,7 @@ pub const ITEMS_PER_EMERALD: &[(&str, f64)] = &[
     ("minecraft:book", 4.0),
     ("minecraft:ink_sac", 5.0),
     ("minecraft:writable_book", 2.0),
+    ("minecraft:bookshelf", 1.0), // three books and two logs: a home's or a library's reagent (`people::SHELF`)
     ("minecraft:stick", 32.0),
     ("minecraft:flint", 26.0),
     ("minecraft:string", 14.0),

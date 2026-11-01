@@ -417,3 +417,41 @@ fn a_town_short_of_clothing_buys_its_leatherworkers_finer_armour() {
     assert!(repaid >= paid, "and the households paid the town back for them, as finer: {paid} out, {repaid} in: {book:?}");
     let _ = (boots, before);
 }
+
+/// A town with empty sockets buys bookshelves of its Librarian's selling trade (levelling it), sets them in its homes, a
+/// socket a bed, and its villagers read on them for good: half a day's reading each (John: "the bookshelf can act as an
+/// upgrade reagent ... upgrading a home to increase its passive reading happiness"; "trade preferred to level villagers").
+#[test]
+fn a_town_buys_bookshelves_of_its_librarian_for_its_homes_sockets() {
+    let reading = Content::COMFORTS.iter().position(|k| *k == "reading").unwrap();
+    let c = Content::new(vec![Good::new("book", 0.25, 16).comfort(reading), Good::new("bookshelf", 1.0, 64)], DAY);
+    let mut s = Society::new(c);
+    let t = s.add_town("Inkwell", 100.0);
+    s.set_people(t, 4.0, 4.0, 20.0);
+    s.set_roster(t, &[("librarian", 1), ("merchant", 1), ("none", 1), ("none", 1)]);
+    s.advance(3 * DAY);
+    let p = s.town(t).people;
+    let bought = s.cash_book(t, 400).iter().filter(|(_, w, _)| w == "lockers: bought bookshelf").count();
+    assert!(bought > 0 && p.home_shelves == 4, "four beds, four shelves bought and set: {bought} bought, {} set", p.home_shelves);
+    assert!((p.comfort_met[reading] - 0.5).abs() < 1e-9, "no books: the shelves read half a day's for all four: {:?}",
+        p.comfort_met);
+    assert!(s.town(t).money.to_f64() >= 9.0, "a shelf's price kept in hand: {}", s.town(t).money.to_f64());
+}
+
+/// A built library takes `library_sockets` shelves before the homes do, and reads for the whole town when full: half a
+/// day's for each of twelve villagers on six shelves.
+#[test]
+fn a_library_full_of_shelves_reads_for_the_whole_town() {
+    let reading = Content::COMFORTS.iter().position(|k| *k == "reading").unwrap();
+    let c = Content::new(vec![Good::new("book", 0.25, 16).comfort(reading), Good::new("bookshelf", 1.0, 64)], DAY);
+    let mut s = Society::new(c);
+    let t = s.add_town("Inkwell", 0.0);
+    s.set_people(t, 12.0, 12.0, 20.0);
+    s.start_project(t, enterprise_core::works::What::Hall(enterprise_core::works::Kind::Library));
+    s.finish_project(t, enterprise_core::works::What::Hall(enterprise_core::works::Kind::Library));
+    s.deliver(t, 1, 6.0);
+    s.advance(2 * DAY);
+    let p = s.town(t).people;
+    assert_eq!((p.library_shelves, p.home_shelves), (6, 0), "the library's six first");
+    assert!((p.comfort_met[reading] - 0.5).abs() < 1e-9, "twelve read half a day's on them: {:?}", p.comfort_met);
+}

@@ -45,12 +45,15 @@ import net.minecraft.world.item.trading.MerchantOffer;
  */
 public final class VillagerCrafts {
     /**
-     * What the game has no recipe for: a Librarian breaks a bookshelf into its three books; a Butcher cooks beef and
+     * What the game has no recipe for: a Librarian joins three books and two logs into a bookshelf (a home's or a
+     * library's reagent, the core's {@code people::SHELF}: the game's recipe takes planks, which nothing here deals in;
+     * no longer broken into books); a Butcher cooks beef and
      * mutton over a campfire (no coal, as the game's campfire), which the game's Butcher doesn't sell, so every town's
      * cows left it hundreds of raw beef.
      */
     public static final List<PackRecipe> EXTRAS = List.of(
-            new PackRecipe(List.of("librarian"), List.of(new PackAmount("minecraft:bookshelf", 1)), "minecraft:book", 3),
+            new PackRecipe(List.of("librarian"), List.of(new PackAmount("minecraft:book", 3), new PackAmount("minecraft:oak_log", 2)),
+                    "minecraft:bookshelf", 1),
             new PackRecipe(List.of("butcher"), List.of(new PackAmount("minecraft:beef", 1)), "minecraft:cooked_beef", 1),
             new PackRecipe(List.of("butcher"), List.of(new PackAmount("minecraft:mutton", 1)), "minecraft:cooked_mutton", 1));
 

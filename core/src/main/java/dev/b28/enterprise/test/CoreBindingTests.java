@@ -168,10 +168,14 @@ public final class CoreBindingTests {
         int own = dev.b28.enterprise.territory.Workshop.CONVERSIONS.size();
         helper.assertTrue(pack.recipes().size() > own + VillagerCrafts.EXTRAS.size()
                 && pack.animals().size() == dev.b28.enterprise.territory.Husbandry.KINDS.size(), "recipes or animals missing");
-        // The game's recipes the villagers work: a Librarian breaks bookshelves into books, a Fletcher (who sells arrows)
-        // fletches them from the game's recipe; every one is worked by a trade that deals in what it makes.
-        helper.assertTrue(pack.recipes().stream().anyMatch(r -> r.output().equals("minecraft:book") && r.trades().equals(List.of("librarian"))
-                && r.inputs().equals(List.of(new dev.b28.enterprise.wire.PackAmount("minecraft:bookshelf", 1)))), "no bookshelf into books");
+        // The game's recipes the villagers work: a Librarian joins books and logs into bookshelves (and breaks none into
+        // books: a shelf is a reagent), a Fletcher (who sells arrows) fletches them from the game's recipe; every one is
+        // worked by a trade that deals in what it makes.
+        helper.assertTrue(pack.recipes().stream().anyMatch(r -> r.output().equals("minecraft:bookshelf") && r.trades().equals(List.of("librarian"))
+                && r.inputs().equals(List.of(new dev.b28.enterprise.wire.PackAmount("minecraft:book", 3),
+                        new dev.b28.enterprise.wire.PackAmount("minecraft:oak_log", 2)))), "no books and logs into a bookshelf");
+        helper.assertTrue(pack.recipes().stream().noneMatch(r -> r.output().equals("minecraft:book")
+                && r.inputs().stream().anyMatch(a -> a.good().equals("minecraft:bookshelf"))), "a bookshelf broken into books");
         helper.assertTrue(pack.recipes().stream().anyMatch(r -> r.output().equals("minecraft:arrow") && r.trades().contains("fletcher")),
                 "the Fletcher doesn't fletch arrows: " + pack.recipes().stream().map(PackRecipe::output).toList());
         var dealsIn = VillagerCrafts.dealsIn(helper.getLevel().getServer(), new java.util.HashSet<>(pack.trades()));

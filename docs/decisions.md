@@ -1225,6 +1225,21 @@ mod's), but no road ever chose it. Then: build them first.
     or upgrading a home to increase its passive reading happiness (think gem slots from WoW/warcraft)"). The bid study
     at 40, fresh from day 0, against the last: reading met (by villagers) 0.10 to 0.36, clothing 0.75 to 0.68, treats
     0.69 to 0.75, mood 1.18 to 1.68, 164 villagers to 169 in 21 towns (23), the towns' money 119 to 250.
+  - **Built: bookshelves are reagents, set in sockets for reading for good (John, 2026-11-01: "the bookshelf can act as
+    an upgrade reagent, for things like building a library at a town or upgrading a home to increase its passive
+    reading happiness (think gem slots from WoW/warcraft)"; "Sockets, both, trade preferred to level villagers").** A
+    home has a socket a bed, a built library `library_sockets` (6); a shelf in the warehouse is set in an empty one,
+    the library's first, used up into it (`People::home_shelves`, `library_shelves`); a home's reads for its bed's
+    villager, a library's for its share of the town (all of it, full), each `shelf_reading` (half) of a day's reading
+    ration, for good (`people::passive_reading`); books cover the rest. The shelves come of the Librarian's selling
+    trade first (9 emeralds, levelling it: `lockers.rs`, `Lockers::reagents`, as many as the sockets want, each keeping
+    its price in hand), and of its workshop, three books and two logs (`VillagerCrafts.EXTRAS`, the game's recipe
+    taking planks, which nothing here deals in), only of books its people have read their fill of; a shelf is no
+    longer broken into books. Bookshelves are priced (1 an emerald). The game shows no shelf in a home yet. The bid
+    study at 40, fresh from day 0: 13 shelves bought by three towns for 128 emeralds, their moods 2.44, 1.93 and 3.19,
+    every comfort met but one town's clothing; the network grew otherwise than the last (27 towns to 21, 13 of eight
+    villagers or more to 8), its larger towns' furnishings 0.93 to 0.36 and mood 2.14 to 0.77, none of it the
+    shelves' (those towns bought none): reading met (by villagers) 0.36 to 0.34, the towns' money 250 to 85.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

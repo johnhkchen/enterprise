@@ -236,6 +236,11 @@ pub struct Lockers {
     /// good and how many (`People::fine`). Never saved: handed over after each restock.
     #[serde(skip)]
     pub bought_fine: Vec<(GoodId, f64)>,
+    /// Of each reagent, how many its works' sockets want (`people::empty_sockets`, less what the warehouse holds): the
+    /// shelves its Librarian's selling trade sells it, before its workshop makes any (John: "trade preferred to level
+    /// villagers"). Set before each restock, never saved.
+    #[serde(skip)]
+    pub reagents: Vec<(GoodId, f64)>,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the town's dice.
@@ -568,12 +573,14 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
     // directly, but it comes enchanted and dyed"), no dearer than its worth as one (`fine_quality` times a plain
     // piece's), which the households pay the town for it.
     let kind = |k: usize| content.goods.get(offers[k].good).and_then(|g| g.comfort);
+    let reagent = |k: usize| offers[k].sells && !offers[k].procured && !offers[k].training && !offers[k].on
+        && lockers.reagents.iter().any(|&(g, n)| g == offers[k].good && n >= 1.0);
     let bought_in = |k: usize| offers[k].sells && !offers[k].procured && !offers[k].training
         && kind(k).is_some_and(|c| lockers.comfort_short.get(c).copied().unwrap_or(0.0) > 0.0)
         && offers[k].price(rep, stack(&offers[k])) as f64
             <= offers[k].count as f64 * content.goods[offers[k].good].value * content.dials.fine_quality;
     let mut order: Vec<usize> = (0..offers.len())
-        .filter(|&k| (offers[k].on || bought_in(k)) && offers[k].level <= level && !offers[k].inflated()
+        .filter(|&k| (offers[k].on || bought_in(k) || reagent(k)) && offers[k].level <= level && !offers[k].inflated()
             && offers[k].good < stock.0.len())
         .collect();
     let per_item = |k: usize| offers[k].price(rep, stack(&offers[k])) as f64 / offers[k].result().max(1) as f64;
@@ -603,6 +610,22 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
             }
         }
     }
+    // A reagent its sockets want: as many as they do, each keeping its price in hand after.
+    let mut reagents = lockers.reagents.clone();
+    let mut cash = money.0.at_least_zero().millis() / crate::fixed::SCALE;
+    for (r, &k) in runs.iter_mut().zip(&order) {
+        let o = &offers[k];
+        let Some(want) = reagents.iter_mut().find(|(g, _)| *g == o.good).map(|(_, n)| n) else { continue };
+        if !o.sells || o.procured || o.training || o.on {
+            continue;
+        }
+        let price = o.price(rep, stack(o)) as i64;
+        let affords = ((cash - price).max(0) / price.max(1)) as u32;
+        *r = (*r).min(((*want / o.count.max(1) as f64).floor() as u32).min(affords));
+        *want -= (*r * o.count) as f64;
+        cash -= *r as i64 * price;
+    }
+    lockers.reagents = reagents;
     // (What's left for the restocks after this one, a catch-up replaying several.)
     lockers.comfort_short = short;
     let offers = &lockers.hands[i].offers;

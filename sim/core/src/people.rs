@@ -19,6 +19,26 @@ use crate::state::*;
 /// written in for half that; the rest cover their worth in rations.
 pub const MOD_COMFORTS: [(&str, f64, f64); 2] = [("book", 10.0, 1.0), ("writable_book", 5.0, 1.0)];
 
+/// The good a home's or a library's sockets take: a bookshelf (by its bare name).
+pub const SHELF: &str = "bookshelf";
+
+/// A town's sockets for shelves still empty: its homes' (a bed each) and, with a library built, the library's.
+pub fn empty_sockets(content: &Content, people: &People, works: Option<&crate::works::Works>) -> u32 {
+    let library = if works.is_some_and(|w| w.built(crate::works::Kind::Library)) { content.dials.library_sockets } else { 0 };
+    (people.beds.max(0.0) as u32).saturating_sub(people.home_shelves) + library.saturating_sub(people.library_shelves)
+}
+
+/// The share of its villagers' reading its shelves cover a day, for good: a home's shelf its bed's villager, a library's
+/// its share of the town (all of it, full), each `shelf_reading` of a ration.
+pub fn passive_reading(content: &Content, people: &People) -> f64 {
+    if people.villagers <= 0.0 {
+        return 0.0;
+    }
+    let library = people.library_shelves as f64 / content.dials.library_sockets.max(1) as f64 * people.villagers;
+    let covered = (people.home_shelves as f64 + library).min(people.villagers);
+    content.dials.shelf_reading.clamp(0.0, 1.0) * covered / people.villagers
+}
+
 /// What a town holds of a kind of comfort, in emeralds' worth.
 pub fn comfort_held(content: &Content, stock: &Stock, kind: usize) -> f64 {
     content.goods.iter().enumerate().filter(|(_, g)| g.comfort == Some(kind)).map(|(i, _)| stock.0[i] * content.comfort_worth(i)).sum()
@@ -176,6 +196,21 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             *n = n.min(stock.0.get(g).copied().unwrap_or(0.0).max(0.0));
         }
         people.fine.retain(|_, n| *n > 0.0);
+        // Shelves in its warehouse are set in its empty sockets, the library's first (the town's whole), then its homes'.
+        if let Some(shelf) = content.goods.iter().position(|g| g.name.rsplit(':').next() == Some(SHELF)) {
+            let library = if works.is_some_and(|w| w.built(crate::works::Kind::Library)) { d.library_sockets } else { 0 };
+            while stock.0[shelf] >= 1.0 && empty_sockets(&content, people, works) > 0 {
+                if people.library_shelves < library {
+                    people.library_shelves += 1;
+                } else {
+                    people.home_shelves += 1;
+                }
+                stock.0[shelf] -= 1.0;
+                ledger.used[shelf] += 1.0;
+            }
+        }
+        let reading = content.comfort("reading");
+        let passive = passive_reading(&content, people);
         // Wages: a share of the worth of what the town makes (rounded down to the thousandth: a share paid out), as far
         // as its money goes. The part of a thousandth rounded off isn't carried to the next look (the comforts below,
         // rounded up, likewise): at most a thousandth a look each way stays with the treasury. And the same share of
@@ -204,7 +239,9 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // one leaves credit); the households pay the town for what they use, as far as their purse goes.
         for kind in 0..k {
             let due = people.villagers * d.ration * days;
-            let mut owed = people.comfort_owed[kind] + due;
+            // (Of reading, what its shelves read for it, for good.)
+            let shelved = if Some(kind) == reading { due * passive } else { 0.0 };
+            let mut owed = people.comfort_owed[kind] + due - shelved;
             let mut goods: Vec<usize> = (0..content.goods.len()).filter(|&i| content.goods[i].comfort == Some(kind)).collect();
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
             let mut used = 0.0;

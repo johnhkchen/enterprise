@@ -40,7 +40,7 @@ pub fn follow(content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &m
 #[allow(clippy::type_complexity)]
 pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         seed: Res<Rng>, mut dice: ResMut<Dice>, market: Res<crate::market::Market>, routes: Query<&Route>,
-        mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &mut People)>) {
+        mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &mut People, Option<&crate::works::Works>)>) {
     // What each town could sell a good for down its roads, as its wagons saw the far ends bid, less the haul there
     // (in the routes' order: the best is the best whatever the order).
     let mut abroad: std::collections::BTreeMap<usize, std::collections::BTreeMap<usize, f64>> = Default::default();
@@ -55,9 +55,12 @@ pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
     }
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
-    for (town, mut roster, mut lockers, mut stock, mut money, mut people) in order {
+    for (town, mut roster, mut lockers, mut stock, mut money, mut people, works) in order {
         lockers.workshop_keeps = crate::workshop::keeps(&content, &roster, &people, &stock);
         lockers.comfort_short = crate::workshop::bought_in(&content, &roster, &people, &stock);
+        lockers.reagents = content.goods.iter().position(|g| g.name.rsplit(':').next() == Some(crate::people::SHELF))
+            .map(|s| (s, crate::people::empty_sockets(&content, &people, works) as f64 - stock.0[s])).filter(|&(_, n)| n >= 1.0)
+            .into_iter().collect();
         // And what the town bids more for than its lockers pay (`market.rs`): the paper its books would fetch more for; or
         // could sell down its roads for more, after the haul (seed 1717's desert towns pressed their cane into paper and
         // sold it to their own Librarians' lockers at its worth, 3,700 of it in 60 days, while four towns bid half again).
@@ -75,6 +78,7 @@ pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
         catch_up(&content, &mut books, clock.now, town.id, &mut roster, &mut lockers, &mut stock, &mut money);
         lockers.workshop_keeps.clear(); // worked out at each restock, never kept
         lockers.comfort_short.clear();
+        lockers.reagents.clear();
         for (g, n) in std::mem::take(&mut lockers.bought_fine) {
             *people.fine.entry(g).or_insert(0.0) += n;
         }

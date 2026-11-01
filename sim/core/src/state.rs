@@ -154,6 +154,12 @@ pub struct People {
     /// The rations the pieces behind `fine_banked` cover, in emeralds' worth: the lift is taken as they're used.
     #[serde(default)]
     pub fine_cover: Vec<f64>,
+    /// Bookshelves set in its homes' sockets (a socket a bed) and its library's (`library_sockets`, once one is built):
+    /// reagents, used up into them, reading for their villagers for good (`people::passive_reading`).
+    #[serde(default)]
+    pub home_shelves: u32,
+    #[serde(default)]
+    pub library_shelves: u32,
 }
 
 /// What a town holds of each good.

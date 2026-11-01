@@ -42,7 +42,7 @@ pub struct Conversion {
 }
 
 /// The mod's seven conversions (`Workshop.CONVERSIONS`, in its order), then those the game has no recipe for that its
-/// pack adds (`VillagerCrafts.EXTRAS`: a Librarian breaks a bookshelf into its three books; a Butcher cooks beef and
+/// pack adds (`VillagerCrafts.EXTRAS`: a Librarian joins three books and two logs into a bookshelf; a Butcher cooks beef and
 /// mutton over a campfire, no coal, as the game's campfire does): trade names, inputs, output, how many it makes. The
 /// game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
 #[allow(clippy::type_complexity)]
@@ -54,7 +54,7 @@ pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 10] = [
     (&["fisherman"], &[("cod", 1.0)], "cooked_cod", 1.0),
     (&["farmer"], &[("wheat", 2.0), ("sugar_cane", 1.0)], "cookie", 4.0),
     (&["librarian"], &[("paper", 3.0), ("leather", 1.0)], "book", 1.0),
-    (&["librarian"], &[("bookshelf", 1.0)], "book", 3.0),
+    (&["librarian"], &[("book", 3.0), ("oak_log", 2.0)], "bookshelf", 1.0),
     (&["butcher"], &[("beef", 1.0)], "cooked_beef", 1.0),
     (&["butcher"], &[("mutton", 1.0)], "cooked_mutton", 1.0),
 ];
@@ -189,6 +189,13 @@ pub fn wanted(content: &Content, output: GoodId, people: &People, stock: &Stock,
     }
     if g.food > 0.0 {
         return whole(((2.0 * FOOD_PAR_POINTS - food_points(content, stock)) / g.food.max(1e-9)).max(0.0));
+    }
+    // A shelf for its homes' empty sockets, of the books its people have read their fill of: the Librarian's trade
+    // sells them first (`lockers.rs`: John, "trade preferred to level villagers").
+    if g.name.rsplit(':').next() == Some(crate::people::SHELF) {
+        let read = content.comfort("reading").is_some_and(|k| people.comfort_met.get(k).copied().unwrap_or(0.0) >= 1.0);
+        let empty = (people.beds.max(0.0) - people.home_shelves as f64 - stock.0[output]).max(0.0).floor();
+        return if read { empty } else { 0.0 };
     }
     if locker_par <= 0.0 {
         return 0.0;
