@@ -630,3 +630,22 @@ fn a_cash_crop_is_tended_at_its_towns_bid() {
     wants.prices.insert(WHEAT, 0.3);
     assert_eq!(plan(&wants)[&CANE], 16.0, "the wheat's bid doesn't lift its draws");
 }
+
+/// A field's worth of plots lying untended, a busy town plants no more of a crop it grows, however dear: the game sows a
+/// field across its parcel, and seed 1717's first town held 4,794 plots by day 20 for Farmers who tend 352.
+#[test]
+fn a_town_with_a_field_untended_plants_no_more_of_what_it_grows() {
+    let plant = |carrots: u32| {
+        let mut s = Society::new(content());
+        let t = s.add_town("Wheatfield", 200.0);
+        s.set_roster(t, &[("farmer", 3)]);
+        s.set_people(t, 1.0, 1.0, 1.0);
+        s.set_plots(t, CARROT, carrots);
+        s.set_plots(t, WHEAT, 40);
+        s.set_farm_demand(t, WHEAT, 2000.0); // its locker would buy far more wheat, dearer than carrots
+        s.advance(1200);
+        the_farm(&s).plots.get(&WHEAT).copied()
+    };
+    assert_eq!(plant(50), Some(120), "its hands tend what it has: a field more of the wheat");
+    assert_eq!(plant(2000), Some(40), "1,900 carrots lying untended: no more wheat");
+}

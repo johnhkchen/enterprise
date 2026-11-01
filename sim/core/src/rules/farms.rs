@@ -413,6 +413,11 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     if farmers.is_empty() || !room_for_a_field(farm) {
         return None;
     }
+    // A field's worth of plots lying untended, it plants no more of what it grows: the game sows a field across its
+    // parcel, not the 81 plots booked (seed 1717's first town planted 12 fields by day 20 and held 4,794 plots, 3,848
+    // of them cane, for Farmers who tend 352); its untended plots are turned over to what it wants instead
+    // (`rotate_for_workshop`). A crop it has none of it still plants.
+    let idle = farm.idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY >= (FIELD_SIZE * FIELD_SIZE) as f64;
     let capacity = capacity(farmers, 1.0);
     let levels: u32 = farmers.iter().map(|l| (*l).max(1) as u32).sum();
     let worked = farm.per_day.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
@@ -429,7 +434,7 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
         let group = || all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop));
         let wanted = wanted(content, crop, wants, food_only);
         wanted > 0.0 && (group().all(|&c| grown(c) <= 0.0)
-            || group().map(|&c| grown(c)).sum::<f64>() < wanted && earns(crop) > cheapest)
+            || !idle && group().map(|&c| grown(c)).sum::<f64>() < wanted && earns(crop) > cheapest)
     }).collect();
     let short_of_feed = wants.needs.iter().any(|(g, n)| *n > grown(*g));
     let spare = capacity - worked >= SPARE_PLOTS as f64;

@@ -1164,6 +1164,14 @@ mod's), but no road ever chose it. Then: build them first.
     day-40 point (the 40 days before alike): reading 0.017 to 0.026, leather in stock 5 to 9, treats 0.29 to 0.33,
     mood 0.15 to 0.22, the cows' town fencing 4; no new Leatherworker in the 20 days. The draw is the Farmers': the
     first town's untended plots (3,848 of cane counted, 12 fields planted) put 420 of its 494 marbles on a Farmer.
+  - **Fixed: a town with a field's worth untended plants no more of what it grows (John, 2026-11-01: "Fields").** The
+    core books a field as 81 plots; the game sows it across its parcel (`Furlongs`: 40 blocks at the least, no most),
+    some 400 in the first town's, and busy, it planted more of any crop dearer than it tended until its 20 fields'
+    allowance or the farmland's ring stopped it: 4,794 plots by day 20 for Farmers who tend 352. With 81 plots or more
+    untended, a busy town plants only a crop it has none of. The bid study from day 1: plots 20,776 to 6,934, untended
+    18,936 to 5,278, fields 64 to 29; reading met 0.026 to 0.239 (47 books in stock), Leatherworkers 4 to 8, cows in 3
+    towns to 9 (64 to 240 head), towns 15 to 19, villagers 114 to 150; clothing 0.19 to 0.11, treats 0.33 to 0.21, mood
+    0.22 to 0.15. One run.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
