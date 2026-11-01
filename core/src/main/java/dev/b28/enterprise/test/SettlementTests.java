@@ -43,6 +43,27 @@ public final class SettlementTests {
         helper.setBlock(new BlockPos(5, 2, 0), Blocks.FLETCHING_TABLE);
     }
 
+    /**
+     * The homes a town's plan put beyond the census's reach count, inside its outer wall: seed 1717's Tarren Mill, its
+     * village built again as four homes of 16 beds, three some 60 blocks from its bell, counted 4 beds for 15 people.
+     */
+    @GameTest(template = "floor")
+    public static void aPlannedTownsHomesBeyondItsReachCount(GameTestHelper helper) {
+        village(helper, 0);
+        BlockPos bell = helper.absolutePos(BELL);
+        bed(helper, new BlockPos(0, 2, 5)); // 3 blocks from the bell: beyond a reach of 1
+        var plans = dev.b28.enterprise.territory.TownPlans.get(helper.getLevel().getServer());
+        long town = Long.MIN_VALUE + bell.asLong() % 1_000_000;
+        helper.assertTrue(CensusTaker.beds(helper.getLevel(), bell, 1) == 0, "no plan: the bed's beyond the reach");
+        var walls = new dev.b28.enterprise.territory.TownPlans.Rect(bell.getX() - 3, bell.getZ() - 3, bell.getX() + 3,
+                bell.getZ() + 3);
+        plans.set(town, new dev.b28.enterprise.territory.TownPlans.Plan(bell, walls, walls, true, true));
+        int beds = CensusTaker.beds(helper.getLevel(), bell, 1);
+        plans.set(town, null);
+        helper.assertTrue(beds == 1, "inside its plan's walls the bed counts, once: " + beds);
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void bellBedsAndWorkstationsMakeASettlement(GameTestHelper helper) {
         village(helper, 3);

@@ -1172,6 +1172,15 @@ mod's), but no road ever chose it. Then: build them first.
     18,936 to 5,278, fields 64 to 29; reading met 0.026 to 0.239 (47 books in stock), Leatherworkers 4 to 8, cows in 3
     towns to 9 (64 to 240 head), towns 15 to 19, villagers 114 to 150; clothing 0.19 to 0.11, treats 0.33 to 0.21, mood
     0.22 to 0.15. One run.
+  - **Fixed: the census counts the homes a town's plan built beyond its reach (John, 2026-11-01: "Dig into it first
+    instead of running more checks").** The mood's fall above was one town: Tarren Mill, a village of 15 the core
+    knew as 3 until settlers made it a market on day 57; the game cleared its village (13 beds) and built four homes
+    of 16 beds, three some 60 blocks from its bell, and the census, counting beds within 48, read 4: its mood's target
+    -5.88 (the larger towns' mood without it 0.48 to 0.78). The census counts beds and villagers inside its plan's
+    outer wall too (`CensusTaker.beds`, `villagersAround`), its farmsteads' once. Of the rest: four more villages of
+    two or three (19 towns to 15) meet nothing and dilute the towns' means; by villagers, reading 0.05 to 0.38,
+    clothing 0.31 to 0.16 (the leather goes to books), treats 0.45 to 0.30 (wheat tended 368 a day to 270, cookies in
+    stock 236 to 48: fewer fields).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

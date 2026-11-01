@@ -223,7 +223,29 @@ public final class CensusTaker {
             beds += (int) pois.getInSquare(type -> type.is(PoiTypes.HOME), mid, reach, PoiManager.Occupancy.ANY)
                     .filter(r -> inLot(r.getPos(), lot) && !r.getPos().closerThan(centre, radius)).count();
         }
+        // And the homes its plan put beyond its reach, inside its outer wall (seed 1717's Tarren Mill, its village
+        // cleared and built again as four homes of 16 beds, three of them some 60 blocks out, counted 4 for 15 people).
+        int[] plan = planned(level, centre);
+        if (plan != null) {
+            int mid = Math.max(plan[2] - plan[0], plan[3] - plan[1]) / 2 + 2;
+            BlockPos at = new BlockPos((plan[0] + plan[2]) / 2, centre.getY(), (plan[1] + plan[3]) / 2);
+            pois.ensureLoadedAndValid(level, at, mid);
+            List<int[]> lots = farmsteads(level, centre);
+            beds += (int) pois.getInSquare(type -> type.is(PoiTypes.HOME), at, mid, PoiManager.Occupancy.ANY)
+                    .filter(r -> beyond(r.getPos(), centre, radius, plan, lots)).count();
+        }
         return beds;
+    }
+
+    /** The outer wall of the town plan whose bell this is ({x0, z0, x1, z1}), or null without one. */
+    private static int[] planned(ServerLevel level, BlockPos centre) {
+        return dev.b28.enterprise.territory.TownPlans.at(level, centre)
+                .map(p -> new int[] {p.outer().x0(), p.outer().z0(), p.outer().x1(), p.outer().z1()}).orElse(null);
+    }
+
+    /** In the plan's outer wall, beyond the census's reach and its farmsteads (counted already). */
+    private static boolean beyond(BlockPos p, BlockPos centre, int radius, int[] plan, List<int[]> lots) {
+        return inLot(p, plan) && !p.closerThan(centre, radius) && lots.stream().noneMatch(lot -> inLot(p, lot));
     }
 
     /** The town's farmstead lots, if {@code centre} is a town's bell. */
@@ -244,6 +266,13 @@ public final class CensusTaker {
         for (int[] lot : farmsteads(level, centre)) {
             out.addAll(level.getEntitiesOfClass(Villager.class, new AABB(lot[0], level.getMinBuildHeight(), lot[1], lot[2] + 1,
                     level.getMaxBuildHeight(), lot[3] + 1), v -> !v.blockPosition().closerThan(centre, radius)));
+        }
+        // And those in the homes its plan put beyond its reach.
+        int[] plan = planned(level, centre);
+        if (plan != null) {
+            List<int[]> lots = farmsteads(level, centre);
+            out.addAll(level.getEntitiesOfClass(Villager.class, new AABB(plan[0], level.getMinBuildHeight(), plan[1], plan[2] + 1,
+                    level.getMaxBuildHeight(), plan[3] + 1), v -> beyond(v.blockPosition(), centre, radius, plan, lots)));
         }
         return out;
     }

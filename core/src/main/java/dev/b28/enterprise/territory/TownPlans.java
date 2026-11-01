@@ -114,6 +114,16 @@ public final class TownPlans extends SavedData {
         return plans.get(town);
     }
 
+    /** Sets a town's plan as it stands, or with null forgets it (game tests: a plan without a village to measure). */
+    public void set(long town, Plan plan) {
+        if (plan == null) {
+            plans.remove(town);
+        } else {
+            plans.put(town, plan);
+        }
+        setDirty();
+    }
+
     /** The towns settlers founded (on open ground, or a village they made a market of): held loaded till converted. */
     private final java.util.Set<Long> founded = new java.util.TreeSet<>();
 
