@@ -36,5 +36,6 @@
     "north",
     "east",
     "west"
-  ]
+  ],
+  "slot": "hall:temple"
 }

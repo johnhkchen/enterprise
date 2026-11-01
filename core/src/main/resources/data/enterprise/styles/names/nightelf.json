@@ -1,0 +1,49 @@
+{
+  "rev": 1,
+  "race": "nightelf",
+  "about": "Town names for nightelf towns. Pick deterministically, as the town rules do: hash(town id) over the town's clan list followed by the shared list; skip a name another town already holds and take the next.",
+  "shared": [
+    "Shan'dara",
+    "Elune's Rest",
+    "Moonglade",
+    "Thal'nessa",
+    "Silvermere",
+    "Nightsong",
+    "Aru'thalas",
+    "Starfall",
+    "Ashenvale Hollow",
+    "Lunareth",
+    "Feathermoon",
+    "Shadowglen",
+    "Thalasin",
+    "Eldre'shan",
+    "Dawnwhisper",
+    "Ara'shel"
+  ],
+  "clans": {
+    "silverleaf": [
+      "Silverleaf Grove",
+      "Moonbough",
+      "Thornwhisper",
+      "Velanthor",
+      "Duskleaf",
+      "Glimmerwood"
+    ],
+    "frostsong": [
+      "Frostsong Glade",
+      "Rime'thalas",
+      "Winterbloom",
+      "Snowveil",
+      "Starfrost",
+      "Ice Hollow"
+    ],
+    "mossbough": [
+      "Mossbough Haven",
+      "Fenshade",
+      "Mistwillow",
+      "Bog Lantern",
+      "Reedsong",
+      "Dewmire"
+    ]
+  }
+}

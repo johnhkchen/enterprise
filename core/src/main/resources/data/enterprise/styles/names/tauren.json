@@ -1,0 +1,49 @@
+{
+  "rev": 1,
+  "race": "tauren",
+  "about": "Town names for tauren towns. Pick deterministically, as the town rules do: hash(town id) over the town's clan list followed by the shared list; skip a name another town already holds and take the next.",
+  "shared": [
+    "Thunder Plains",
+    "Mulgore Rise",
+    "Earthmother's Rest",
+    "Stonehoof",
+    "Windrunner Camp",
+    "Great Totem",
+    "Sunwalker Hill",
+    "Highmane",
+    "Longhorn Ford",
+    "Cloudhoof",
+    "Rainwalk",
+    "Grimtotem Bluff",
+    "Spiritrise",
+    "Bramblehoof",
+    "Tallgrass",
+    "Drumstone"
+  ],
+  "clans": {
+    "bloodhoof": [
+      "Bloodhoof Village",
+      "Redgrass",
+      "Hornmeadow",
+      "Plainsong",
+      "Stampede Ridge",
+      "Wildmane"
+    ],
+    "ravenhorn": [
+      "Ravenhorn Camp",
+      "Snowpelt",
+      "Frosthoof",
+      "Pine Totem",
+      "Blackfeather",
+      "Wintermane"
+    ],
+    "mesarunner": [
+      "Mesarunner Rock",
+      "Red Mesa",
+      "Dustmane",
+      "Thunder Bluff",
+      "Canyonhoof",
+      "Sunbaked"
+    ]
+  }
+}
