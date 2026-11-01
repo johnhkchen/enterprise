@@ -1261,6 +1261,14 @@ mod's), but no road ever chose it. Then: build them first.
     167 (the first town's Shepherd level 1, not 4: three pastures, not six); Pyrewood fenced one and its herd fell to 8,
     short of wheat to feed it. The larger towns' furnishings 0.68 to 0.67, reading 0.55 to 0.70, treats 0.76 to 0.84,
     mood 1.30 to 0.98; 29 towns (23), the towns' money 106 to 132.
+  - **Fixed: a town fences another of its free money while its pastures hold less than one should (John, 2026-11-01:
+    "feed").** Pyrewood's herd wasn't short of feed (104 wheat grown a day, 50 to 130 held, its eight eating 2): the
+    host laid its first pasture on a cramped 8 x 7 site, 30 blocks of grass, room for 8, where an unfenced herd has
+    `pasture_animals`' (16); fencing halved its herd, and its second waited on the reserve. While what a town's pastures
+    hold is under `pasture_animals`, it fences the next as its first (`fences`' `room`). The bid study from its day-10
+    point: sheep 167 to 325 in 9 towns (4), cows 211 to 260; the larger towns' furnishings 0.67 to 0.89, treats 0.84 to
+    0.88, reading 0.70 to 0.52, mood (all towns, by villagers) 0.80 to 1.67; 28 towns, the towns' money 132 to 171.
+    Pyrewood fenced a second and holds 12.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

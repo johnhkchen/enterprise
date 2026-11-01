@@ -342,17 +342,19 @@ fn a_keepers_level_fences_more_pastures() {
     assert!(h.count_of(0) > 16.0 * (most + 1) as f64, "a flock beyond the Novice's room: {h:?}");
 }
 
-/// A town fences its first pasture of its free money, whatever its wagons and buildings keep back; another only beyond
-/// that (`rules::farms::fences`): seed 1717's Pyrewood and Goldshire, their reserves 12 to 27 emeralds, kept 16 animals
+/// A town fences its first pasture of its free money, whatever its wagons and buildings keep back, and another while
+/// what it has holds less than a pasture should; beyond that only past the reserve (`rules::farms::fences`): seed 1717's Pyrewood and Goldshire, their reserves 12 to 27 emeralds, kept 16 animals
 /// each in no pasture's room for 50 days with 6 to 15 emeralds free.
 #[test]
 fn a_town_fences_its_first_pasture_past_its_reserve() {
     use enterprise_core::fixed::Fixed;
     use enterprise_core::rules::farms::fences;
     let (fence, money, reserve) = (Fixed::emeralds(4), Fixed::emeralds(10), Fixed::emeralds(17));
-    assert!(fences(16.0, 0, true, money, reserve, fence), "its first, though its reserve is more than it has");
-    assert!(!fences(0.0, 0, false, money, reserve, fence), "no animals, no pasture");
-    assert!(!fences(32.0, 1, true, money, reserve, fence), "a second only past the reserve");
-    assert!(fences(32.0, 1, true, Fixed::emeralds(22), reserve, fence), "and past it, a second");
-    assert!(!fences(10.0, 1, false, Fixed::emeralds(99), reserve, fence), "not before the first is full");
+    assert!(fences(16.0, 0, true, 16.0, 16.0, money, reserve, fence), "its first, though its reserve is more than it has");
+    assert!(!fences(0.0, 0, false, 16.0, 16.0, money, reserve, fence), "no animals, no pasture");
+    assert!(!fences(32.0, 1, true, 32.0, 16.0, money, reserve, fence), "a second only past the reserve");
+    assert!(fences(32.0, 1, true, 32.0, 16.0, Fixed::emeralds(22), reserve, fence), "and past it, a second");
+    assert!(!fences(10.0, 1, false, 32.0, 16.0, Fixed::emeralds(99), reserve, fence), "not before the first is full");
+    assert!(fences(8.0, 1, true, 7.5, 16.0, money, reserve, fence),
+        "a first laid on 30 blocks of grass, room for 8: a second past the reserve, as a first");
 }
