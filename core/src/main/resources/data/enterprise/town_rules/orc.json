@@ -1,6 +1,6 @@
 {
   "kingdom": "orc",
-  "rev": 4,
+  "rev": 5,
   "about": "Orc war-town: town rules for a kit race. Every building is a whole delivered part from town_kits/orc/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/orc.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "orc/core",
   "tiers": {
@@ -106,6 +106,19 @@
         ],
         "beds": 4,
         "weight": 2
+      },
+      {
+        "asset": "enterprise:orc/home/row_huts_22x6_a",
+        "tiles": [
+          6,
+          2
+        ],
+        "footprint": [
+          22,
+          6
+        ],
+        "beds": 6,
+        "weight": 1
       }
     ],
     "city": [
@@ -134,6 +147,19 @@
         ],
         "beds": 4,
         "weight": 3
+      },
+      {
+        "asset": "enterprise:orc/home/row_huts_22x6_a",
+        "tiles": [
+          6,
+          2
+        ],
+        "footprint": [
+          22,
+          6
+        ],
+        "beds": 6,
+        "weight": 2
       }
     ]
   },
@@ -344,13 +370,125 @@
       ],
       "from": "village"
     },
-    "watchtower": {
-      "asset": "enterprise:orc/wall/watchtower_7x7_a",
+    "square": {
+      "asset": "enterprise:orc/hall/masons_square_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
       "footprint": [
-        9,
-        9
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "granary": {
+      "asset": "enterprise:orc/hall/granary_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "root_cellar": {
+      "asset": "enterprise:orc/hall/root_cellar_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "counting_house": {
+      "asset": "enterprise:orc/hall/counting_hut_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "library": {
+      "asset": "enterprise:orc/hall/lore_hut_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "smithy": {
+      "asset": "enterprise:orc/hall/smithy_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "watchtower": {
+      "asset": "enterprise:orc/hall/lookout_6x6_a",
+      "tiles": [
+        2,
+        2
+      ],
+      "footprint": [
+        6,
+        6
+      ],
+      "from": "village"
+    },
+    "stone_docks": {
+      "asset": "enterprise:orc/hall/stone_docks_14x6_a",
+      "tiles": [
+        4,
+        2
+      ],
+      "footprint": [
+        14,
+        6
       ],
       "from": "town"
+    },
+    "caravanserai": {
+      "asset": "enterprise:orc/hall/caravanserai_14x10_a",
+      "tiles": [
+        4,
+        3
+      ],
+      "footprint": [
+        14,
+        10
+      ],
+      "from": "town"
+    },
+    "desk": {
+      "asset": "enterprise:orc/hall/trade_hall_14x14_a",
+      "tiles": [
+        4,
+        4
+      ],
+      "footprint": [
+        14,
+        14
+      ],
+      "from": "village"
     }
   },
   "forum": {

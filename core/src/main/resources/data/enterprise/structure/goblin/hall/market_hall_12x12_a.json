@@ -1,0 +1,92 @@
+{
+  "id": "enterprise:goblin/hall/market_hall_12x12_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "hall",
+  "slot": "desk",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    14,
+    14
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "desk",
+      "at": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "at": [
+        8,
+        3,
+        3
+      ],
+      "what": "blaze_banker"
+    },
+    {
+      "at": [
+        7,
+        3,
+        4
+      ],
+      "what": "vendor"
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "stock": [
+    {
+      "at": [
+        6,
+        3,
+        3
+      ],
+      "for": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "at": [
+        7,
+        3,
+        2
+      ],
+      "for": [
+        7,
+        3,
+        3
+      ]
+    }
+  ]
+}

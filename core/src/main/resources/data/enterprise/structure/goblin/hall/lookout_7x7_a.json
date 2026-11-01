@@ -1,0 +1,50 @@
+{
+  "id": "enterprise:goblin/hall/lookout_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "hall",
+  "slot": "hall:watchtower",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 28,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        4,
+        18,
+        4
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

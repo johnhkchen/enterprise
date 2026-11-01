@@ -1,0 +1,152 @@
+{
+  "id": "enterprise:goblin/home/terrace_21x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "home",
+  "slot": "home:terrace",
+  "palette": "base",
+  "footprint": [
+    23,
+    9
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        19,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        11,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        20,
+        3,
+        2
+      ],
+      "foot": [
+        20,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        16,
+        3,
+        2
+      ],
+      "foot": [
+        16,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        14,
+        3,
+        6
+      ],
+      "foot": [
+        14,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        14,
+        3,
+        2
+      ],
+      "foot": [
+        14,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        9,
+        3,
+        2
+      ],
+      "foot": [
+        9,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        7,
+        3,
+        6
+      ],
+      "foot": [
+        7,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        7,
+        3,
+        2
+      ],
+      "foot": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        2
+      ],
+      "foot": [
+        2,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
