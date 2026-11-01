@@ -317,6 +317,22 @@ public final class SettlementTests {
     }
 
     @GameTest(template = "floor")
+    public static void aHenSunkInAPathPavedOverIsStoodOnThePaving(GameTestHelper helper) {
+        helper.setBlock(BELL.above(), Blocks.DIRT_PATH);
+        var hen = helper.spawn(EntityType.CHICKEN, BELL.above());
+        hen.setNoAi(true);
+        BlockPos path = helper.absolutePos(BELL.above());
+        hen.setPos(path.getX() + 0.5, path.getY() + 15 / 16.0, path.getZ() + 0.5); // standing on the path, in it to its ankles
+        helper.setBlock(BELL.above(), Blocks.STONE_BRICKS); // the path paved, the hen's feet in it, its head clear
+        helper.assertFalse(hen.isInWall(), "the hen's head is in the paving to begin with");
+        int moved = dev.b28.enterprise.settlement.Grounds.unbury(helper.getLevel(), helper.absolutePos(BELL), 3);
+        helper.assertTrue(moved == 1 && helper.getLevel().noCollision(hen, hen.getBoundingBox().deflate(1.0E-3)),
+                "still sunk in the paving: " + moved + " moved, at " + hen.position());
+        hen.discard();
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aVillagerAWorkWallsInOutOfSightBreathesInTheOpen(GameTestHelper helper) {
         var plans = dev.b28.enterprise.territory.TownPlans.get(helper.getLevel().getServer());
         long town = -BELL.hashCode() - helper.absolutePos(BELL).asLong();

@@ -194,13 +194,16 @@ public final class Grounds {
      * Every creature (not a player) within {@code reach} blocks across of {@code centre} that stands in a block stood on
      * the nearest open ground ({@link #standing}): a town built round its villagers left them in its walls and fill,
      * where they suffocate at the next tick (seed 1717's Pyrewood lost its Merchant so at its conversion, and with it
-     * its desk for good). How many were moved.
+     * its desk for good), or sunk in one to its feet: a town's land shaped turns its dirt paths, which a creature stands
+     * in to its ankles, to paving it stands in, and it chokes a few ticks after (seed 1717's town at -774, -533 lost a
+     * hen and a cow so). How many were moved.
      */
     public static int unbury(ServerLevel level, BlockPos centre, int reach) {
         AABB round = new AABB(centre).inflate(reach, 48, reach);
         int n = 0;
         for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, round,
-                e -> e.isInWall() && !(e instanceof net.minecraft.world.entity.player.Player))) {
+                e -> !(e instanceof net.minecraft.world.entity.player.Player)
+                        && (e.isInWall() || !level.noCollision(e, e.getBoundingBox().deflate(1.0E-3))))) {
             BlockPos at = standing(level, e.blockPosition());
             e.teleportTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
             n++;

@@ -1316,6 +1316,12 @@ mod's), but no road ever chose it. Then: build them first.
     nearest open ground at its first missed breath, unhurt, and the log names the block (`Grounds.onHurt`, its game
     test); a look's reach takes in its farmland, and its first tracks are followed by a look too. Seed 1717, one day:
     no deaths, 3 stood out (two from a town's stone bricks at setup, a rabbit from a hedgerow's wall on day 1).
+  - **Fixed: a look stands out whoever is sunk to its feet (John, 2026-11-01: "Bricks").** The two stone-brick
+    rescues were a town's land shaped: it paves the dirt paths its avenues laid at its founding, and a hen or cow
+    standing in a path to its ankles (a path is a sixteenth short of a block) is left with its feet in the paving and
+    its head clear, which the look's test (`isInWall`: the eyes' block) passes; it chokes a few ticks later. A look now
+    stands out any creature whose body overlaps a block, as well (`Grounds.unbury`, its game test). Seed 1717, one
+    day: no deaths, none rescued after the looks, 92 stood out by them.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
