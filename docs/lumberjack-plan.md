@@ -21,9 +21,12 @@ with John the same day:
    and a chest of two logs, a home's furniture (`comforts/furnishings`), which gives a town short of furnishings a
    reason to draw one (logs alone are worth too little: seed 1717's 30 days drew none for its woods). Logs stop coming
    from idle hands in the game here.
-3. **Woodlots in the world:** the host lays a town's lots (a ring past its fields, as `FieldMaps` lays farmland: the
-   woods' own trees where it has them, saplings on open ground) and shows each lot as the core has it, felled and
-   replanted or grown, when its chunk is touched.
+3. **Woodlots in the world** (built): the core tells each lot's growth with the town's land (`Answer::Land`'s
+   `woodlots`); the host (`territory/Woodlots`) lays each new lot on the nearest free 7 x 7 of the land's own ground
+   in a ring past the pastures (32 deep; 24 blocks out for a town with no plan) and shows it: grown, four trees (the
+   land's own where they stood); felled, logs and leaves gone and four saplings. It loads nothing for them (John: "We
+   don't need to be constantly loading such chunks"): a lot is laid, felled or grown when its ground is loaded anyway,
+   by a player near it, and caught up then. Headless studies load none of that ring, so their lots stay unlaid.
 4. **Wood's goods:** crates and halls built of planks and logs (the chest, a furnishing, came with landing 2).
 
 ## Timber (John: "gate building creation behind lumberjacks")

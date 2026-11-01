@@ -352,6 +352,31 @@ public final class SettlementTests {
         });
     }
 
+    /**
+     * A woodlot shown as the core has it (docs/lumberjack-plan.md): felled, its trees gone and saplings at its four
+     * spots; grown, trees stand there again.
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aWoodlotIsFelledToSaplingsAndGrowsBackToTrees(GameTestHelper helper) {
+        for (int x = 0; x < 7; x++) {
+            for (int z = 0; z < 7; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.GRASS_BLOCK);
+            }
+        }
+        var level = helper.getLevel();
+        BlockPos corner = helper.absolutePos(new BlockPos(0, 1, 0));
+        dev.b28.enterprise.territory.Woodlots.grow(level, corner);
+        helper.assertTrue(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "grown: trees stand");
+        dev.b28.enterprise.territory.Woodlots.fell(level, corner);
+        helper.assertFalse(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "felled: no logs");
+        helper.assertTrue(level.getBlockState(corner.offset(1, 1, 1)).is(net.minecraft.tags.BlockTags.SAPLINGS),
+                "a sapling at its spot: " + level.getBlockState(corner.offset(1, 1, 1)));
+        dev.b28.enterprise.territory.Woodlots.grow(level, corner);
+        helper.assertTrue(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "grown again");
+        dev.b28.enterprise.territory.Woodlots.fell(level, corner); // (its neighbours' arenas left as they were)
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void aHillsideSiteIsFilledLevelForAHome(GameTestHelper helper) {
         var level = helper.getLevel();

@@ -294,6 +294,8 @@ impl Society {
             next_hex: self.territory().next_hex_cost(town, self.content().dials.culture_per_hex),
             plots,
             works,
+            woodlots: self.towns.get(town).and_then(|&e| self.world.get::<crate::kit::Kits>(e))
+                .map_or_else(Vec::new, |k| k.woodlots.iter().map(|&grown| grown <= self.now()).collect()),
         }
     }
 

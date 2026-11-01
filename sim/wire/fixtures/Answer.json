@@ -5326,7 +5326,8 @@
       "culture": 0.0,
       "next_hex": 0.0,
       "plots": [],
-      "works": []
+      "works": [],
+      "woodlots": []
     }
   },
   {
@@ -5453,6 +5454,11 @@
           "done": false,
           "shown": 1.7976931348623157e+308
         }
+      ],
+      "woodlots": [
+        true,
+        false,
+        true
       ]
     }
   },
@@ -5577,7 +5583,49 @@
           "count": 2.2250738585072014e-308
         }
       ],
-      "works": []
+      "works": [],
+      "woodlots": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   {

@@ -1347,6 +1347,11 @@ mod's), but no road ever chose it. Then: build them first.
   to 64 (logs are wanted), and every land but water holds a woodlot or more (a hex of hills, desert or shore, one).
   Seed 1717's 30 days, against the run before timber: Lumberjacks 1 by day 2, 3 by day 5, 7 by day 30 (none before);
   villagers 131 to 114, beds 138 to 121, mood 0.21 both, money 144 to 116.
+- **Woodlots shown where the world is loaded anyway (John, 2026-11-02: "We don't need to be constantly loading such
+  chunks").** The Lumberjack's landing 3 (`docs/lumberjack-plan.md`): the core tells each woodlot's growth with a
+  town's land; the host lays a lot on the nearest free ground of a ring past the pastures and shows it, four trees
+  grown or four saplings felled, only when its ground is loaded: no chunk is loaded for a woodlot. Its game test fells a
+  lot to saplings and grows it back. Seed 1717's headless 30 days laid none (nothing loads that ring).
 - **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
   any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
   the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still

@@ -81,6 +81,8 @@ Answer:
           - works:
               SEQ:
                 TYPENAME: WorkView
+          - woodlots:
+              SEQ: BOOL
     9:
       Ground:
         STRUCT:

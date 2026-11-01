@@ -50,7 +50,7 @@ public sealed interface Answer
             case 5 -> new Chests(Point.decode(in), in.u32(), in.list(8, PostcardIn::f64), in.u32(), in.list(8, PostcardIn::f64));
             case 6 -> new Cash(Point.decode(in), in.u32(), in.i64(), in.u64(), in.u64(), in.i64(), in.option(PostcardIn::u64), in.i64(), in.u64());
             case 7 -> new Mint(in.f64(), in.f64(), in.f64(), in.f64());
-            case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode));
+            case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode), in.list(1, PostcardIn::bool));
             case 9 -> new Ground(in.list(22, GroundView::decode));
             case 10 -> new Lockers(in.u32(), in.u32(), in.bool(), in.list(13, LockerView::decode));
             case 11 -> new Routes(in.u32(), in.list(33, RouteLine::decode), in.list(6, MarketLine::decode), in.list(1, PostcardIn::string));
@@ -237,9 +237,10 @@ public sealed interface Answer
      * A town's land: the hexes it holds in the order it claimed them (none before its first count), its culture and
      * what the next hex costs of it, its fields' plots by crop (what's counted in its hexes and the fields it planted
      * that the host hasn't laid yet), and its works in the order started (bridges, its wall, halls, then the fields it
-     * planted that the host hasn't laid).
+     * planted that the host hasn't laid); and its woodlots in the order laid, each whether its trees stand grown (felled
+     * and replanted, not: {@code kit::Kits::woodlots}), for the host to show.
      */
-    record Land(long town, List<HexAt> hexes, double culture, double nextHex, List<Count> plots, List<WorkView> works) implements Answer {
+    record Land(long town, List<HexAt> hexes, double culture, double nextHex, List<Count> plots, List<WorkView> works, List<Boolean> woodlots) implements Answer {
         public Land {
             Objects.requireNonNull(hexes, "hexes");
             hexes = List.copyOf(hexes);
@@ -247,6 +248,8 @@ public sealed interface Answer
             plots = List.copyOf(plots);
             Objects.requireNonNull(works, "works");
             works = List.copyOf(works);
+            Objects.requireNonNull(woodlots, "woodlots");
+            woodlots = List.copyOf(woodlots);
         }
 
         @Override
@@ -258,6 +261,7 @@ public sealed interface Answer
             out.f64(this.nextHex);
             out.list(this.plots, (o1, e1) -> e1.encode(o1));
             out.list(this.works, (o1, e1) -> e1.encode(o1));
+            out.list(this.woodlots, PostcardOut::bool);
         }
     }
 

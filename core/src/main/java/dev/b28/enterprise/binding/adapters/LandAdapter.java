@@ -261,6 +261,15 @@ public final class LandAdapter {
                 if (since >= CROPS_EVERY) {
                     inputs.addAll(crops(level, town, desk.getKey().pos(), bell));
                     growWaterfront(level, town, bell);
+                    // Its woodlots shown as the core has them, felled and replanted or grown (`Woodlots`).
+                    if (dev.b28.enterprise.territory.TownPlans.get(server).converted(town)
+                            || dev.b28.enterprise.territory.Conversion.village(level, bell) == null) {
+                        int shown = dev.b28.enterprise.territory.Woodlots.get(server).show(level, town, bell, land(town).woodlots());
+                        if (shown > 0) {
+                            Enterprise.LOGGER.info("Town {}: {} woodlots laid, felled or grown ({} in all)", town, shown,
+                                    dev.b28.enterprise.territory.Woodlots.get(server).of(town).size());
+                        }
+                    }
                     since = 0;
                 }
                 if (dev.b28.enterprise.territory.VillageSearch.get(level.getServer()).look(town)) {
@@ -567,7 +576,8 @@ public final class LandAdapter {
     }
 
     /** A town's land as the core has it: the hexes it holds, its culture, its fields' plots by item, its works. */
-    public record Land(long town, List<Hex> hexes, double culture, double nextHex, Map<String, Double> plots, List<WorkView> works) {
+    public record Land(long town, List<Hex> hexes, double culture, double nextHex, Map<String, Double> plots, List<WorkView> works,
+            List<Boolean> woodlots) {
         /** How much of a work the host has shown, as the core has it (0 if it has no such work). */
         public double shown(Work work) {
             return works.stream().filter(w -> w.work().equals(work)).mapToDouble(WorkView::shown).findFirst().orElse(0);
@@ -581,7 +591,7 @@ public final class LandAdapter {
                 plots.put(name(c.good()), c.count());
             }
             return new Land(a.town(), a.hexes().stream().map(h -> new Hex(h.q(), h.r())).toList(), a.culture(), a.nextHex(),
-                    Map.copyOf(plots), a.works());
+                    Map.copyOf(plots), a.works(), a.woodlots());
         }
         throw new IllegalStateException("the core answered Land with something else");
     }
