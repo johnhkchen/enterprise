@@ -2,7 +2,7 @@
   "set": "dwarf/core",
   "rev": 1,
   "style": "dwarf",
-  "about": "The dwarf town's core set: ten whole buildings, each authored in the dwarf base palette (Deepforge hold). A town's clan comes from styles/settlement.json; recolour every part at placement with that clan's `swaps` from styles/dwarf.json (Deepforge has none). Every part is on the usual contract: layers 0-1 dirt, layer 2 the surface, the front to the south, every cell stored (air as air), points of interest declared or decorative twins, every walkable cell lit. The yard round each building is authored in red_sand with dead_bush: swap them for the land's ground and plant from the town's settlement entry (`ground`, `plant`).",
+  "about": "The dwarf town's core set: whole buildings, each authored in the dwarf base palette (Deepforge hold). A town's clan comes from styles/settlement.json; recolour every part at placement with that clan's `swaps` from styles/dwarf.json (Deepforge has none). Every part is on the usual contract: layers 0-1 dirt, layer 2 the surface, the front to the south, every cell stored (air as air), points of interest declared or decorative twins, every walkable cell lit. The yard round each building is authored in red_sand with dead_bush: swap them for the land's ground and plant from the town's settlement entry (`ground`, `plant`).",
   "parts": [
     {
       "id": "cottage_7x7_a",
@@ -438,6 +438,655 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "rock_row_22x6_a",
+      "part": "enterprise:dwarf/home/rock_row_22x6_a",
+      "kind": "home",
+      "slot": "home:terrace",
+      "tiles": [
+        6,
+        2
+      ],
+      "size": [
+        22,
+        17,
+        6
+      ],
+      "beds": 6,
+      "workstations": []
+    },
+    {
+      "id": "merchants_hall_14x14_a",
+      "part": "enterprise:dwarf/hall/merchants_hall_14x14_a",
+      "kind": "hall",
+      "slot": "desk",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        4
+      ],
+      "size": [
+        14,
+        26,
+        14
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "moot_stone_10x10_a",
+      "part": "enterprise:dwarf/hall/moot_stone_10x10_a",
+      "kind": "hall",
+      "slot": "hall:square",
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        8,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "granary_10x10_a",
+      "part": "enterprise:dwarf/hall/granary_10x10_a",
+      "kind": "hall",
+      "slot": "hall:granary",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        22,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "cold_store_10x10_a",
+      "part": "enterprise:dwarf/hall/cold_store_10x10_a",
+      "kind": "hall",
+      "slot": "hall:root_cellar",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        17,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "counting_house_10x10_a",
+      "part": "enterprise:dwarf/hall/counting_house_10x10_a",
+      "kind": "hall",
+      "slot": "hall:counting_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        26,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "hall_of_records_10x10_a",
+      "part": "enterprise:dwarf/hall/hall_of_records_10x10_a",
+      "kind": "hall",
+      "slot": "hall:library",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        26,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "great_forge_10x10_a",
+      "part": "enterprise:dwarf/hall/great_forge_10x10_a",
+      "kind": "hall",
+      "slot": "hall:smithy",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        19,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "watch_tower_6x6_a",
+      "part": "enterprise:dwarf/hall/watch_tower_6x6_a",
+      "kind": "hall",
+      "slot": "hall:watchtower",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        19,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "stone_quay_14x6_a",
+      "part": "enterprise:dwarf/hall/stone_quay_14x6_a",
+      "kind": "hall",
+      "slot": "hall:stone_docks",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        2
+      ],
+      "size": [
+        14,
+        18,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "caravan_court_14x10_a",
+      "part": "enterprise:dwarf/hall/caravan_court_14x10_a",
+      "kind": "hall",
+      "slot": "hall:caravanserai",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        14,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "corner_bastion_7x7_a",
+      "part": "enterprise:dwarf/wall/corner_bastion_7x7_a",
+      "kind": "wall",
+      "slot": "wall:corner",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        9,
+        18,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "drystone_wall_8_a",
+      "part": "enterprise:dwarf/wall/drystone_wall_8_a",
+      "kind": "part",
+      "slot": "wall:palisade",
+      "tiers": [
+        "hamlet",
+        "village"
+      ],
+      "size": [
+        8,
+        10,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "wall_gate_7x3_a",
+      "part": "enterprise:dwarf/wall/wall_gate_7x3_a",
+      "kind": "wall",
+      "slot": "wall:palisade",
+      "tiers": [
+        "hamlet",
+        "village"
+      ],
+      "size": [
+        7,
+        14,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "barn_6x10_a",
+      "part": "enterprise:dwarf/land/barn_6x10_a",
+      "kind": "land",
+      "slot": "barn",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        3
+      ],
+      "size": [
+        6,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "mill_10x10_a",
+      "part": "enterprise:dwarf/land/mill_10x10_a",
+      "kind": "land",
+      "slot": "mill",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        30,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "pasture_shelter_6x6_a",
+      "part": "enterprise:dwarf/land/pasture_shelter_6x6_a",
+      "kind": "land",
+      "slot": "pasture:shelter",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        12,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "ram_stable_10x10_a",
+      "part": "enterprise:dwarf/gate_quarter/ram_stable_10x10_a",
+      "kind": "gate_quarter",
+      "slot": "stable",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        17,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "wagon_yard_14x10_a",
+      "part": "enterprise:dwarf/gate_quarter/wagon_yard_14x10_a",
+      "kind": "gate_quarter",
+      "slot": "wagon_yard",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        15,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "waystation_6x6_a",
+      "part": "enterprise:dwarf/gate_quarter/waystation_6x6_a",
+      "kind": "gate_quarter",
+      "slot": "waystation",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        12,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "toll_gate_10x6_a",
+      "part": "enterprise:dwarf/gate_quarter/toll_gate_10x6_a",
+      "kind": "gate_quarter",
+      "slot": "toll_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        2
+      ],
+      "size": [
+        10,
+        16,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "post_house_6x6_a",
+      "part": "enterprise:dwarf/gate_quarter/post_house_6x6_a",
+      "kind": "gate_quarter",
+      "slot": "post_office",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        16,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bridge_head_6x6_a",
+      "part": "enterprise:dwarf/land/bridge_head_6x6_a",
+      "kind": "land",
+      "slot": "bridge:head",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        17,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "forge_temple_30x48_a",
+      "part": "enterprise:dwarf/landmark/forge_temple_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:abbey",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        30,
+        42,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "keep_30x30_a",
+      "part": "enterprise:dwarf/landmark/keep_30x30_a",
+      "kind": "landmark",
+      "slot": "landmark:keep",
+      "tiers": [
+        "city"
+      ],
+      "size": [
+        30,
+        38,
+        30
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "thanes_hall_30x48_a",
+      "part": "enterprise:dwarf/landmark/thanes_hall_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:palace",
+      "tiers": [
+        "capital"
+      ],
+      "size": [
+        30,
+        38,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_1_a",
+      "part": "enterprise:dwarf/wall/filler_1_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        1,
+        12,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_2_a",
+      "part": "enterprise:dwarf/wall/filler_2_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        2,
+        12,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_3_a",
+      "part": "enterprise:dwarf/wall/filler_3_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        3,
+        12,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "curtain_4_a",
+      "part": "enterprise:dwarf/wall/curtain_4_a",
+      "kind": "part",
+      "slot": "wall:curtain",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        4,
+        12,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "step_4_a",
+      "part": "enterprise:dwarf/wall/step_4_a",
+      "kind": "part",
+      "slot": "wall:step",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        4,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "stall_farmer_3x3_a",
+      "part": "enterprise:dwarf/stall/stall_farmer_3x3_a",
+      "kind": "stall",
+      "slot": "stall:farmer",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "stall_mason_3x3_a",
+      "part": "enterprise:dwarf/stall/stall_mason_3x3_a",
+      "kind": "stall",
+      "slot": "stall:mason",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "stall_librarian_3x3_a",
+      "part": "enterprise:dwarf/stall/stall_librarian_3x3_a",
+      "kind": "stall",
+      "slot": "stall:librarian",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:lectern"
+      ]
     }
   ],
   "held": [],
@@ -445,6 +1094,7 @@
     "Footprints include a one-block yard round the building (the catalog's size plus 2 each way); the stall's 5 x 5 is its 3 x 3 on a yard.",
     "stall_3x3_a has a workstation marker (block any, air) behind its counter: the placer sets the trade's job block there, so one stall serves every trade.",
     "forum_centre_7x7_a carries the town bell as a marker.",
-    "curtain_8_a is a part: an 8-long wall piece, both ends cut to join the next; the battered base course sits in layer 2."
+    "curtain_8_a is a part: an 8-long wall piece, both ends cut to join the next.",
+    "gatehouse_11x7_a joins the curtain at its east and west ends (cut flat), so only its south and north faces carry relief."
   ]
 }

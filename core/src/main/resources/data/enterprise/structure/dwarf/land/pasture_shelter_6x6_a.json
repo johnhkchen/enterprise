@@ -1,0 +1,46 @@
+{
+  "id": "enterprise:dwarf/land/pasture_shelter_6x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "land",
+  "slot": "pasture:shelter",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 12,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        5,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

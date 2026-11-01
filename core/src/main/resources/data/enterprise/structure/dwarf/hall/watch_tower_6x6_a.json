@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:dwarf/hall/watch_tower_6x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "slot": "hall:watchtower",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 19,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

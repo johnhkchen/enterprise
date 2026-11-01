@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:dwarf/gate_quarter/post_house_6x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "gate_quarter",
+  "slot": "post_office",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

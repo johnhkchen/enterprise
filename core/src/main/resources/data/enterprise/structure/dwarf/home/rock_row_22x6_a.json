@@ -1,0 +1,132 @@
+{
+  "id": "enterprise:dwarf/home/rock_row_22x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "home",
+  "slot": "home:terrace",
+  "palette": "deepforge",
+  "tiles": [
+    6,
+    2
+  ],
+  "footprint": [
+    22,
+    6
+  ],
+  "height": 17,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        16,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        18,
+        3,
+        1
+      ],
+      "foot": [
+        17,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        14,
+        3,
+        1
+      ],
+      "foot": [
+        15,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        12,
+        3,
+        1
+      ],
+      "foot": [
+        11,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        8,
+        3,
+        1
+      ],
+      "foot": [
+        9,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        6,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        1
+      ],
+      "foot": [
+        3,
+        3,
+        1
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
