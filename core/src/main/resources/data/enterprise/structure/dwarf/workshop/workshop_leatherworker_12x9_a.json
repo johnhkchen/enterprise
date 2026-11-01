@@ -1,0 +1,75 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_leatherworker_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        3,
+        7,
+        4
+      ],
+      "foot": [
+        4,
+        7,
+        4
+      ]
+    },
+    {
+      "head": [
+        3,
+        7,
+        2
+      ],
+      "foot": [
+        4,
+        7,
+        2
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        8,
+        3,
+        8
+      ],
+      "block": "minecraft:water_cauldron"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:leatherworker"
+}

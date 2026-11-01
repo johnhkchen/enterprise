@@ -1,0 +1,96 @@
+{
+  "id": "enterprise:nightelf/workshop/workshop_butcher_12x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        12,
+        8,
+        8
+      ],
+      "foot": [
+        12,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        12,
+        8,
+        6
+      ],
+      "foot": [
+        12,
+        8,
+        5
+      ]
+    },
+    {
+      "head": [
+        12,
+        8,
+        3
+      ],
+      "foot": [
+        12,
+        8,
+        2
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        8
+      ],
+      "block": "minecraft:smoker"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:butcher"
+}

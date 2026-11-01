@@ -1,0 +1,95 @@
+{
+  "id": "enterprise:tauren/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "farmstead",
+  "palette": "base",
+  "footprint": [
+    19,
+    18
+  ],
+  "height": 17,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        13,
+        3,
+        17
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        12,
+        3,
+        17
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        15,
+        3,
+        13
+      ],
+      "foot": [
+        14,
+        3,
+        13
+      ]
+    },
+    {
+      "head": [
+        10,
+        3,
+        13
+      ],
+      "foot": [
+        11,
+        3,
+        13
+      ]
+    },
+    {
+      "head": [
+        15,
+        3,
+        11
+      ],
+      "foot": [
+        14,
+        3,
+        11
+      ]
+    },
+    {
+      "head": [
+        10,
+        3,
+        11
+      ],
+      "foot": [
+        11,
+        3,
+        11
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}

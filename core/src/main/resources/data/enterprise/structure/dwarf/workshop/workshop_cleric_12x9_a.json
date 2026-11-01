@@ -1,0 +1,99 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_cleric_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        8,
+        7
+      ],
+      "foot": [
+        11,
+        8,
+        8
+      ]
+    },
+    {
+      "head": [
+        11,
+        8,
+        4
+      ],
+      "foot": [
+        11,
+        8,
+        5
+      ]
+    },
+    {
+      "head": [
+        9,
+        8,
+        8
+      ],
+      "foot": [
+        9,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        7,
+        8,
+        2
+      ],
+      "foot": [
+        7,
+        8,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        7
+      ],
+      "block": "minecraft:brewing_stand"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:cleric"
+}

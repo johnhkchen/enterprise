@@ -1,0 +1,62 @@
+{
+  "id": "enterprise:nightelf/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "farmstead",
+  "palette": "base",
+  "footprint": [
+    21,
+    20
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        14,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        12,
+        7,
+        2
+      ],
+      "foot": [
+        12,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        7,
+        2
+      ],
+      "foot": [
+        10,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}

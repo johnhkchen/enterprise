@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:dwarf/hall/warehouse_13x7_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "slot": "harbour:warehouse",
+  "use": [
+    "sea"
+  ],
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    15,
+    9
+  ],
+  "height": 22,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

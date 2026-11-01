@@ -1,0 +1,107 @@
+{
+  "id": "enterprise:dwarf/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "farmstead",
+  "palette": "deepforge",
+  "footprint": [
+    21,
+    20
+  ],
+  "height": 28,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        14,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        13,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        17,
+        7,
+        10
+      ],
+      "foot": [
+        16,
+        7,
+        10
+      ]
+    },
+    {
+      "head": [
+        17,
+        7,
+        8
+      ],
+      "foot": [
+        16,
+        7,
+        8
+      ]
+    },
+    {
+      "head": [
+        17,
+        7,
+        6
+      ],
+      "foot": [
+        16,
+        7,
+        6
+      ]
+    },
+    {
+      "head": [
+        13,
+        7,
+        3
+      ],
+      "foot": [
+        13,
+        7,
+        4
+      ]
+    },
+    {
+      "head": [
+        11,
+        7,
+        3
+      ],
+      "foot": [
+        11,
+        7,
+        4
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}

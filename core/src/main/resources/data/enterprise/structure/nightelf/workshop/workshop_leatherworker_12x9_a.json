@@ -1,0 +1,75 @@
+{
+  "id": "enterprise:nightelf/workshop/workshop_leatherworker_12x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    12,
+    9
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        5,
+        7,
+        6
+      ],
+      "foot": [
+        5,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        5,
+        7,
+        2
+      ],
+      "foot": [
+        5,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "block": "minecraft:cauldron"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:leatherworker"
+}

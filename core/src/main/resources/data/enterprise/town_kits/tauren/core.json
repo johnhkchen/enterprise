@@ -237,6 +237,186 @@
       "workstations": [
         "minecraft:barrel"
       ]
+    },
+    {
+      "id": "spirit_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/spirit_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:cleric",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:brewing_stand"
+      ]
+    },
+    {
+      "id": "bowyer_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/bowyer_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:fletcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:fletching_table"
+      ]
+    },
+    {
+      "id": "butcher_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/butcher_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:butcher",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:smoker"
+      ]
+    },
+    {
+      "id": "weaver_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/weaver_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:shepherd",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:loom"
+      ]
+    },
+    {
+      "id": "pathfinder_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/pathfinder_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:cartographer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:cartography_table"
+      ]
+    },
+    {
+      "id": "tanner_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/tanner_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:leatherworker",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:water_cauldron"
+      ]
+    },
+    {
+      "id": "weaponsmith_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/weaponsmith_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:weaponsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        16,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:grindstone"
+      ]
+    },
+    {
+      "id": "farmstead_19x18_a",
+      "part": "enterprise:tauren/farmstead/farmstead_19x18_a",
+      "kind": "farmstead",
+      "slot": "farmstead",
+      "size": [
+        19,
+        17,
+        18
+      ],
+      "beds": 4,
+      "workstations": []
+    },
+    {
+      "id": "tally_tent_14x10_a",
+      "part": "enterprise:tauren/hall/tally_tent_14x10_a",
+      "kind": "hall",
+      "slot": "harbour:customs_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "store_tent_14x10_a",
+      "part": "enterprise:tauren/hall/store_tent_14x10_a",
+      "kind": "hall",
+      "slot": "harbour:warehouse",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        16,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
     }
   ],
   "held": [],

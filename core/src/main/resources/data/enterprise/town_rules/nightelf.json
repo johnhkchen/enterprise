@@ -1,6 +1,6 @@
 {
   "kingdom": "nightelf",
-  "rev": 2,
+  "rev": 3,
   "about": "Night elf grove town: town rules for a kit race. Every building is a whole delivered part from town_kits/nightelf/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/nightelf.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "nightelf/core",
   "tiers": {
@@ -163,6 +163,69 @@
           11
         ],
         "beds": 4
+      },
+      {
+        "slot": "workshop:cleric",
+        "asset": "enterprise:nightelf/workshop/workshop_cleric_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:butcher",
+        "asset": "enterprise:nightelf/workshop/workshop_butcher_12x9_a",
+        "footprint": [
+          16,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:shepherd",
+        "asset": "enterprise:nightelf/workshop/workshop_shepherd_12x9_a",
+        "footprint": [
+          15,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:cartographer",
+        "asset": "enterprise:nightelf/workshop/workshop_cartographer_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 4
+      },
+      {
+        "slot": "workshop:leatherworker",
+        "asset": "enterprise:nightelf/workshop/workshop_leatherworker_12x9_a",
+        "footprint": [
+          12,
+          9
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:toolsmith",
+        "asset": "enterprise:nightelf/workshop/workshop_toolsmith_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:weaponsmith",
+        "asset": "enterprise:nightelf/workshop/workshop_weaponsmith_12x9_a",
+        "footprint": [
+          14,
+          13
+        ],
+        "beds": 4
       }
     ],
     "on": "plots fronting an avenue or the forum, nearest the forum first"
@@ -239,6 +302,23 @@
   "earthworks": {
     "set": "nightelf/earthworks",
     "about": "retaining walls, steps and cut faces on Lordaeron's earthworks contract"
+  },
+  "farmstead": {
+    "asset": "enterprise:nightelf/farmstead/farmstead_19x18_a",
+    "footprint": [
+      21,
+      20
+    ],
+    "beds": 2,
+    "at": "the head of a holding's first field, as Lordaeron's farmstead"
+  },
+  "fields": {
+    "set": "nightelf/fields",
+    "about": "crop plots, edges and corners on Lordaeron's fields contract, in this race's materials"
+  },
+  "harbour": {
+    "set": "nightelf/harbour",
+    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; its customs house and warehouse in the set's buildings"
   },
   "founding": {
     "set": "nightelf/founding",
