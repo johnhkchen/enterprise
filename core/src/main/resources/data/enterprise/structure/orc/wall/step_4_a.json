@@ -1,0 +1,31 @@
+{
+  "id": "enterprise:orc/wall/step_4_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "part",
+  "slot": "wall:step",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    4,
+    3
+  ],
+  "height": 12,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ],
+  "rise": 1,
+  "rise_at": 2,
+  "notes": "a step: the east half (x 2 on) stands a block higher, for a wall climbing a slope west to east; mirror it for one climbing east to west"
+}

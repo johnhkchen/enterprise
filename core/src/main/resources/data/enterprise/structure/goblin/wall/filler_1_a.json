@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:goblin/wall/filler_1_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "part",
+  "slot": "wall:filler",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    1,
+    3
+  ],
+  "height": 9,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

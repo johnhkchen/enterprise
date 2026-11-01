@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/land/bridge_head_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "land",
+  "slot": "bridge:head",
+  "notes": "the deck, 3 wide, runs out of the north face to join the span",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "east",
+    "west"
+  ]
+}

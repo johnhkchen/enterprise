@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:orc/wall/palisade_gate_7x3_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "wall",
+  "slot": "wall:palisade",
+  "role": "gate",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "palette": "base",
+  "footprint": [
+    7,
+    3
+  ],
+  "height": 13,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        2
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}
