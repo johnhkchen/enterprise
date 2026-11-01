@@ -187,6 +187,12 @@ impl Lot {
 #[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Shipments {
     pub empties: u32,
+    /// Packages it went without, its crates made at home and none empty ([`local_crates`]): the goods rode loose or
+    /// stayed; and the day it last did.
+    #[serde(default)]
+    pub short: u64,
+    #[serde(default)]
+    pub short_last: u64,
 }
 
 impl Shipments {
@@ -289,6 +295,8 @@ fn acquire(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64
         return true;
     }
     if returnable && local_crates(content) {
+        shipper.store.short += 1;
+        shipper.store.short_last = now / content.day_ticks.max(1);
         return false;
     }
     let cost = crate::fixed::Fixed::ceil(if returnable { content.dials.crate_emeralds } else { content.packages[kind].emeralds });

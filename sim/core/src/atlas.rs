@@ -557,6 +557,11 @@ impl Society {
                 last: t.last,
             })
             .collect();
+        // The crates it went without (`cargo::Shipments::short`).
+        if let Some(store) = self.towns.get(town).and_then(|&e| self.world.get::<crate::cargo::Shipments>(e)).filter(|s| s.short > 0) {
+            out.push(WhyLine { line: "the town | crate | short: packed loose".into(), times: store.short, items: store.short as f64,
+                last: store.short_last });
+        }
         out.sort_by(|a, b| b.times.cmp(&a.times));
         out
     }

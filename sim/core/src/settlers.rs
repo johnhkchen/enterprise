@@ -81,6 +81,9 @@ pub struct Party {
     pub hands: Vec<Hand>,
     pub capital: crate::fixed::Fixed,
     pub bread: f64,
+    /// Empty crates it carries from home, for the new town to ship in.
+    #[serde(default)]
+    pub crates: u32,
     pub departs: u64,
     pub arrives: u64,
 }
@@ -342,6 +345,10 @@ impl Society {
             _ => {
                 let t = self.add_town(&self.settlement_name(party.id), 0.0);
                 self.place_town(t, party.target.center_x(), party.target.center_z());
+                // (On open ground no village's crates stand: it has only those its settlers carried.)
+                if let Some(mut store) = self.world.get_mut::<crate::cargo::Shipments>(self.towns[t]) {
+                    store.empties = 0;
+                }
                 // A host's settlers' town is the host's too: its lockers where the host places them, and built in its
                 // world where they settled (`Output::Found`, until a desk of the town's stands).
                 if self.world.get::<crate::lockers::Lockers>(self.towns[party.from]).is_some_and(|l| l.placed.is_some()) {
@@ -375,6 +382,9 @@ impl Society {
             self.world.resource_mut::<Ledger>().delivered[bread] += party.bread;
             self.world.get_mut::<Stock>(e).expect("a town").0[bread] += party.bread;
         }
+        if let Some(mut store) = self.world.get_mut::<crate::cargo::Shipments>(e) {
+            store.empties += party.crates;
+        }
         self.post(Account::Outside, Account::Treasury(town), party.capital, reason());
         // Roads both ways: the mother town's to it, and its own home, so it sends its own wagons and ships (John: a
         // settlers' town with only its mother's road home sent nothing). Either with no way yet is owed.
@@ -404,6 +414,9 @@ impl Society {
         if let Some(bread) = content.good("bread") {
             self.world.resource_mut::<Ledger>().delivered[bread] += party.bread;
             self.world.get_mut::<Stock>(e).expect("a town").0[bread] += party.bread;
+        }
+        if let Some(mut store) = self.world.get_mut::<crate::cargo::Shipments>(e) {
+            store.empties += party.crates;
         }
         self.post(Account::Outside, Account::Treasury(party.from), party.capital, reason());
         self.world.resource_mut::<Settlers>().came_home += 1;

@@ -582,3 +582,19 @@ fn settlers_found_where_the_land_adds_most_to_the_towns_portfolio() {
     let party = &s.parties()[0];
     assert_eq!((party.kind, party.target), (Kind::Found, hills), "{:?}", s.parties());
 }
+
+/// Settlers carry half their home's empty crates to the town they found, for its first shipments: a new town has no
+/// Lumberjack and no neighbour's wagon to sell it crates yet.
+#[test]
+fn settlers_carry_half_their_homes_empty_crates() {
+    let (mut s, home) = world(100.0);
+    let e = s.world.resource::<enterprise_core::state::Towns>().0[home];
+    s.world.get_mut::<enterprise_core::cargo::Shipments>(e).unwrap().empties = 16;
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1);
+    assert_eq!(s.world.get::<enterprise_core::cargo::Shipments>(e).unwrap().empties, 8, "half went with them");
+    s.advance(DAY);
+    let new = s.settled()[0];
+    let n = s.world.resource::<enterprise_core::state::Towns>().0[new];
+    assert_eq!(s.world.get::<enterprise_core::cargo::Shipments>(n).unwrap().empties, 8, "the new town's to ship in");
+}

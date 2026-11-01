@@ -24,7 +24,7 @@ pub fn register(schedule: &mut Schedule) {
 /// while unfilled.
 #[allow(clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut market: ResMut<Market>,
-        (orders, mint): (Res<crate::orders::Orders>, Res<crate::mint::Mint>),
+        (orders, mint, routes): (Res<crate::orders::Orders>, Res<crate::mint::Mint>, Query<&Route>),
         towns: Query<(&Town, &Stock, &People, &Trades, &Money, Option<&Roster>, Option<&crate::farms::Farm>,
             Option<&crate::cargo::Shipments>)>) {
     if !content.dials.market {
@@ -33,6 +33,9 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
     let today = clock.now / content.day_ticks.max(1);
     let n = content.goods.len();
     let rate = mint.rate(clock.now, content.day_ticks);
+    let crate_good = content.good(crate::cargo::CRATE).filter(|_| crate::cargo::local_crates(&content));
+    // The towns that ship: a road leaves them.
+    let ships: std::collections::BTreeSet<usize> = routes.iter().map(|r| r.from_id).collect();
     for &e in &order.0 {
         let Ok((town, stock, people, trades, money, roster, farm, shipments)) = towns.get(e) else { continue };
         let t = town.id;
@@ -61,11 +64,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
         // A player's buying vendor at its shop is a bid of the town's (`docs/markets-plan.md` 7): at its price, for what
         // its purse pays (and its vendor has room for), once the town has a Merchant to pass the goods on.
         let mut direct = direct;
-        // Its crates, where it has no Lumberjack to make them (John: "local regional crate trade"): as many as it keeps
-        // empty to ship with, at up to `crate_ceiling` times their worth.
-        if let (Some(c), Some(ship)) = (content.good(crate::cargo::CRATE).filter(|_| crate::cargo::local_crates(&content)), shipments) {
+        // Its crates, where it ships and has no Lumberjack to make them (John: "local regional crate trade"): as many as
+        // it keeps empty to ship with, at up to `crate_ceiling` times their worth.
+        let mut no_crates = false;
+        if let (Some(c), Some(ship)) = (crate_good, shipments) {
             let lumberjack = content.trade(crate::roster::LUMBERJACK);
-            if roster.is_none_or(|r| crate::kit::at_home(r, lumberjack).next().is_none()) {
+            if ships.contains(&t) && roster.is_none_or(|r| crate::kit::at_home(r, lumberjack).next().is_none()) {
+                no_crates = ship.empties == 0 && stock.0[c] < 1.0;
                 let want = (content.dials.empties_kept as f64 - ship.empties as f64 - stock.0[c]).max(0.0).ceil();
                 direct[c] = Use { want, ceiling: content.goods[c].value * content.dials.crate_ceiling };
             }
@@ -92,6 +97,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
             // Filled since its last review (or today): it holds; else it creeps.
             let filled = q.filled.is_some_and(|d| last.is_none_or(|l| d >= l));
             q.bid = rebid(use_, q.bid, filled, content.goods[g].value, creep);
+            // With none to ship in, it bids its ceiling at once, not creeping up from a bargain (seed 1717's Pyrewood bid
+            // from day 2 and was first sold crates on day 15, as its bid crept past their worth and the haul).
+            if no_crates && Some(g) == crate_good && q.bid > 0.0 {
+                q.bid = use_.ceiling;
+            }
             q.want = if q.bid > 0.0 { use_.want } else { 0.0 };
             q.ceiling = use_.ceiling;
         }

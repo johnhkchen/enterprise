@@ -98,8 +98,12 @@ impl Society {
         self.world.entity_mut(e).insert(crate::herds::Herds { last: now, ..Default::default() });
         // And its lockers (empty until it keeps a roster), so taking a roster never moves it to another archetype.
         self.world.entity_mut(e).insert(crate::lockers::Lockers::default());
-        // And its crates and paperwork (`cargo.rs`), none yet.
-        self.world.entity_mut(e).insert((crate::cargo::Shipments::default(), crate::cargo::Paperwork::default()));
+        // And its crates and paperwork (`cargo.rs`): a village's own crates to ship in, where its crates are made at home
+        // (`cargo::local_crates`), till its Lumberjacks or a neighbour's wagons bring more (seed 1717's first towns packed
+        // 80 packages loose in their first two weeks with none); else none yet.
+        let empties = if crate::cargo::local_crates(self.content()) { self.content().dials.empties_kept } else { 0 };
+        self.world.entity_mut(e).insert((crate::cargo::Shipments { empties, ..Default::default() },
+            crate::cargo::Paperwork::default()));
         // And its public works (`works.rs`), none yet; its storehouse and forwarder (`freight.rs`), inert until it's a
         // hub; and its kit (`kit.rs`), none yet and worked from now on: in the works' insert, as an insert of its own
         // moved the towns' archetypes and the order queries meet them.

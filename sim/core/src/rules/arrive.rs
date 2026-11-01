@@ -165,6 +165,12 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             } else if comfort.is_some() {
                 // Out of the money it doesn't need for wages and its trading capital, within its budget.
                 left_for(&content, now, free_money, &mut budget, days).min((money.0 - far_reserve).at_least_zero())
+            } else if bid.is_some() && content.goods[g].name.rsplit(':').next() == Some(crate::cargo::CRATE)
+                    && crate::cargo::local_crates(&content) {
+                // Crates it bids for are what it ships in, and what it ships earns its wages: bought out of any money it
+                // has, its wages' and the day's budget too (seed 1717's Pyrewood, its wages more than its 16 emeralds, bid
+                // for them from day 2 to day 30 while wagon after wagon brought them). Its keep of them is a few emeralds.
+                money.0.at_least_zero()
             } else {
                 // Never the Farmers' wages nor the guards' pay (`sell` 2477).
                 left_for(&content, now, free_money, &mut budget, days).min((money.0 - payroll).at_least_zero())

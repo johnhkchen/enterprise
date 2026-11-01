@@ -1366,6 +1366,16 @@ mod's), but no road ever chose it. Then: build them first.
   and as many again where a town down its roads bids more for them than they're worth; its crates join its empties.
   A town with no Lumberjack bids for them on the market, as many as it keeps, at up to twice their worth
   (`crate_ceiling`), for wagons from a town that makes them to bring.
+- **Crates where they're needed (John, 2026-11-02: "see whether crates as imports can be improved in terms of their
+  reliability appearing in towns that need them").** Counted (`Shipments::short`, the whys' "crate | short: packed
+  loose"), seed 1717's 30 days packed 58 packages loose, all by day 14 (Pyrewood 38, Corin's Crossing 20). Pyrewood bid
+  from day 2 and was sold crates first on day 19, and when wagons brought them its wages took every emerald. Now: a
+  village starts with its own crates (`empties_kept`; a town founded on open ground has only those its settlers carry:
+  half their home's empties); only a town a road leaves bids for them (eleven roadless villages bid for crates they'd
+  never ship in), at its ceiling at once while it has none; and it pays for them out of any money it has, its wages' and
+  the day's budget too (a full keep of them is a few emeralds, and what it ships earns its wages). Seed 1717's 30 days:
+  none packed loose; Pyrewood bought its crates of its neighbour's wagons on days 18, 27 and 28; the first five towns
+  as before (to a villager), the settlers' villages as their parties went.
 - **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
   any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
   the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still

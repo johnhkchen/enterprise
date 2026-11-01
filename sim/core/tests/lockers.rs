@@ -466,24 +466,33 @@ fn a_town_buys_its_crates_of_its_lumberjack() {
     let t = s.add_town("Sawpit", 100.0);
     s.set_people(t, 4.0, 4.0, 20.0);
     s.set_roster(t, &[("lumberjack", 1), ("merchant", 1), ("none", 1), ("none", 1)]);
-    s.advance(2 * DAY);
     let e = s.world.resource::<Towns>().0[t];
+    assert_eq!(s.world.get::<enterprise_core::cargo::Shipments>(e).unwrap().empties, kept, "a village's own crates");
+    s.world.get_mut::<enterprise_core::cargo::Shipments>(e).unwrap().empties = 0; // (shipped and gone)
+    s.advance(2 * DAY);
     let empties = s.world.get::<enterprise_core::cargo::Shipments>(e).unwrap().empties;
     let paid: f64 = s.cash_book(t, 400).iter().filter(|(_, w, _)| w == "lockers: bought crate").map(|(_, _, e)| -e.to_f64()).sum();
     assert_eq!(empties, kept, "as many as it keeps, into its empties");
     assert!(paid > 0.0 && paid <= (kept as f64 / 6.0).ceil() + 1.0, "six to the emerald: {paid}");
 }
 
-/// A town with no Lumberjack bids for crates on the market, at up to `crate_ceiling` times their worth, for wagons from
-/// a town that makes them to bring.
+/// A town that ships with no Lumberjack bids for crates on the market, at `crate_ceiling` times their worth at once while
+/// it has none, for wagons from a town that makes them to bring; one with no road out bids for none.
 #[test]
-fn a_town_with_no_lumberjack_bids_for_crates() {
+fn a_town_that_ships_with_no_lumberjack_bids_for_crates() {
     let c = Content::new(vec![Good::new("crate", 1.0 / 6.0, 16), Good::new("oak_log", 0.125, 64)], DAY);
     let mut s = Society::new(c);
     let t = s.add_town("Bare Hill", 100.0);
-    s.set_people(t, 4.0, 4.0, 20.0);
-    s.set_roster(t, &[("merchant", 1), ("none", 1)]);
-    s.advance(2 * DAY);
+    let far = s.add_town("Far Hill", 100.0);
+    for town in [t, far] {
+        s.set_people(town, 4.0, 4.0, 20.0);
+        s.set_roster(town, &[("merchant", 1), ("none", 1)]);
+    }
+    s.add_route(t, far, 1.0, 0.5, 4.0);
+    let e = s.world.resource::<Towns>().0[t];
+    s.world.get_mut::<enterprise_core::cargo::Shipments>(e).unwrap().empties = 0; // (its own shipped and gone)
+    s.advance(DAY);
     let (each, want) = s.bid(t, 0).expect("it bids for crates");
-    assert!(each > 0.0 && each <= 2.0 / 6.0 + 1e-9 && want >= 1.0, "{each} each for {want}");
+    assert!((each - 2.0 / 6.0).abs() < 1e-9 && want >= 1.0, "its ceiling at once: {each} each for {want}");
+    assert!(s.bid(far, 0).is_none(), "no road out of Far Hill: no bid");
 }

@@ -117,7 +117,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>,
-            Option<&mut crate::lockers::Lockers>, Option<&mut crate::farms::Deposits>)>) {
+            Option<&mut crate::lockers::Lockers>, Option<&mut crate::farms::Deposits>, Option<&mut crate::cargo::Shipments>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     let forced = settlers.force;
@@ -131,7 +131,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
     let (min, max) = (d.min_hexes as i32, d.max_hexes as i32);
     let roads: std::collections::BTreeSet<usize> = routes.iter().flat_map(|r| [r.from_id, r.to_id]).collect();
     let sites: Vec<Site> = towns.iter()
-        .filter_map(|(town, _, _, _, _, _, roster, _, _)| {
+        .filter_map(|(town, _, _, _, _, _, roster, _, _, _)| {
             let village = roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id);
             town.hex.map(|hex| Site { id: town.id, hex, village,
                 structure: village || settlers.villages.contains(&town.id) })
@@ -142,13 +142,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
     // The markets the world has, and those its parties will make: at `max_towns`, no party sets out (John, 2026-10-31:
     // "close to a town limit for a server that aims to keep resource footprint low"; seed 1717's 37 towns at day 240
     // ran a server out of a 6 GB heap).
-    let markets = towns.iter().filter(|(_, _, _, _, _, _, roster, _, _)| roster.is_some_and(|r| r.merchant.is_some()))
+    let markets = towns.iter().filter(|(_, _, _, _, _, _, roster, _, _, _)| roster.is_some_and(|r| r.merchant.is_some()))
         .count();
     for &e in order.0.iter() {
         if markets + settlers.parties.len() >= d.max_towns as usize {
             break;
         }
-        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers, deposits)) = towns.get_mut(e)
+        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers, deposits, shipments)) = towns.get_mut(e)
             else { continue };
         let t = town.id;
         if forced.is_some_and(|f| f != t) {
@@ -278,12 +278,19 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
             ledger.used[b] += n;
             n
         });
+        // Half its empty crates go with them, for the new town's first shipments (its crates are made at home or bought of
+        // a neighbour: a new town has neither at first).
+        let crates = shipments.map_or(0, |mut s| {
+            let n = s.empties / 2;
+            s.empties -= n;
+            n
+        });
         people.villagers = roster.residents() as f64;
         let id = settlers.next_id;
         settlers.next_id += 1;
         let arrives = now + travel_ticks(path.blocks());
         settlers.parties.push(Party { id, from: t, kind, target: target_hex, village: target, hands: party_hands,
-            capital: carried, bread, departs: now, arrives });
+            capital: carried, bread, crates, departs: now, arrives });
         settlers.last_sent.insert(t, now);
     }
 }

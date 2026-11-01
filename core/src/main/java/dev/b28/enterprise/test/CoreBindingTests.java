@@ -948,9 +948,7 @@ public final class CoreBindingTests {
         host.hands().join(far, farMerchant);
         long bread = good(host, "minecraft:bread");
         Response r = host.apply(List.of(new Input.Deliver(hub, bread, 128), new Input.Deliver(far, bread, 128),
-                new Input.Deliver(far, good(host, "minecraft:book"), 64), new Input.Pay(hub, 50_000), new Input.Pay(far, 50_000),
-                // (Their crates to ship with: made at home or bought of a neighbour, none abroad.)
-                new Input.Deliver(hub, good(host, "enterprise:crate"), 16), new Input.Deliver(far, good(host, "enterprise:crate"), 16)));
+                new Input.Deliver(far, good(host, "minecraft:book"), 64), new Input.Pay(hub, 50_000), new Input.Pay(far, 50_000)));
         helper.assertTrue(r instanceof Response.Done, "the markets weren't stocked: " + r);
         return new Wagons(hub, far, merchant, librarian, farMerchant);
     }
@@ -1300,9 +1298,7 @@ public final class CoreBindingTests {
         long b = host.stock().found(level, helper.absolutePos(B_DESK), "Bexley");
         Response r = host.apply(List.of(new Input.SetDial("pallet_slots", java.util.Optional.of(27.0)),
                 new Input.SetDial("pallet_weight", java.util.Optional.of(27.0)), new Input.Pay(a, 20_000),
-                new Input.Deliver(a, good(host, "minecraft:wheat"), 1200),
-                // (Its crates to ship with: made at home or bought of a neighbour, none abroad.)
-                new Input.Deliver(a, good(host, "enterprise:crate"), 16)));
+                new Input.Deliver(a, good(host, "minecraft:wheat"), 1200)));
         helper.assertTrue(r instanceof Response.Done, "the towns weren't set up: " + r);
         return new TwoTowns(a, b, chestAt(helper, DESK.east()), chestAt(helper, B_DESK.south()));
     }
