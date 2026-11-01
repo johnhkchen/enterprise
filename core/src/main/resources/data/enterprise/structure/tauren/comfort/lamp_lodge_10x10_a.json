@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:tauren/comfort/lamp_lodge_10x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "comfort",
+  "slot": "comfort:furnishings",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        7
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

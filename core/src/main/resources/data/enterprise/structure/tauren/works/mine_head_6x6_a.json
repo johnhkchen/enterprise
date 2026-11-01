@@ -1,0 +1,47 @@
+{
+  "id": "enterprise:tauren/works/mine_head_6x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "works",
+  "slot": "mine:head",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 26,
+  "ground": 10,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        11,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "notes": "sunk: layer 10 is the surface (the ground's level); layers below it are the cut"
+}
