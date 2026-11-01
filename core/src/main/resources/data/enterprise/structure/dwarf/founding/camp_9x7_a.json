@@ -1,0 +1,32 @@
+{
+  "id": "enterprise:dwarf/founding/camp_9x7_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "part",
+  "slot": "prop:founding",
+  "tags": [
+    "founding",
+    "camp",
+    "temporary",
+    "lamp"
+  ],
+  "place": "a plot at the main street's end; cleared when the first house has its beds (never counted as beds)",
+  "palette": "deepforge",
+  "footprint": [
+    9,
+    7
+  ],
+  "height": 9,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

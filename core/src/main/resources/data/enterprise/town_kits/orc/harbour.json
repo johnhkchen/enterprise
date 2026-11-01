@@ -484,6 +484,40 @@
       "moor": "alongside a timber quay or wharf, under its crane"
     }
   ],
-  "buildings": [],
-  "buildings_note": "this race's harbour buildings (customs house, warehouses, fish market) are a later batch: lay none until then"
+  "buildings": [
+    {
+      "id": "storehouse_14x10_a",
+      "part": "enterprise:orc/hall/storehouse_14x10_a",
+      "slot": "harbour:warehouse",
+      "use": [
+        "sea"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "footprint": [
+        14,
+        10
+      ],
+      "faces": "the quay (front, south)"
+    },
+    {
+      "id": "tally_house_14x10_a",
+      "part": "enterprise:orc/hall/tally_house_14x10_a",
+      "slot": "harbour:customs_house",
+      "use": [
+        "sea"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "footprint": [
+        14,
+        10
+      ],
+      "faces": "the quay (front, south)"
+    }
+  ]
 }

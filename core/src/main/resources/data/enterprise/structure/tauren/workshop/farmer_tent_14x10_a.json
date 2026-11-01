@@ -1,0 +1,97 @@
+{
+  "id": "enterprise:tauren/workshop/farmer_tent_14x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        3,
+        3,
+        4
+      ],
+      "foot": [
+        3,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        2
+      ],
+      "foot": [
+        4,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        12,
+        3,
+        9
+      ],
+      "block": "minecraft:composter"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:farmer"
+}

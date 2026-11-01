@@ -1,0 +1,87 @@
+{
+  "id": "enterprise:goblin/workshop/workshop_leatherworker_12x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    18,
+    15
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        12,
+        7,
+        4
+      ],
+      "foot": [
+        12,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        9,
+        7,
+        4
+      ],
+      "foot": [
+        9,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        4,
+        7,
+        4
+      ],
+      "foot": [
+        4,
+        7,
+        5
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        12,
+        3,
+        10
+      ],
+      "block": "minecraft:water_cauldron"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:leatherworker"
+}

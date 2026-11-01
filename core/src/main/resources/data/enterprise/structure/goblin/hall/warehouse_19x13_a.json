@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:goblin/hall/warehouse_19x13_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "hall",
+  "slot": "harbour:warehouse",
+  "use": [
+    "sea"
+  ],
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    19,
+    13
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        9,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

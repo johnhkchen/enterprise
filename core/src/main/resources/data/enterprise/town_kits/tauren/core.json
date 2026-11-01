@@ -161,6 +161,82 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "farmer_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/farmer_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:farmer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "lore_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/lore_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:librarian",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:lectern"
+      ]
+    },
+    {
+      "id": "carver_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/carver_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:mason",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "fisher_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/fisher_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:fisherman",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:barrel"
+      ]
     }
   ],
   "held": [],
