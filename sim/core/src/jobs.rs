@@ -440,12 +440,20 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         place.roster.hands[hand].xp = 1;
         return Some(Hired { hand, trade, retrained: false });
     }
-    // Out of its own money, the Accountant's say; on its households' savings, theirs.
+    // Out of its own money, the Accountant's say; on its households' savings, theirs. What today's budget hasn't left of
+    // it the savings lend: a town of 10 emeralds and no trade, its budget half of them, never had a stall's 6 to hand
+    // (seed 1717's Tarren Mill, 9 jobless for 23 days, earning nothing to save up the rest).
     if cash >= stall {
         let free = crate::rules::free(content, place.trades, &Money(*place.money), bills, place.town, now);
+        let own = Accountant::left(content, now, free, place.budget).min(stall).at_least_zero();
+        let lent = stall - own;
+        let short = lent > on_call(content, *place.purse, place.deposits.owed);
         if !Accountant::approve(content, books.book, place.town, now, free, place.budget, Reason::Other("stall".into()),
-                stall) {
+                if short { stall } else { own }) || short {
             return None;
+        }
+        if lent > crate::fixed::Fixed::ZERO {
+            borrow(content, books.ledger, books.book, place.town, place.money, place.purse, place.deposits, lent, now);
         }
     } else {
         borrow(content, books.ledger, books.book, place.town, place.money, place.purse, place.deposits, stall - cash, now);

@@ -1279,6 +1279,17 @@ mod's), but no road ever chose it. Then: build them first.
     the herd towns among the gladdest (the first 2.71, Hillsbrad 2.76), but the network grew otherwise from day 10 (209
     villagers to 180, two of its larger towns at -1.37 and 0.51 with no herd to speak of): the larger towns'
     furnishings 0.89 to 0.76, clothing 0.88 to 0.80, mood 1.67 to 1.29, the towns' money 171 to 120.
+  - **Fixed: what the day's budget leaves of a stall, the households' savings lend (John, 2026-11-01: "Town 11").** The
+    grazing run's Tarren Mill (11 villagers, mood -1.37) wasn't grazing's: settled with 10 emeralds (the run before's,
+    14.5), its Accountant allowed half of them a day, short of a stall's 6, and with no trade it earned nothing to save
+    the rest; 9 of its villagers were idle from day 34 to 56, every comfort unmet, until fees took it under 6 and it
+    borrowed its households' savings as a poorer town does. Now a town with the stall's money spends what the day's
+    budget has left and borrows the rest (`jobs::employ`, its test). The bid study, from day 1 (the rule acts from the
+    first hire), one run: 24 towns, 209 villagers, mood 1.33, the towns' money 130; the larger towns' clothing 0.92,
+    furnishings 0.62, treats 0.92, reading 0.56. Its idlest towns are poor, not stuck (1 to 3 emeralds, stalls bought
+    as they come by them). And a town fences a pasture only with its price in the treasury: the full sweep's seed 57
+    fenced on 0.31 the day it borrowed its savings for a stall and its lockers spent them, its Accountant's budget set
+    at the day's first look (`rules::farms`; the study ran before it, a guard that seldom bites).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

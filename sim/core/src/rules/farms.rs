@@ -385,8 +385,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             let most = crate::herds::pastures_most(&content, roster);
             let full = herds.pastures > 0 && herds.pastures < most && animals >= 0.9 * herds.capacity(&content);
             let fence = Fixed::ceil(FIELD_EMERALDS);
-            if fences(animals, herds.pastures, full, herds.capacity(&content), content.dials.pasture_animals as f64, money.0,
-                    build_reserve(&content, trades, Some(farm)), fence)
+            // Never more than the treasury holds: the day's budget is set at its first look, and a town that borrowed
+            // its savings that morning may have spent them since (a random world's town fenced on 0.31).
+            if money.0 >= fence
+                && fences(animals, herds.pastures, full, herds.capacity(&content), content.dials.pasture_animals as f64,
+                    money.0, build_reserve(&content, trades, Some(farm)), fence)
                 && Accountant::approve(&content, &mut book, t, now, super::free(&content, trades, &money, &bills, t, now),
                     &mut budget, Reason::Other("a pasture".into()), fence) {
                 herds.pastures += 1;

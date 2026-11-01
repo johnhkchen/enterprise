@@ -239,6 +239,18 @@ fn short_of_coin_the_town_borrows_its_households_savings() {
 }
 
 #[test]
+fn what_the_days_budget_leaves_of_a_stall_the_savings_lend() {
+    // 10 emeralds, its budget 5 of them: short of 6 every day, with no trade to earn the rest (Tarren Mill).
+    let (mut s, t) = town(10.0, 72.0);
+    s.post(Account::Outside, Account::Households(t), 10.0, Reason::PaidIn);
+    let start = s.totals();
+    assert!(s.review_jobs(t).is_some(), "the budget's 5, and 1 lent");
+    assert_eq!(s.town(t).money, 5.0, "10 and 1 lent, less the stall");
+    assert_eq!(s.deposits(t), 1.0, "owed the households");
+    s.conserved(&start).unwrap();
+}
+
+#[test]
 fn a_trade_a_contract_needs_comes_first() {
     let (mut s, t) = town(20.0, 72.0);
     s.set_needed(t, &["fletcher"]);
