@@ -1,0 +1,107 @@
+{
+  "id": "enterprise:orc/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "farmstead",
+  "palette": "base",
+  "footprint": [
+    19,
+    18
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        13,
+        3,
+        17
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        12,
+        3,
+        17
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        16,
+        3,
+        13
+      ],
+      "foot": [
+        15,
+        3,
+        13
+      ]
+    },
+    {
+      "head": [
+        16,
+        3,
+        10
+      ],
+      "foot": [
+        15,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        9,
+        3,
+        13
+      ],
+      "foot": [
+        10,
+        3,
+        13
+      ]
+    },
+    {
+      "head": [
+        9,
+        3,
+        10
+      ],
+      "foot": [
+        10,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        14,
+        3,
+        8
+      ],
+      "foot": [
+        14,
+        3,
+        9
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}

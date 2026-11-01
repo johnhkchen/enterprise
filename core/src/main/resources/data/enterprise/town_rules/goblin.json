@@ -1,6 +1,6 @@
 {
   "kingdom": "goblin",
-  "rev": 2,
+  "rev": 3,
   "about": "Goblin trade-port: town rules for a kit race. Every building is a whole delivered part from town_kits/goblin/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/goblin.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "goblin/core",
   "tiers": {
@@ -163,6 +163,42 @@
           15
         ],
         "beds": 2
+      },
+      {
+        "slot": "workshop:cleric",
+        "asset": "enterprise:goblin/workshop/workshop_cleric_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 4
+      },
+      {
+        "slot": "workshop:fletcher",
+        "asset": "enterprise:goblin/workshop/workshop_fletcher_12x9_a",
+        "footprint": [
+          18,
+          15
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:butcher",
+        "asset": "enterprise:goblin/workshop/workshop_butcher_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:shepherd",
+        "asset": "enterprise:goblin/workshop/workshop_shepherd_12x9_a",
+        "footprint": [
+          18,
+          15
+        ],
+        "beds": 4
       }
     ],
     "on": "plots fronting an avenue or the forum, nearest the forum first"
@@ -239,6 +275,23 @@
   "earthworks": {
     "set": "goblin/earthworks",
     "about": "retaining walls, steps and cut faces on Lordaeron's earthworks contract"
+  },
+  "farmstead": {
+    "asset": "enterprise:goblin/farmstead/farmstead_19x18_a",
+    "footprint": [
+      19,
+      18
+    ],
+    "beds": 4,
+    "at": "the head of a holding's first field, as Lordaeron's farmstead"
+  },
+  "fields": {
+    "set": "goblin/fields",
+    "about": "crop plots, edges and corners on Lordaeron's fields contract, in this race's materials"
+  },
+  "harbour": {
+    "set": "goblin/harbour",
+    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; no harbour buildings yet"
   },
   "founding": {
     "set": "goblin/founding",
