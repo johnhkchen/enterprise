@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:tauren/gate_quarter/roost_lodge_6x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "gate_quarter",
+  "slot": "post_office",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 19,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

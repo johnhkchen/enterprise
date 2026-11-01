@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:tauren/gate_quarter/toll_gate_10x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "gate_quarter",
+  "slot": "toll_house",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    2
+  ],
+  "footprint": [
+    10,
+    6
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
