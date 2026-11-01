@@ -135,6 +135,43 @@ pub fn keeps(content: &Content, roster: &Roster, people: &People, stock: &Stock)
     keep
 }
 
+/// What the workshop's comforts dearer than `gain_floor` (what they earn an emerald of inputs, [`gain`]) hold back of
+/// their inputs, by good: each its trades can make and the town is short of, short of one input alone, holds what the
+/// town has of that one toward its next batch. A Librarian binding books (`services.rs`) leaves the hides the
+/// Leatherworkers' boots are waiting on.
+pub fn held_back(content: &Content, roster: &Roster, people: &People, stock: &Stock, gain_floor: f64) -> Vec<f64> {
+    let mut held: Vec<f64> = vec![0.0; content.goods.len()];
+    for c in content.conversions.iter().filter(|c| can_do(c, roster)) {
+        let Some(kind) = content.goods[c.output].comfort else { continue };
+        if gain(content, c, content.goods[c.output].value) <= gain_floor
+            || comfort_wanted(content, people, stock, kind, c.output) <= 0.0 {
+            continue;
+        }
+        let lacking: Vec<(GoodId, f64)> = c.inputs.iter().copied().filter(|&(g, m)| stock.0[g] < m).collect();
+        if let [(g, m)] = lacking[..] {
+            held[g] = held[g].max(stock.0[g].clamp(0.0, m));
+        }
+    }
+    held
+}
+
+/// Of each kind of comfort, the emeralds' worth the town would buy in of its villagers' selling trades (`lockers.rs`):
+/// its par less what it holds of the kind and what its workshop can make of the inputs it holds, as far as its
+/// households' purse goes, shared among the kinds in order.
+pub fn bought_in(content: &Content, roster: &Roster, people: &People, stock: &Stock) -> Vec<f64> {
+    let par = comfort_par(content, people);
+    let mut purse = people.purse.to_f64().max(0.0);
+    (0..content.comforts.len()).map(|kind| {
+        let makes: f64 = content.conversions.iter().filter(|c| can_do(c, roster) && content.goods[c.output].comfort == Some(kind))
+            .map(|c| c.inputs.iter().map(|&(g, m)| whole(stock.0[g] / m)).fold(f64::INFINITY, f64::min).min(64.0)
+                * c.out * content.goods[c.output].value)
+            .sum();
+        let short = (par - comfort_held(content, stock, kind) - makes).max(0.0).min(purse);
+        purse -= short;
+        short
+    }).collect()
+}
+
 /// How many more of a comfort the town wants: its par less what it holds of the kind, in items (`comfortWanted`).
 pub fn comfort_wanted(content: &Content, people: &People, stock: &Stock, kind: usize, output: GoodId) -> f64 {
     let short = comfort_par(content, people) - comfort_held(content, stock, kind);
@@ -215,14 +252,30 @@ pub fn convert(content: &Content, roster: &Roster, people: &People, stock: &mut 
     // Most gain first; ties keep the list's order (the sort is stable).
     ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
     let mut made = 0.0;
+    // What a dearer conversion short of a whole batch holds back of its inputs from those after it: seed 1717's cows'
+    // leather came a hide or two a day, and the Librarians' books, a hide each, took every one before the
+    // Leatherworkers' boots, four hides a pair, had four: clothing met 0 in every run at 32, 40 and 48 plots a level.
+    let mut held = vec![0.0; content.goods.len()];
     for (p, _) in ranked {
         let c = &content.conversions[p.conversion];
         // Not the crop set aside for its forward sales: the bakers leave the wheat it owes.
         let (first, n) = c.inputs[0];
         let kept = hooks.map_or(0.0, |h| h.aside_of(first));
         let free = stock.0[first] - kept;
-        let w = if kept <= 0.0 { p.wanted } else { p.wanted.min(whole(free.max(0.0) / n) * c.out) };
-        made += run(c, w, stock, ledger);
+        let mut w = if kept <= 0.0 { p.wanted } else { p.wanted.min(whole(free.max(0.0) / n) * c.out) };
+        for &(g, m) in &c.inputs {
+            w = w.min(whole((stock.0[g] - held[g]).max(0.0) / m) * c.out);
+        }
+        let ran = run(c, w, stock, ledger);
+        made += ran;
+        // Still wanting more and short of one input alone, it holds what it has of that one toward its next batch (not
+        // what a batch it couldn't make anyway takes: the cookies' wheat with no cocoa beans).
+        let short = (p.wanted - ran) / c.out;
+        let lacking: Vec<(GoodId, f64)> = c.inputs.iter().copied().filter(|&(g, m)| stock.0[g] - held[g] < m).collect();
+        if short > 1e-9 && ran <= 0.0 && lacking.len() == 1 {
+            let (g, m) = lacking[0];
+            held[g] = (held[g] + short.ceil() * m).min(stock.0[g].max(0.0));
+        }
     }
     made
 }

@@ -121,6 +121,7 @@ pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mu
 /// Less its grief for its soldiers fallen (`army.rs`).
 pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
     people.comfort_met.iter().sum::<f64>()
+        + people.comfort_fine.iter().sum::<f64>() // the finer tier's lift (`State::People::fine`)
         + works.map_or(0.0, |w| w.mood())
         + d.variety_mood * (people.variety.min(d.variety_most) - 1.0).max(0.0) // its meals' variety
         + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
@@ -158,6 +159,17 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.comfort_met = vec![0.0; k];
             people.comfort_owed = vec![0.0; k];
         }
+        if people.comfort_fine.len() != k {
+            people.comfort_fine = vec![0.0; k];
+        }
+        if people.fine_banked.len() != k {
+            people.fine_banked = vec![0.0; k];
+        }
+        // (The finer pieces the warehouse still holds: its wagons and lockers move them as plain ones.)
+        for (&g, n) in people.fine.iter_mut() {
+            *n = n.min(stock.0.get(g).copied().unwrap_or(0.0).max(0.0));
+        }
+        people.fine.retain(|_, n| *n > 0.0);
         // Wages: a share of the worth of what the town makes (rounded down to the thousandth: a share paid out), as far
         // as its money goes. The part of a thousandth rounded off isn't carried to the next look (the comforts below,
         // rounded up, likewise): at most a thousandth a look each way stays with the treasury. And the same share of
@@ -190,6 +202,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             let mut goods: Vec<usize> = (0..content.goods.len()).filter(|&i| content.goods[i].comfort == Some(kind)).collect();
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
             let mut used = 0.0;
+            let mut finer = 0.0;
             for i in goods {
                 if owed <= 0.0 {
                     break;
@@ -199,8 +212,19 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 stock.0[i] -= n;
                 ledger.used[i] += n;
                 owed -= n * value;
-                used += n * value;
+                // The finer pieces first: each worth `fine_quality` plain ones, and paid for so.
+                let f = people.fine.get(&i).copied().unwrap_or(0.0).min(n);
+                if f > 0.0 {
+                    *people.fine.get_mut(&i).unwrap() -= f;
+                    finer += f * value * (d.fine_quality - 1.0).max(0.0);
+                }
+                used += n * value + f * value * (d.fine_quality - 1.0).max(0.0);
             }
+            // The finer pieces' comfort is banked as they're put on and taken as their days pass, a day's ration at most.
+            people.fine_banked[kind] += finer;
+            let lift = people.fine_banked[kind].min(due);
+            people.fine_banked[kind] -= lift;
+            people.comfort_fine[kind] = if due > 0.0 { lift / due } else { 0.0 };
             // Their worth rounded up to the thousandth (a price the households pay), as far as their purse goes.
             let pays = Fixed::ceil(used).min(people.purse.at_least_zero());
             post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,

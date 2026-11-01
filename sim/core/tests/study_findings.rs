@@ -195,14 +195,14 @@ fn a_load_is_weighed_against_its_road_food_at_its_goods_worth() {
 /// Crops at their locker prices, bread, cookies (a treat) the Farmer's workshop makes of wheat and cane, and paper
 /// (the Librarian's and Cartographer's trades).
 fn farm_content() -> Content {
-    Content::new(vec![
+    mods_pace(Content::new(vec![
         Good::new("wheat", 1.0 / 20.0, 64).crop(),
         Good::new("carrot", 1.0 / 22.0, 64).crop().food(3.0),
         Good::new("sugar_cane", 1.0 / 24.0, 64).crop(),
         Good::new("bread", 1.0 / 6.0, 64).food(5.0),
         Good::new("cookie", 1.0 / 18.0, 64).comfort(0),
         Good::new("paper", 1.0 / 24.0, 64),
-    ], DAY)
+    ], DAY))
 }
 const F_WHEAT: usize = 0;
 const F_CARROT: usize = 1;
@@ -368,4 +368,12 @@ fn the_hosts_reads_a_routes_tolls_and_a_towns_locker_trades() {
     s.advance(2 * DAY + LOOK); // a whole day's two restocks since its clock started (`LockerCatchUp`)
     assert!(s.locker_trades(DEST) >= 8, "the Librarian's paper trades: {}", s.locker_trades(DEST));
     assert_eq!(s.locker_trades(HUB), 0, "no roster, no lockers");
+}
+
+
+/// The mod's Farmers' pace (`Territory.PLOTS_PER_FARMER_LEVEL`, 32 plots a level), which these tests pin; the core's
+/// default is the dial's 40.
+fn mods_pace(mut c: Content) -> Content {
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL;
+    c
 }

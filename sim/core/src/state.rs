@@ -138,6 +138,19 @@ pub struct People {
     /// Each food's tab of its meals (`people::dine`), points by good.
     #[serde(default)]
     pub meal_owed: Vec<f64>,
+    /// Of each comfort good in its warehouse, how many are of the finer tier: dyed and enchanted, bought of its own
+    /// villagers' selling trades (`lockers.rs`), each worth `fine_quality` plain ones of comfort (`docs/markets-plan.md`
+    /// 6: "each quality tier is its own item"). Never more than the warehouse holds.
+    #[serde(default)]
+    pub fine: std::collections::BTreeMap<usize, f64>,
+    /// What the finer tier added to each kind of comfort last time, beyond a plain day's (up to a second one): the
+    /// mood's, not `comfort_met`'s, which stays the share of the ration met.
+    #[serde(default)]
+    pub comfort_fine: Vec<f64>,
+    /// The finer pieces' comfort beyond plain ones', banked by kind in emeralds' worth as they're put on and taken as
+    /// the days they cover pass (a pair of boots is days of clothing).
+    #[serde(default)]
+    pub fine_banked: Vec<f64>,
 }
 
 /// What a town holds of each good.

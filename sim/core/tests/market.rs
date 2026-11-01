@@ -95,8 +95,9 @@ fn a_good_worth_only_its_worth_to_a_town_is_bargained_for_not_bid() {
 
 #[test]
 fn a_farm_tends_cane_for_paper_bid_for_down_the_road_before_wheat_at_its_worth() {
-    let c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
+    let mut c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
         Good::new("paper", 1.0 / 24.0, 64)], DAY);
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL; // the mod's 32, as it pins
     let (wheat, cane, paper) = (0, 1, 2);
     let plots: BTreeMap<usize, u32> = [(wheat, 64), (cane, 64)].into();
     let mut wants = Wants { demand: [(wheat, 100.0)].into(), ..Default::default() };
@@ -117,8 +118,9 @@ fn a_farm_tends_cane_for_paper_bid_for_down_the_road_before_wheat_at_its_worth()
 fn on_the_sand_a_new_field_is_cane_where_on_loam_it_is_wheat_and_fields_in_the_ground_grow_alike() {
     use enterprise_core::farms::choose;
     use enterprise_core::map::Land;
-    let c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
+    let mut c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
         Good::new("paper", 1.0 / 24.0, 64)], DAY);
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL; // the mod's 32, as it pins
     let (wheat, cane, paper) = (0, 1, 2);
     // Wheat its people buy, 16 a day at its worth, and paper bid for down the road at a little over the cane's worth.
     let mut wants = Wants { demand: [(wheat, 16.0)].into(), draws: [(paper, (16.0, 0.05))].into(), ..Default::default() };

@@ -451,7 +451,9 @@ public final class CoreBindingTests {
             helper.assertTrue(hands.of(farmer.getUUID()) != null, "five days unseen and the Farmer has left");
             advance(host, t + 11 * DAY);
             people.countNow(level, town, bell, CENSUS_RADIUS);
-            helper.assertTrue(hands.of(farmer.getUUID()) == null && hands.roster(town).hands().size() == 3,
+            // (Of the villagers: a child the core has born to it since is a hand with none yet.)
+            helper.assertTrue(hands.of(farmer.getUUID()) == null
+                            && hands.roster(town).hands().stream().filter(h -> h.villager() != null).count() == 3,
                     "eleven days unseen and the Farmer is still a hand: " + hands.roster(town).hands());
             helper.assertTrue(hands.of(stray.getUUID()) != null, "a villager nobody could look for has left");
         } finally {

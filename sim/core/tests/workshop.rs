@@ -340,3 +340,27 @@ fn a_butcher_cooks_the_towns_beef_while_its_food_is_short() {
     assert_eq!(made(&s, cooked), (2.0 * FOOD_PAR_POINTS / 8.0).floor(), "up to twice the food par, in 8-point steaks");
     assert_eq!(s.town(t).stock[beef], 300.0 - made(&s, cooked), "a beef a steak");
 }
+
+/// A dearer conversion short of one input alone holds what the town has of it for its next batch: seed 1717's cows' leather
+/// came a hide or two a day, and the Librarians' books (a hide each) took every one before the Leatherworkers' boots
+/// (four a pair) had four: clothing met 0 at 32, 40 and 48 plots a Farmer level.
+#[test]
+fn the_boots_hold_the_hides_the_books_would_take() {
+    let mut goods = content().goods;
+    goods.push(Good::new("leather_boots", 4.0, 1).comfort(2));
+    let boots = goods.len() - 1;
+    let on = |leather: f64| {
+        let mut s = Society::new(Content::new(goods.clone(), DAY));
+        let t = s.add_town("Meadowworth", 50.0);
+        s.set_people(t, 4.0, 4.0, 20.0);
+        s.set_roster(t, &[("librarian", 1), ("leatherworker", 1), ("none", 1), ("none", 1)]);
+        s.deliver(t, PAPER, 30.0);
+        s.deliver(t, LEATHER, leather);
+        s.advance(DAY);
+        (made(&s, BOOK), made(&s, boots))
+    };
+    assert_eq!(on(3.0), (0.0, 0.0), "three hides: held for a pair of boots, no book");
+    assert_eq!(on(4.0), (0.0, 1.0), "four: a pair of boots");
+    assert_eq!(on(5.0).1, 1.0, "five: the boots, and the hide over...");
+    assert!(on(5.0).0 <= 1.0, "...held for the next pair or a book");
+}

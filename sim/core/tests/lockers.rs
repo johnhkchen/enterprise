@@ -388,3 +388,32 @@ fn a_town_that_makes_nothing_pays_its_people_a_share_of_what_its_lockers_take() 
     let sold: f64 = book.iter().filter(|(_, why, _)| why == "lockers: sold paper").map(|(_, _, v)| v.to_f64()).sum();
     assert!((wages + sold / 2.0).abs() < 1e-9, "not twice: {book:?}");
 }
+
+/// A town short of clothing with no leather to make it buys its Leatherworker's armour for emeralds, the finer tier
+/// (dyed and enchanted, `fine_quality` times a plain piece in comfort): its people wear it, their mood lifted beyond a
+/// plain day's, and they pay its worth as one (John: "we'd want the happiness boost to make buying equipment from
+/// leather workers worth it").
+#[test]
+fn a_town_short_of_clothing_buys_its_leatherworkers_finer_armour() {
+    let c = Content::new(vec![Good::new("leather", 1.0 / 6.0, 64),
+        Good::new("leather_boots", 4.0, 1).comfort(Content::COMFORTS.iter().position(|k| *k == "clothing").unwrap())], DAY);
+    let boots = 1;
+    let clothing = c.comfort("clothing").unwrap();
+    let mut s = Society::new(c);
+    let t = s.add_town("Tanner's Row", 100.0);
+    s.set_people(t, 4.0, 4.0, 20.0);
+    s.set_roster(t, &[("leatherworker", 2), ("merchant", 1), ("none", 1), ("none", 1)]);
+    let e = s.world.resource::<Towns>().0[t];
+    s.world.get_mut::<enterprise_core::state::People>(e).unwrap().purse = enterprise_core::fixed::Fixed::emeralds(100);
+    let before = s.town(t).money.to_f64();
+    s.advance(2 * DAY);
+    let p = s.town(t).people;
+    let paid: f64 = s.cash_book(t, 400).iter().filter(|(_, w, _)| w == "lockers: bought leather_boots").map(|(_, _, e)| -e.to_f64()).sum();
+    assert!(paid > 0.0, "it bought boots of its Leatherworker: {:?}", s.cash_book(t, 400));
+    assert!(p.comfort_met[clothing] > 0.0 && p.comfort_fine[clothing] > 0.0,
+        "its people wore them, finer than plain: met {:?} fine {:?}", p.comfort_met, p.comfort_fine);
+    let book = s.cash_book(t, 400);
+    let repaid: f64 = book.iter().filter(|(_, w, _)| w == "comforts").map(|(_, _, e)| e.to_f64()).sum();
+    assert!(repaid >= paid, "and the households paid the town back for them, as finer: {paid} out, {repaid} in: {book:?}");
+    let _ = (boots, before);
+}

@@ -1193,6 +1193,23 @@ mod's), but no road ever chose it. Then: build them first.
     clothing none in any (leather 1 in stock in each); 11, 23 and 25 towns, 107, 155 and 153 villagers; untended
     plots 6,007, 6,077 and 15,711 (more hands, more fields). The run at 32 grew less than the last at 32 (19 towns,
     150 villagers, treats 0.30): fresh runs differ that much. Left at 32 for now; the lanes take `--dial`.
+  - **Built: 40 plots a Farmer level by default, boots before books, and a Leatherworker's armour bought in as the finer
+    tier (John, 2026-11-01: "40 and investigate lack of clothing"; "I believe leatherworkers have an emerald to clothing
+    trade ... it comes enchanted and dyed, which is a good way to represent quality without adding custom fields yet";
+    "we'd want the happiness boost to make buying equipment from leather workers worth it").** The default is 40 (the
+    Java rules' `PLOTS_PER_FARMER_LEVEL` stays 32, which the core's tests pinned to it set in their content). Clothing
+    met none in any run: the cows' hides came one or two a day, and the Librarians' books, a hide each, took every one
+    before the Leatherworkers' boots, four a pair, had four; the books in the workshop and the Librarian's bookbinding
+    both. A dearer conversion short of one input alone now holds what the town has of it (`workshop::convert`,
+    `held_back`, which bookbinding leaves). And a town short of a comfort it can't make of what it holds buys it of
+    its own villagers' selling trades (`lockers.rs`: a Leatherworker's leggings for 3 emeralds, a tunic for 7), up to
+    its worth times `fine_quality` (1.5), as far as its households' purse goes: the finer tier, dyed and enchanted
+    (`People::fine`, docs/markets-plan.md 6): a piece of it counts `fine_quality` plain ones toward its kind's comfort
+    (the mood's `comfort_fine`, banked for the days a piece covers, up to a second plain day; `comfort_met` stays the
+    share of the ration met) and the households pay its worth so. The bid study at 40, fresh from day 0, against the
+    last at 40: clothing met (by villagers) 0.01 to 0.75, treats 0.56 to 0.69, reading 0.24 to 0.10 (the hides go to
+    clothing first), mood 0.43 to 1.18, 155 villagers to 164 in 23 towns each; 33 lots of leggings bought in for 86
+    emeralds, the households paying 905 for their comforts; the towns' money 179 to 119.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

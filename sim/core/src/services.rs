@@ -455,6 +455,15 @@ impl Visit<'_> {
         whole(self.town.stock.get(good).copied().unwrap_or(0.0))
     }
 
+    /// What the town's workshop holds back of its inputs for comforts dearer than this recipe's output
+    /// ([`crate::workshop::held_back`]); nothing without a roster, or abroad.
+    fn held_back(&self, recipe: &Recipe) -> Vec<f64> {
+        let Some(roster) = self.town.roster.filter(|_| !self.abroad()) else { return Vec::new() };
+        let worth: f64 = recipe.inputs.iter().map(|&(g, n)| n as f64 * self.content.goods[g].value).sum();
+        let floor = recipe.out as f64 * self.content.goods[recipe.output].value / worth.max(1e-9);
+        crate::workshop::held_back(self.content, roster, self.town.people, &crate::state::Stock(self.town.stock.to_vec()), floor)
+    }
+
     /// What it holds less what its lockers want of it (`Crafts.spare`): a good a locker takes is kept to its par.
     fn spare(&self, good: GoodId) -> f64 {
         let capacity = self.town.trades.capacity.get(good).copied().unwrap_or(0.0);
@@ -592,8 +601,10 @@ pub fn blessing_mood(d: &Dials, people: &People, works: Option<&crate::works::Wo
 pub fn batches(recipe: &Recipe, visit: &Visit) -> u32 {
     let out = recipe.out.max(1) as f64;
     let mut batches = (want(recipe, visit) / out - 1e-9).ceil().max(0.0).min((recipe.per_level * visit.skill as u32) as f64);
+    // (Less what the workshop's dearer comforts hold back: the boots' hides, from the books.)
+    let held = visit.held_back(recipe);
     for &(g, n) in &recipe.inputs {
-        let have = if recipe.kit { visit.count(g) } else { visit.spare(g) };
+        let have = if recipe.kit { visit.count(g) } else { (visit.spare(g) - held.get(g).copied().unwrap_or(0.0)).max(0.0) };
         batches = batches.min((have / n as f64).floor());
     }
     batches = batches.min((64.0 / out).floor());

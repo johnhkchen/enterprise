@@ -26,7 +26,7 @@ const BANNER: usize = 12;
 const SWORD: usize = 13;
 
 fn content() -> Content {
-    Content::new(vec![
+    mods_pace(Content::new(vec![
         Good::new("wheat", 1.0 / 20.0, 64),
         Good::new("paper", 1.0 / 24.0, 64),
         Good::new("leather", 1.0 / 6.0, 64),
@@ -41,7 +41,7 @@ fn content() -> Content {
         Good::new("stick", 1.0 / 32.0, 64),
         Good::new("white_banner", 1.0, 16).comfort(3),
         Good::new("iron_sword", 1.0, 1),
-    ], DAY)
+    ], DAY))
 }
 
 /// A town of five (`ServiceTests.town`): residents of these trades at level 2, the rest waiting for work.
@@ -494,4 +494,12 @@ fn the_services_ledger_survives_a_save() {
     let back = Society::load(&bytes).unwrap();
     assert_eq!(back.done(t), s.done(t));
     assert_eq!(back.blessed_until(t), s.blessed_until(t));
+}
+
+
+/// The mod's Farmers' pace (`Territory.PLOTS_PER_FARMER_LEVEL`, 32 plots a level), which these tests pin; the core's
+/// default is the dial's 40.
+fn mods_pace(mut c: Content) -> Content {
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL;
+    c
 }

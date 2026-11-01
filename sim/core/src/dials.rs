@@ -298,7 +298,12 @@ dials! {
     /// (`farms::PLOTS_PER_FARMER_LEVEL`), cod a Fisherman lands a day a level (`works::COD_PER_LEVEL`). Left as they
     /// are, villagers fall short of their comforts, for the players' industry to fill (John: "Doesn't make sense if
     /// villagers by default produced such abundance that they never go without").
-    plots_per_farmer_level: u32 = 32,
+    plots_per_farmer_level: u32 = 40,
+    /// What a piece of the finer tier (dyed and enchanted, bought of a town's own villagers: a Leatherworker's armour)
+    /// is worth in comfort, plain ones being 1: a day met with it lifts the mood up to this many plain days' (at most
+    /// two), and the households pay its worth times it (John: "we'd want the happiness boost to make buying equipment
+    /// from leather workers worth it, especially due to the dye and enchantment bonus").
+    fine_quality: f64 = 1.5,
     cod_per_fisher_level: f64 = 4.0,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
     farmer_idle_emeralds: f64 = 0.5,

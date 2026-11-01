@@ -13,7 +13,7 @@ const BREAD: usize = 7;
 
 /// The mod's crops at their locker prices, paper and bread (as `tests/farms.rs` has them).
 fn content() -> Content {
-    Content::new(vec![
+    mods_pace(Content::new(vec![
         Good::new("wheat", 1.0 / 20.0, 64).crop(),
         Good::new("carrot", 1.0 / 22.0, 64).crop().food(3.0),
         Good::new("potato", 1.0 / 26.0, 64).crop().food(1.0),
@@ -22,7 +22,7 @@ fn content() -> Content {
         Good::new("sweet_berries", 1.0 / 10.0, 64).crop().food(2.0),
         Good::new("paper", 1.0 / 24.0, 64),
         Good::new("bread", 1.0 / 6.0, 64).food(5.0),
-    ], DAY)
+    ], DAY))
 }
 
 fn at(q: i32, r: i32) -> HexAt {
@@ -268,4 +268,12 @@ fn a_pasture_is_laid_by_the_host_and_holds_by_its_grass() {
     assert_eq!(s.herds(0).grass, vec![140, 40], "a third with two fenced is a stale view");
     let saved = Society::load(&host.as_mut().unwrap().save()).unwrap();
     assert_eq!(saved.herds(0).grass, vec![140, 40], "and saved");
+}
+
+
+/// The mod's Farmers' pace (`Territory.PLOTS_PER_FARMER_LEVEL`, 32 plots a level), which these tests pin; the core's
+/// default is the dial's 40.
+fn mods_pace(mut c: Content) -> Content {
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL;
+    c
 }

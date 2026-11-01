@@ -227,6 +227,15 @@ pub struct Lockers {
     /// again at each restock.
     #[serde(skip)]
     pub workshop_keeps: Vec<f64>,
+    /// Of each kind of comfort, the emeralds' worth the town would buy of its own villagers' selling trades this restock
+    /// (`workshop::bought_in`): what it is short of beyond what its workshop can make of what it holds, as far as its
+    /// households' purse goes. Set before each restock, never saved.
+    #[serde(skip)]
+    pub comfort_short: Vec<f64>,
+    /// The finer pieces its restocks bought in of its villagers since its households last took them in hand: each
+    /// good and how many (`People::fine`). Never saved: handed over after each restock.
+    #[serde(skip)]
+    pub bought_fine: Vec<(GoodId, f64)>,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the town's dice.
@@ -554,8 +563,18 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
     let level = roster.hands[i].level;
     let stack = |o: &Offer| if o.sells { EMERALD_STACK } else { content.goods.get(o.good).map_or(64, |g| g.stack) };
     let offers = &lockers.hands[i].offers;
+    // A comfort the town is short of and can't make, its own villagers sell it for emeralds: a Leatherworker's armour,
+    // dyed and enchanted, the finer tier (John: "the exchange rate is worse than if they just crafted the leather armor
+    // directly, but it comes enchanted and dyed"), no dearer than its worth as one (`fine_quality` times a plain
+    // piece's), which the households pay the town for it.
+    let kind = |k: usize| content.goods.get(offers[k].good).and_then(|g| g.comfort);
+    let bought_in = |k: usize| offers[k].sells && !offers[k].procured && !offers[k].training
+        && kind(k).is_some_and(|c| lockers.comfort_short.get(c).copied().unwrap_or(0.0) > 0.0)
+        && offers[k].price(rep, stack(&offers[k])) as f64
+            <= offers[k].count as f64 * content.goods[offers[k].good].value * content.dials.fine_quality;
     let mut order: Vec<usize> = (0..offers.len())
-        .filter(|&k| offers[k].on && offers[k].level <= level && !offers[k].inflated() && offers[k].good < stock.0.len())
+        .filter(|&k| (offers[k].on || bought_in(k)) && offers[k].level <= level && !offers[k].inflated()
+            && offers[k].good < stock.0.len())
         .collect();
     let per_item = |k: usize| offers[k].price(rep, stack(&offers[k])) as f64 / offers[k].result().max(1) as f64;
     order.sort_by(|&a, &b| per_item(a).total_cmp(&per_item(b)));
@@ -570,6 +589,23 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
             *r = (*r).min((need / o.count.max(1) as f64).ceil() as u32);
         }
     }
+    // What the town buys in of its comforts: as far as it is short, each kind's worth shared down the offers.
+    let mut short = lockers.comfort_short.clone();
+    for (r, &k) in runs.iter_mut().zip(&order) {
+        let o = &offers[k];
+        if o.sells && !o.procured && !o.training && !o.on {
+            let Some(c) = kind(k) else { continue };
+            let each = o.count as f64 * content.goods[o.good].value;
+            let left = short.get(c).copied().unwrap_or(0.0);
+            *r = (*r).min((left / each.max(1e-9)).ceil().max(0.0) as u32);
+            if let Some(l) = short.get_mut(c) {
+                *l -= *r as f64 * each;
+            }
+        }
+    }
+    // (What's left for the restocks after this one, a catch-up replaying several.)
+    lockers.comfort_short = short;
+    let offers = &lockers.hands[i].offers;
     let mut budget = money.0.at_least_zero().millis() / crate::fixed::SCALE; // whole emeralds
     for (r, &k) in runs.iter_mut().zip(&order) {
         if offers[k].sells {
@@ -606,6 +642,9 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
             ran += 1;
         }
         if ran > 0 {
+            if o.sells && !o.procured && !o.training && !o.on && content.goods[g].comfort.is_some() {
+                lockers.bought_fine.push((g, (o.count * ran) as f64));
+            }
             if o.sells && o.training {
                 // What the Merchant paid the pupil to make (`Apprentices.afterTrade`, in `rules/training.rs`).
                 let trade = lockers.hands[i].trade;

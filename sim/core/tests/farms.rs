@@ -13,7 +13,7 @@ const DAY: u64 = 24_000;
 /// The mod's crops at their locker prices (`Prices`: wheat 20 to the emerald, carrots 22, potatoes 26, beetroot 15,
 /// cane 24 as paper, berries 10), paper, and bread (5 food points).
 fn content() -> Content {
-    Content::new(vec![
+    mods_pace(Content::new(vec![
         Good::new("wheat", 1.0 / 20.0, 64).crop(),
         Good::new("carrot", 1.0 / 22.0, 64).crop().food(3.0),
         Good::new("potato", 1.0 / 26.0, 64).crop().food(1.0),
@@ -22,7 +22,7 @@ fn content() -> Content {
         Good::new("sweet_berries", 1.0 / 10.0, 64).crop().food(2.0),
         Good::new("paper", 1.0 / 24.0, 64),
         Good::new("bread", 1.0 / 6.0, 64).food(5.0),
-    ], DAY)
+    ], DAY))
 }
 
 const WHEAT: usize = 0;
@@ -660,4 +660,12 @@ fn the_plots_a_farmer_tends_a_level_are_a_dial() {
     assert_eq!(plan(&c), 16.0, "32 plots, half a wheat each");
     c.dials.plots_per_farmer_level = 64;
     assert_eq!(plan(&c), 32.0, "64 plots");
+}
+
+
+/// The mod's Farmers' pace (`Territory.PLOTS_PER_FARMER_LEVEL`, 32 plots a level), which these tests pin; the core's
+/// default is the dial's 40.
+fn mods_pace(mut c: Content) -> Content {
+    c.dials.plots_per_farmer_level = enterprise_core::farms::PLOTS_PER_FARMER_LEVEL;
+    c
 }
