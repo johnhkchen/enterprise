@@ -108,6 +108,9 @@ pub struct Money(pub Fixed);
 /// home and child, the share of wages paid, and the households' purse (their wages, which pay for their comforts).
 #[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct People {
+    /// A home ready to build and short of its timber (`home_logs`): its worth, in emeralds, for the job draw.
+    #[serde(default)]
+    pub timber_wait: f64,
     pub villagers: f64,
     pub beds: f64,
     pub land: f64,

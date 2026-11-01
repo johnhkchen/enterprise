@@ -26,6 +26,12 @@ with John the same day:
    replanted or grown, when its chunk is touched.
 4. **Wood's goods:** crates and halls built of planks and logs (the chest, a furnishing, came with landing 2).
 
+## Timber (John: "gate building creation behind lumberjacks")
+
+A home takes 16 logs and a hall 32 where the host has the trade; a town waiting on timber signs a Lumberjack on first
+(retraining its least-trained hand if none is idle), keeps 48 logs from its workshop, and fells on to 64. Every land
+but water holds a woodlot or more.
+
 ## The core (landing 1)
 
 - `roster::LUMBERJACK`, in the mod's trades after the squad's (not a squad's: it stays home).

@@ -61,11 +61,14 @@ pub const USE_WOOD: [&str; 6] = ["librarian", "mason", "armorer", "toolsmith", "
 /// would fell of the logs the woodlots its land holds would give a day beyond its Lumberjacks at home, while a trade
 /// of its uses wood ([`USE_WOOD`]), it holds fewer than `crate::kit::KEEP` logs and its warehouse has room for more
 /// (`crate::kit::room`'s slots: a town whose warehouse is full drew Lumberjack after Lumberjack, each a stall's fee,
-/// who felled nothing). None without a Lumberjack trade or land.
+/// who felled nothing). And what waits on timber (`waiting`: a home's or a hall's worth, John: "make lumber demand
+/// sufficiently high such that they show up early to settlements"), in full while it has no Lumberjack. None without
+/// a Lumberjack trade or land.
 pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>,
-        map: &crate::map::Map, roster: &Roster, stock: &Stock) -> Option<(TradeId, f64)> {
+        map: &crate::map::Map, roster: &Roster, stock: &Stock, waiting: f64) -> Option<(TradeId, f64)> {
     let lumberjack = content.trade(crate::roster::LUMBERJACK)?;
-    let uses = USE_WOOD.iter().filter_map(|t| content.trade(t)).any(|t| crate::kit::at_home(roster, Some(t)).next().is_some());
+    let uses = waiting > 0.0
+        || USE_WOOD.iter().filter_map(|t| content.trade(t)).any(|t| crate::kit::at_home(roster, Some(t)).next().is_some());
     let logs: f64 = crate::works::LOGS.iter().filter_map(|l| content.good(l)).map(|g| stock.0[g]).sum();
     let slots = crate::kit::free_slots(content, &stock.0, 0) > content.dials.free_slots as i64 + crate::kit::SPARE_SLOTS;
     if !uses || logs >= crate::kit::KEEP || !slots {
@@ -77,7 +80,8 @@ pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Ho
     let felled = crate::kit::levels(roster, Some(lumberjack)) * d.lots_felled_per_level_day * d.logs_per_lot;
     let log = content.good(crate::kit::log_of(home.map_or(crate::map::Land::Plains, |h| map.land(h))))?;
     let unfelled = (could - felled).max(0.0).min(d.lots_felled_per_level_day * d.logs_per_lot);
-    (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0))
+    let wait = if roster.count(lumberjack) == 0 { waiting } else { 0.0 };
+    (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0 + wait))
 }
 
 /// What else a trade takes, a glut of which trains a hand to it ([`for_glut`]; not as the mod): the Butcher cooks beef and
@@ -363,6 +367,8 @@ pub struct Place<'a> {
     pub far: Marbles,
     /// Its herds, how many of each kind (by place in [`Content::animals`]).
     pub herd: &'a [f64],
+    /// What waits on timber (a home's or a hall's worth, `People::timber_wait`, `Works::timber_wait`).
+    pub timber_wait: f64,
 }
 
 /// A hand that took up a trade.
@@ -460,7 +466,18 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     let idle = place.roster.hands.iter()
         .position(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
     let retraining = idle.is_none();
-    let hand = idle.or_else(|| slack(content, place))?;
+    // A home or a hall waiting on timber in a town with no Lumberjack signs one on first (John: "make lumber demand
+    // sufficiently high such that they show up early to settlements rather than as a later role"); with no hand idle
+    // or slack, it retrains its least-trained hand whose work isn't the town's mainstay (not its Merchant, nor a trade
+    // kept: seed 1717's Refuge Pointe, its idle all Nitwits and no beds for a child, waited on timber 25 days).
+    let timber = content.trade(crate::roster::LUMBERJACK)
+        .filter(|&l| place.timber_wait > 0.0 && place.roster.count(l) == 0);
+    let hand = idle.or_else(|| slack(content, place)).or_else(|| timber.and_then(|_| {
+        place.roster.hands.iter().enumerate()
+            .filter(|&(i, h)| Some(i) != place.roster.merchant && !h.is_baby() && !h.away
+                && content.trades.get(h.trade).is_some_and(|t| !t.idle() && !t.merchant && !KEPT.contains(&t.name.as_str())))
+            .min_by_key(|&(i, h)| (h.level, std::cmp::Reverse(i))).map(|(i, _)| i)
+    }))?;
     let stall = crate::fixed::Fixed::ceil(content.dials.stall_emeralds);
     let reserve = crate::rules::farms::build_reserve(content, place.trades, Some(place.farm));
     let cash = *place.money - reserve;
@@ -468,7 +485,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {
         return None;
     }
-    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
+    let trade = timber.or_else(|| for_contracts(content, place)).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
         let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
         for &(t, m) in &place.far {
@@ -590,7 +607,8 @@ impl crate::society::Society {
             put(&mut bag, t, m);
         }
         if let Some((t, m)) = woodland_marbles(content, self.world.resource::<crate::territory::Territory>().holding(town),
-                e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock) {
+                e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock,
+                people.timber_wait + e.get::<crate::works::Works>().map_or(0.0, |w| w.timber_wait)) {
             put(&mut bag, t, m);
         }
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
@@ -637,7 +655,8 @@ impl crate::society::Society {
             let herd = herd.clone();
             let mut place = Place { town, money: &mut money.0, purse: &mut purse, deposits: &mut deposits,
                 budget: &mut budget, stock: &stock, trades: &trades, farm: &farm, met: &met,
-                roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: &herd };
+                roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: &herd,
+                timber_wait: people.timber_wait + self.world.get::<crate::works::Works>(e).map_or(0.0, |w| w.timber_wait) };
             let hired = employ(self.content(), &mut books, &bills, &signals, now, &mut place);
             people.purse = purse;
             hired

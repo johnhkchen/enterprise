@@ -168,6 +168,11 @@ dials! {
     home_mood: f64 = 0.5,
     home_days: f64 = 4.0,
     home_cost: f64 = 10.0,
+    /// Timber a home and a hall take where the host has Lumberjacks (John: "gate building creation behind
+    /// lumberjacks"): logs in the warehouse, taken when it's built; short of them it waits, and its worth puts a
+    /// Lumberjack's marbles in the job draw (`jobs::woodland_marbles`).
+    home_logs: f64 = 16.0,
+    hall_logs: f64 = 32.0,
     /// A child once a bed is free and mood is at least `birth_mood`, after `birth_days`, for `birth_cost` and
     /// `birth_food` food points.
     birth_mood: f64 = 1.0,

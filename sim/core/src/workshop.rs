@@ -278,6 +278,16 @@ pub fn convert(content: &Content, roster: &Roster, people: &People, stock: &mut 
     // leather came a hide or two a day, and the Librarians' books, a hide each, took every one before the
     // Leatherworkers' boots, four hides a pair, had four: clothing met 0 in every run at 32, 40 and 48 plots a level.
     let mut held = vec![0.0; content.goods.len()];
+    // And the timber its next home and hall take, where building takes it: its charcoal and chests of what's beyond
+    // (seed 1717's Hearthglen burnt every log its Lumberjack felled while its homeless waited on timber).
+    if crate::works::takes_timber(content) {
+        let mut keep = content.dials.home_logs + content.dials.hall_logs;
+        for name in crate::works::LOGS {
+            let Some(g) = crate::jobs::good_named(content, name) else { continue };
+            held[g] = stock.0[g].max(0.0).min(keep);
+            keep -= held[g];
+        }
+    }
     for (p, _) in ranked {
         let c = &content.conversions[p.conversion];
         // Not the crop set aside for its forward sales: the bakers leave the wheat it owes.

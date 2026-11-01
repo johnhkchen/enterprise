@@ -322,6 +322,9 @@ impl Project {
 /// if it has one (its ships' port). A component on every town.
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Works {
+    /// The next hall it would start and is short of its timber (`hall_logs`): its worth, in emeralds, for the job draw.
+    #[serde(default)]
+    pub timber_wait: f64,
     pub projects: Vec<Project>,
     pub flowers: bool,
     pub dock: bool,
@@ -526,6 +529,27 @@ pub fn mason(content: &crate::content::Content, roster: Option<&crate::roster::R
 /// (`BuildServices.logs`, `materials`).
 pub fn logs(content: &crate::content::Content, stock: &[f64]) -> f64 {
     LOGS.iter().filter_map(|n| crate::jobs::good_named(content, n)).map(|g| stock[g].floor().max(0.0)).sum()
+}
+
+/// Takes up to `count` logs from the stock, in the order of `LOGS` (`BuildServices.takeLogs`).
+pub fn take_logs(content: &crate::content::Content, stock: &mut crate::state::Stock, ledger: &mut crate::state::Ledger,
+        mut count: f64) {
+    for name in LOGS {
+        let Some(g) = crate::jobs::good_named(content, name) else { continue };
+        if count <= 0.0 {
+            return;
+        }
+        let n = stock.0[g].floor().max(0.0).min(count);
+        stock.0[g] -= n;
+        ledger.used[g] += n;
+        count -= n;
+    }
+}
+
+/// Whether building takes timber: the host has Lumberjacks to fell it and logs for them to fell (`home_logs`,
+/// `hall_logs`).
+pub fn takes_timber(content: &crate::content::Content) -> bool {
+    content.trade(crate::roster::LUMBERJACK).is_some() && LOGS.iter().any(|l| crate::jobs::good_named(content, l).is_some())
 }
 
 pub fn materials(content: &crate::content::Content, stock: &[f64], kind: Kind) -> f64 {

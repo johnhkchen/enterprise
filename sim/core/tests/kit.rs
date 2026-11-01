@@ -514,9 +514,9 @@ fn a_lumberjack_fells_its_woods_and_replants_them_and_no_idle_hand_gathers_logs(
     let kits: &Kits = s.kits(t);
     assert_eq!(kits.woodlots.len(), 3, "as many lots as a Novice fells while they regrow: half a lot a day, 5 days");
     assert_eq!(kits.woodlots.iter().filter(|&&grown| grown > 3 * DAY).count(), 1, "the felled lot replanted");
-    // It fells no more while it holds what it keeps of a good no trade of its takes (16).
+    // Its homes and halls take timber: logs are wanted, and it fells on past the 16 it keeps of a good nothing takes.
     s.advance(4 * DAY);
-    assert_eq!(stock(&s, t, "oak_log"), 16.0, "it keeps 16 logs and fells no more");
+    assert!(stock(&s, t, "oak_log") > 16.0, "on past 16: {}", stock(&s, t, "oak_log"));
 }
 
 #[test]
@@ -535,12 +535,13 @@ fn a_lumberjacks_lots_on_open_ground_grow_from_saplings_first() {
 fn a_lumberjack_burns_logs_to_charcoal_for_the_fuel_its_town_keeps() {
     let mut s = Society::new(wood_content());
     let t = town(&mut s, &[("lumberjack", 1)]);
-    s.deliver(t, good(s.content(), "oak_log"), 30.0);
+    // (30 logs beyond the 48 a home and a hall take, kept from the workshop.)
+    s.deliver(t, good(s.content(), "oak_log"), 78.0);
     s.deliver(t, good(s.content(), "coal"), 6.0);
     s.advance(DAY);
     // 16 of fuel kept, its 6 coal counted: 10 charcoal, 5 batches of 3 logs into 2.
     assert_eq!(stock(&s, t, "charcoal"), 10.0, "charcoal to 16 of fuel with its coal");
-    assert_eq!(stock(&s, t, "oak_log"), 15.0, "15 logs burnt");
+    assert_eq!(stock(&s, t, "oak_log"), 63.0, "15 logs burnt");
 }
 
 #[test]
@@ -570,7 +571,8 @@ fn a_lumberjack_joins_logs_into_chests_for_a_town_short_of_furnishings_and_one_i
     let mut s = Society::new(Content::new(goods, DAY));
     let t = town(&mut s, &[("lumberjack", 1), ("none", 1)]);
     s.set_people(t, 2.0, 2.0, 2.0);
-    s.deliver(t, good(s.content(), "oak_log"), 10.0);
+    // (Beyond the 48 logs a home and a hall take, kept from the workshop.)
+    s.deliver(t, good(s.content(), "oak_log"), 58.0);
     s.advance(DAY);
     assert!(stock(&s, t, "chest") >= 1.0, "chests of its logs: {}", stock(&s, t, "chest"));
     // A town short of furnishings with no Lumberjack puts its marbles in for one, as for a Shepherd.
@@ -579,4 +581,35 @@ fn a_lumberjack_joins_logs_into_chests_for_a_town_short_of_furnishings_and_one_i
     let marbles = enterprise_core::jobs::comfort_marbles(c, &met, 500.0, &enterprise_core::roster::Roster::default());
     let lumberjack = c.trade("lumberjack").unwrap();
     assert!(marbles.iter().any(|&(t, m)| t == lumberjack && m > 0.0), "furnishings lacking: {marbles:?}");
+}
+
+#[test]
+fn a_home_waits_on_its_timber_and_draws_a_lumberjack_for_it() {
+    // Homeless villagers: a home at any mood, its 10 emeralds to hand; 16 logs it hasn't.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("merchant", 1), ("none", 1), ("none", 1), ("none", 1)]);
+    s.set_people(t, 4.0, 2.0, 20.0);
+    s.pay(t, 100.0);
+    s.advance(6 * DAY);
+    assert_eq!(s.town(t).people.beds, 2.0, "no home without its timber");
+    assert_eq!(s.town(t).people.timber_wait, s.content().dials.home_cost, "a home waits on timber");
+    let lumberjack = s.content().trade("lumberjack").unwrap();
+    assert_eq!(s.roster(t).count(lumberjack), 1, "it drew a Lumberjack for it");
+    // Its saplings grown and felled, the home goes up of its own timber.
+    s.advance(10 * DAY);
+    assert_eq!(s.town(t).people.beds, 4.0, "a home of its Lumberjack's logs");
+    assert_eq!(s.town(t).people.timber_wait, 0.0);
+}
+
+#[test]
+fn a_town_with_no_one_idle_retrains_a_hand_for_the_timber_its_home_waits_on() {
+    // Its idle hands Nitwits, no bed free for a child: its Cartographer, least trained, takes up the axe.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("merchant", 1), ("farmer", 2), ("cartographer", 1), ("nitwit", 1), ("nitwit", 1)]);
+    s.set_people(t, 6.0, 2.0, 20.0);
+    s.pay(t, 100.0);
+    s.advance(8 * DAY);
+    let (lumberjack, cartographer) = (s.content().trade("lumberjack").unwrap(), s.content().trade("cartographer").unwrap());
+    assert_eq!((s.roster(t).count(lumberjack), s.roster(t).count(cartographer)), (1, 0), "its Cartographer a Lumberjack");
+    assert_eq!(s.roster(t).count(s.content().trade("farmer").unwrap()), 1, "its Farmer kept");
 }

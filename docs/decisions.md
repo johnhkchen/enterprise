@@ -1336,6 +1336,17 @@ mod's), but no road ever chose it. Then: build them first.
   alone are worth too little: seed 1717's 30 days drew no Lumberjack for its woods at 4 emeralds a draw). Idle hands
   in the game now gather no logs. Seed 1717's 30 days with the chest: furnishings 0.53, still no Lumberjack drawn (the
   towns drew 39 trades in all, short of a stall's money most days).
+  **Built: building takes timber (John, 2026-11-01: "We probably should gate building creation behind lumberjacks
+  somehow or make lumber demand sufficiently high such that they show up early to settlements rather than as a later
+  role").** Where the host has Lumberjacks and logs, a home takes 16 logs and a hall 32 (dials `home_logs`,
+  `hall_logs`), taken when it's built; short of them it waits (`People::timber_wait`, `Works::timber_wait`: its worth).
+  A town with a build waiting on timber and no Lumberjack signs one on first, ahead of the draw; with no hand idle or
+  slack, it retrains its least-trained hand that isn't its Merchant or a kept trade (Refuge Pointe's idle were all
+  Nitwits, and with no bed free no child came: it waited 25 days). Its workshop keeps the 48 logs a home and a hall
+  take from its charcoal and chests (Hearthglen burnt every log while its homeless waited), its Lumberjacks fell on
+  to 64 (logs are wanted), and every land but water holds a woodlot or more (a hex of hills, desert or shore, one).
+  Seed 1717's 30 days, against the run before timber: Lumberjacks 1 by day 2, 3 by day 5, 7 by day 30 (none before);
+  villagers 131 to 114, beds 138 to 121, mood 0.21 both, money 144 to 116.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

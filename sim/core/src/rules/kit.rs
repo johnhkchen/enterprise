@@ -213,6 +213,8 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                 kits.woodlots.push(grown);
             }
             let log = log_of(town.hex.map_or(Land::Plains, |hex| map.land(hex)));
+            // (Its homes and halls take timber: logs are wanted, kept to `KEEP_WANTED`.)
+            let timber = crate::works::takes_timber(&content);
             if let Some(g) = content.good(log) {
                 kits.felling += fellers * d.lots_felled_per_level_day * days;
                 for lot in kits.woodlots.iter_mut() {
@@ -220,7 +222,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                         break;
                     }
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                    if *lot > now || !room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
+                    if *lot > now || !room(&content, trades, stock, crates, g, owed, wanted_far(g) || timber) {
                         continue;
                     }
                     *lot = now + grow;

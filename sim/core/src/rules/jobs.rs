@@ -92,13 +92,16 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
             far.push(marbles);
         }
         // Its woods unfelled while its trades want wood, a Lumberjack's.
-        if let Some(marbles) = crate::jobs::woodland_marbles(&content, territory.holding(town.id), town.hex, &map, &roster, stock) {
+        if let Some(marbles) = crate::jobs::woodland_marbles(&content, territory.holding(town.id), town.hex, &map, &roster, stock,
+                people.timber_wait + works.map_or(0.0, |w| w.timber_wait)) {
             far.push(marbles);
         }
         let people = &mut *people;
+        let timber_wait = people.timber_wait + works.map_or(0.0, |w| w.timber_wait);
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,
-            roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: herds.map_or(&[][..], |h| &h.count[..]) };
+            roster: &mut roster, lockers: &mut lockers, roads, routed, far, herd: herds.map_or(&[][..], |h| &h.count[..]),
+            timber_wait };
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         let idle = place.roster.hands.iter().any(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
         match employ(&content, &mut books, &bills, &signals, now, &mut place) {

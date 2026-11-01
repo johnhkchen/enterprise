@@ -271,7 +271,14 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             Some(Some(level)) => level,
         };
         let Some(kind) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare.to_f64(), now, skill)
-            else { continue };
+            else { works.timber_wait = 0.0; continue };
+        // Its timber, where the host has Lumberjacks: short of it, the hall waits (and draws one).
+        let timber = if crate::works::takes_timber(&content) { d.hall_logs } else { 0.0 };
+        if logs(&content, &stock.0) < timber {
+            works.timber_wait = kind.emeralds();
+            continue;
+        }
+        works.timber_wait = 0.0;
         // Rounded up to the thousandth: a cost.
         let to_buy = crate::fixed::Fixed::ceil(materials(&content, &stock.0, kind));
         let what = Reason::Other(format!("a {}", kind.id().replace('_', " ")));
@@ -279,7 +286,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         if !Accountant::approve(&content, &mut book, t, now, free, &mut budget, what.clone(), to_buy) {
             continue; // not today: the accountant holds the money back
         }
-        take_logs(&content, &mut stock, &mut ledger, (kind.emeralds() / EMERALDS_PER_LOG).ceil());
+        take_logs(&content, &mut stock, &mut ledger, (kind.emeralds() / EMERALDS_PER_LOG).ceil().max(timber));
         post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), to_buy, what, now, day);
         works.start(What::Hall(kind), kind.blocks());
     }
@@ -302,20 +309,6 @@ fn next_hall(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
         return Some(kind);
     }
     None
-}
-
-/// Takes up to `count` logs from the stock, in the order of `LOGS` (`BuildServices.takeLogs`).
-fn take_logs(content: &Content, stock: &mut Stock, ledger: &mut Ledger, mut count: f64) {
-    for name in LOGS {
-        let Some(g) = crate::jobs::good_named(content, name) else { continue };
-        if count <= 0.0 {
-            return;
-        }
-        let n = stock.0[g].floor().max(0.0).min(count);
-        stock.0[g] -= n;
-        ledger.used[g] += n;
-        count -= n;
-    }
 }
 
 /// A master Farmer with a square to plant and eight flowers in the warehouse plants its beds

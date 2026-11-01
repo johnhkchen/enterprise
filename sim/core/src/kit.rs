@@ -169,16 +169,20 @@ pub struct Kits {
 /// Woodlots a hex of woods or taiga holds, and a hex of open ground (planted as saplings: a forest's stand grown).
 pub const LOTS_PER_WOOD_HEX: usize = 8;
 pub const LOTS_PER_OPEN_HEX: usize = 3;
+/// And a hex of hills, desert or shore, planted (every town can grow the timber its homes and halls take).
+pub const LOTS_PER_BARE_HEX: usize = 1;
 
 /// How many woodlots a town's land holds (its held hexes and its own): [`LOTS_PER_WOOD_HEX`] a hex of woods or taiga,
-/// [`LOTS_PER_OPEN_HEX`] a hex of open ground; and how many of those are wooded, laid first and standing grown.
+/// [`LOTS_PER_OPEN_HEX`] a hex of open ground, [`LOTS_PER_BARE_HEX`] one of hills, desert or shore; and how many of
+/// those are wooded, laid first and standing grown.
 pub fn woodland(map: &crate::map::Map, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>)
         -> (usize, usize) {
     let mut hexes: std::collections::BTreeSet<crate::hex::Hex> = holding.map(|h| h.hexes.iter().copied().collect()).unwrap_or_default();
     hexes.extend(home);
     let count = |lands: &[Land]| hexes.iter().filter(|&&h| lands.contains(&map.land(h))).count();
     let wooded = count(&[Land::Woods, Land::Taiga]) * LOTS_PER_WOOD_HEX;
-    (wooded + count(&[Land::Plains]) * LOTS_PER_OPEN_HEX, wooded)
+    (wooded + count(&[Land::Plains]) * LOTS_PER_OPEN_HEX + count(&[Land::Hills, Land::Desert, Land::Shore]) * LOTS_PER_BARE_HEX,
+        wooded)
 }
 
 /// The log a town's woodlots give: spruce on taiga, oak elsewhere.

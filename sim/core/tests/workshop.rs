@@ -379,7 +379,8 @@ fn a_librarian_shelves_the_books_its_town_has_read_its_fill_of() {
         s.set_people(t, 2.0, 2.0, 20.0);
         s.set_roster(t, &[("librarian", 1), ("none", 1)]);
         s.deliver(t, BOOK, books);
-        s.deliver(t, log, 8.0);
+        // (Beyond the 48 logs a home and a hall would take: its Lumberjack's timber, kept from the workshop.)
+        s.deliver(t, log, 56.0);
         s.advance(DAY);
         made(&s, shelf)
     };

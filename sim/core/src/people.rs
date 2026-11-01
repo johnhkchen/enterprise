@@ -303,7 +303,12 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.home_progress = (people.home_progress + days / d.home_days).min(1.0);
         }
         let home_cost = Fixed::ceil(d.home_cost);
-        if people.home_progress >= 1.0 && people.purse + spare.at_least_zero() >= home_cost {
+        // Its timber too, where the host has Lumberjacks: short of it, the home waits (and draws one).
+        let timber = if crate::works::takes_timber(&content) { d.home_logs } else { 0.0 };
+        let short = crate::works::logs(&content, &stock.0) < timber;
+        people.timber_wait = if people.home_progress >= 1.0 && short { d.home_cost } else { 0.0 };
+        if people.home_progress >= 1.0 && !short && people.purse + spare.at_least_zero() >= home_cost {
+            crate::works::take_logs(&content, &mut stock, &mut ledger, timber);
             let theirs = people.purse.min(home_cost);
             post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::outside(), theirs, Reason::Home,
                 now, day);
