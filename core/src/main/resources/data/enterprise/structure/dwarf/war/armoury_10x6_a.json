@@ -1,0 +1,53 @@
+{
+  "id": "enterprise:dwarf/war/armoury_10x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "war",
+  "slot": "armoury",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    3,
+    2
+  ],
+  "footprint": [
+    10,
+    6
+  ],
+  "height": 13,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

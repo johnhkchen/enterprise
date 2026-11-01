@@ -901,6 +901,256 @@
       "workstations": []
     },
     {
+      "id": "mint_10x10_a",
+      "part": "enterprise:dwarf/money/mint_10x10_a",
+      "kind": "money",
+      "slot": "mint",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        28,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "vault_10x10_a",
+      "part": "enterprise:dwarf/money/vault_10x10_a",
+      "kind": "money",
+      "slot": "bank",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        26,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "exchange_14x10_a",
+      "part": "enterprise:dwarf/money/exchange_14x10_a",
+      "kind": "money",
+      "slot": "exchange",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        28,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "mine_head_6x6_a",
+      "part": "enterprise:dwarf/works/mine_head_6x6_a",
+      "kind": "works",
+      "slot": "mine:head",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        21,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "quarry_10x10_a",
+      "part": "enterprise:dwarf/works/quarry_10x10_a",
+      "kind": "works",
+      "slot": "quarry",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        15,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "woodyard_6x6_a",
+      "part": "enterprise:dwarf/works/woodyard_6x6_a",
+      "kind": "works",
+      "slot": "woodyard",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        12,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bakery_tower_10x10_a",
+      "part": "enterprise:dwarf/comfort/bakery_tower_10x10_a",
+      "kind": "comfort",
+      "slot": "comfort:treats",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        26,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bookseller_10x10_a",
+      "part": "enterprise:dwarf/comfort/bookseller_10x10_a",
+      "kind": "comfort",
+      "slot": "comfort:reading",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "tailor_10x10_a",
+      "part": "enterprise:dwarf/comfort/tailor_10x10_a",
+      "kind": "comfort",
+      "slot": "comfort:clothing",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "lamp_hall_10x10_a",
+      "part": "enterprise:dwarf/comfort/lamp_hall_10x10_a",
+      "kind": "comfort",
+      "slot": "comfort:furnishings",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        15,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "barracks_14x10_a",
+      "part": "enterprise:dwarf/war/barracks_14x10_a",
+      "kind": "war",
+      "slot": "barracks",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        28,
+        10
+      ],
+      "beds": 5,
+      "workstations": []
+    },
+    {
+      "id": "armoury_10x6_a",
+      "part": "enterprise:dwarf/war/armoury_10x6_a",
+      "kind": "war",
+      "slot": "armoury",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        3,
+        2
+      ],
+      "size": [
+        10,
+        13,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
       "id": "forge_temple_30x48_a",
       "part": "enterprise:dwarf/landmark/forge_temple_30x48_a",
       "kind": "landmark",
