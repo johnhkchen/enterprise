@@ -434,7 +434,7 @@ def town_plans(world, x0, z0):
 
 def main():
     args = [a for i, a in enumerate(sys.argv[1:], 1)
-            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video", "--title", "--points")]
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video", "--title", "--points", "--around")]
     margin = 96
     if "--margin" in sys.argv:
         margin = int(sys.argv[sys.argv.index("--margin") + 1])
@@ -487,6 +487,10 @@ def main():
     zs = [b[2] for b in bells.values()] + [p[1] for r in routes for p in r["path"]]
     x0, x1 = int(min(xs)) - margin, int(max(xs)) + margin
     z0, z1 = int(min(zs)) - margin, int(max(zs)) + margin
+    # `--around X,Z,R`: only the square of R blocks round (X, Z), a block a pixel (one town and its woodlots).
+    if "--around" in sys.argv:
+        ax, az, ar = (int(v) for v in sys.argv[sys.argv.index("--around") + 1].split(","))
+        x0, x1, z0, z1 = ax - ar, ax + ar, az - ar, az + ar
     w, h = x1 - x0 + 1, z1 - z0 + 1
     print(f"drawing {w} x {h} blocks from x {x0}, z {z0}", file=sys.stderr)
 

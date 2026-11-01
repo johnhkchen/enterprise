@@ -382,6 +382,9 @@ def network(first, many, days, say, stages):
 # and workshops ticking). Without, every town is left to the core's ledgers from day 2, as the world is where no player
 # is: a day 24,000 ticks at 70,000 a second, not 2,200 with the first town's 81 chunks loaded (seed 1717: 1s, not 11s).
 PLAYER = "--player" in sys.argv
+# `--player-reach N`: how far round the first town a player keeps it loaded (64 by default: the village and its farms;
+# 160 takes in its woodlots' ring past the pastures, which only loaded ground lays and shows).
+PLAYER_REACH = int(sys.argv[sys.argv.index("--player-reach") + 1]) if "--player-reach" in sys.argv else 64
 
 
 def stays(v, first):
@@ -437,9 +440,9 @@ def run_days(chosen, desks, roads, first, start, days, say, stages, points):
             for v in chosen:
                 if v != first or not PLAYER:
                     unload(*v)
-            if PLAYER and REACH > 64:
+            if PLAYER and REACH > PLAYER_REACH:
                 unload(*first)
-                load(*first, r=64)
+                load(*first, r=PLAYER_REACH)
         if day % 4 == 1 and day > 1:
             for v, d in zip(chosen, desks):
                 load(*v, r=8)
