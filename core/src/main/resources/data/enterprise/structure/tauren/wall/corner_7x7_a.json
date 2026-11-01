@@ -1,0 +1,39 @@
+{
+  "id": "enterprise:tauren/wall/corner_7x7_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "wall",
+  "slot": "wall:corner",
+  "notes": "joins a curtain at its south and west faces (the curtain abuts them); its outer faces are north and east",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        13,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "north",
+    "east"
+  ]
+}

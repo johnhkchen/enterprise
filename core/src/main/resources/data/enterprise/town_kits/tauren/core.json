@@ -708,6 +708,246 @@
       "workstations": []
     },
     {
+      "id": "corner_7x7_a",
+      "part": "enterprise:tauren/wall/corner_7x7_a",
+      "kind": "wall",
+      "slot": "wall:corner",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        7,
+        18,
+        7
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "palisade_8_a",
+      "part": "enterprise:tauren/wall/palisade_8_a",
+      "kind": "part",
+      "slot": "wall:palisade",
+      "tiers": [
+        "hamlet",
+        "village"
+      ],
+      "size": [
+        8,
+        14,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "palisade_gate_7x3_a",
+      "part": "enterprise:tauren/wall/palisade_gate_7x3_a",
+      "kind": "wall",
+      "slot": "wall:palisade",
+      "tiers": [
+        "hamlet",
+        "village"
+      ],
+      "size": [
+        7,
+        17,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "barn_6x10_a",
+      "part": "enterprise:tauren/land/barn_6x10_a",
+      "kind": "land",
+      "slot": "barn",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        3
+      ],
+      "size": [
+        6,
+        16,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "mill_10x10_a",
+      "part": "enterprise:tauren/land/mill_10x10_a",
+      "kind": "land",
+      "slot": "mill",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        22,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "pasture_shelter_6x6_a",
+      "part": "enterprise:tauren/land/pasture_shelter_6x6_a",
+      "kind": "land",
+      "slot": "pasture:shelter",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        12,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "kodo_stable_10x10_a",
+      "part": "enterprise:tauren/gate_quarter/kodo_stable_10x10_a",
+      "kind": "gate_quarter",
+      "slot": "stable",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        16,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "wagon_yard_14x10_a",
+      "part": "enterprise:tauren/gate_quarter/wagon_yard_14x10_a",
+      "kind": "gate_quarter",
+      "slot": "wagon_yard",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        12,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "waystation_6x6_a",
+      "part": "enterprise:tauren/gate_quarter/waystation_6x6_a",
+      "kind": "gate_quarter",
+      "slot": "waystation",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        11,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "toll_gate_10x6_a",
+      "part": "enterprise:tauren/gate_quarter/toll_gate_10x6_a",
+      "kind": "gate_quarter",
+      "slot": "toll_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        2
+      ],
+      "size": [
+        10,
+        16,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "roost_lodge_6x6_a",
+      "part": "enterprise:tauren/gate_quarter/roost_lodge_6x6_a",
+      "kind": "gate_quarter",
+      "slot": "post_office",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        19,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "bridge_head_6x6_a",
+      "part": "enterprise:tauren/land/bridge_head_6x6_a",
+      "kind": "land",
+      "slot": "bridge:head",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        18,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
       "id": "filler_1_a",
       "part": "enterprise:tauren/wall/filler_1_a",
       "kind": "part",

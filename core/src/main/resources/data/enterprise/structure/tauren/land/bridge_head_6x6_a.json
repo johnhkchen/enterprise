@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:tauren/land/bridge_head_6x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "land",
+  "slot": "bridge:head",
+  "notes": "the deck, 3 wide, runs out of the north face to join the span",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        4,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "east",
+    "west"
+  ]
+}
