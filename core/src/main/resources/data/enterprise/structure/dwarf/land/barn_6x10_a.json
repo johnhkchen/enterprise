@@ -1,0 +1,46 @@
+{
+  "id": "enterprise:dwarf/land/barn_6x10_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "land",
+  "slot": "barn",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    2,
+    3
+  ],
+  "footprint": [
+    6,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

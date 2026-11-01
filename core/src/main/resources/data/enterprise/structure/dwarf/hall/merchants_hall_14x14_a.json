@@ -1,0 +1,122 @@
+{
+  "id": "enterprise:dwarf/hall/merchants_hall_14x14_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "slot": "desk",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    4,
+    4
+  ],
+  "footprint": [
+    14,
+    14
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "desk",
+      "at": [
+        7,
+        3,
+        8
+      ]
+    },
+    {
+      "what": "bell",
+      "at": [
+        4,
+        20,
+        7
+      ]
+    },
+    {
+      "at": [
+        6,
+        3,
+        8
+      ],
+      "what": "blaze_banker"
+    },
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "what": "vendor"
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "stock": [
+    {
+      "at": [
+        8,
+        3,
+        8
+      ],
+      "for": [
+        7,
+        3,
+        8
+      ]
+    },
+    {
+      "at": [
+        7,
+        3,
+        7
+      ],
+      "for": [
+        7,
+        3,
+        8
+      ]
+    }
+  ]
+}

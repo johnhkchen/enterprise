@@ -1,0 +1,46 @@
+{
+  "id": "enterprise:dwarf/gate_quarter/waystation_6x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "gate_quarter",
+  "slot": "waystation",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 12,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        4,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

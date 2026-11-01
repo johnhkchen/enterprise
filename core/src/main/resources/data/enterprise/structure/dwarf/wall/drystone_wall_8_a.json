@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:dwarf/wall/drystone_wall_8_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "part",
+  "slot": "wall:palisade",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    8,
+    3
+  ],
+  "height": 10,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

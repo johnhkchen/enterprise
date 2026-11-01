@@ -1,0 +1,115 @@
+{
+  "set": "dwarf/founding_kit",
+  "rev": 1,
+  "slot": "founding_kit",
+  "about": "A new town's first buildings as settlers lay them (message 16), composed from delivered parts round a 13 x 13 forum. Coordinates are the kit's frame: x east, z south, the forum's north-west corner at forum_at; each placement gives its part's north-west corner after turning (at) and its clockwise quarter turns (q), parts authored facing south. The street leaves the forum's south edge at its middle, 3 wide.",
+  "size": [
+    33,
+    26
+  ],
+  "forum_at": [
+    10,
+    6
+  ],
+  "forum": [
+    13,
+    13
+  ],
+  "bell": {
+    "at": [
+      17,
+      6,
+      13
+    ],
+    "from": "the forum centrepiece's bell marker"
+  },
+  "desk": {
+    "at": [
+      14,
+      3,
+      7
+    ],
+    "facing": "south",
+    "what": "the settlers' desk (yours), on the forum's north edge"
+  },
+  "chest": {
+    "at": [
+      18,
+      3,
+      7
+    ],
+    "facing": "south",
+    "what": "the settlers' chest (yours), beside the desk"
+  },
+  "place": [
+    {
+      "role": "forum:centre",
+      "part": "enterprise:dwarf/forum/forum_centre_7x7_a",
+      "at": [
+        13,
+        9
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:farmer",
+      "part": "enterprise:dwarf/stall/stall_farmer_3x3_a",
+      "at": [
+        10,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:mason",
+      "part": "enterprise:dwarf/stall/stall_mason_3x3_a",
+      "at": [
+        14,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:librarian",
+      "part": "enterprise:dwarf/stall/stall_librarian_3x3_a",
+      "at": [
+        18,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "home",
+      "part": "enterprise:dwarf/home/cottage_7x7_a",
+      "at": [
+        1,
+        8
+      ],
+      "q": 3,
+      "faces": "east"
+    },
+    {
+      "role": "home",
+      "part": "enterprise:dwarf/home/cottage_7x7_a",
+      "at": [
+        23,
+        8
+      ],
+      "q": 1,
+      "faces": "west"
+    }
+  ],
+  "census": {
+    "bell": 1,
+    "beds": 4,
+    "job_sites": 3,
+    "outside_48": 0,
+    "pass": true,
+    "note": "counted on the composed demo: bed heads and job blocks within 48 of the bell; the desk is not counted"
+  },
+  "order": "Bell, desk and chest first; the farmer's stall; the two homes; then the mason's and librarian's stalls."
+}

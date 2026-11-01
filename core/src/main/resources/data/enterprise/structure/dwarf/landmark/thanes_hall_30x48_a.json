@@ -1,0 +1,39 @@
+{
+  "id": "enterprise:dwarf/landmark/thanes_hall_30x48_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "landmark",
+  "slot": "landmark:palace",
+  "tiers": [
+    "capital"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    30,
+    48
+  ],
+  "height": 38,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        15,
+        3,
+        47
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "east",
+    "west"
+  ]
+}

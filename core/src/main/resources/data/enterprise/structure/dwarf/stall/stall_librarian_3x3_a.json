@@ -1,0 +1,52 @@
+{
+  "id": "enterprise:dwarf/stall/stall_librarian_3x3_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "stall",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 11,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        4
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [
+    {
+      "at": [
+        2,
+        3,
+        3
+      ],
+      "block": "minecraft:lectern"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "stall:librarian",
+  "notes": "dwarf's market stall with a lectern at its front counter, worked from the street: the librarian's stall"
+}

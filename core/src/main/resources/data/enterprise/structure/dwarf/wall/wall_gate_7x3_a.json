@@ -1,0 +1,49 @@
+{
+  "id": "enterprise:dwarf/wall/wall_gate_7x3_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "wall",
+  "slot": "wall:palisade",
+  "role": "gate",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    7,
+    3
+  ],
+  "height": 14,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        3
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        2,
+        3,
+        3
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "enterprise:dwarf/hall/stone_quay_14x6_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "slot": "hall:stone_docks",
+  "use": [
+    "sea",
+    "river"
+  ],
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "tiles": [
+    4,
+    2
+  ],
+  "footprint": [
+    14,
+    6
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        9,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

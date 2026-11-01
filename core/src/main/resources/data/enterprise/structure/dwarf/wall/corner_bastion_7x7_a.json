@@ -1,0 +1,48 @@
+{
+  "id": "enterprise:dwarf/wall/corner_bastion_7x7_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "wall",
+  "slot": "wall:corner",
+  "notes": "joins a curtain at its south and west faces (the curtain abuts them); its outer faces are north and east",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "north",
+    "east"
+  ]
+}

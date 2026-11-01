@@ -1,0 +1,36 @@
+{
+  "id": "enterprise:dwarf/hall/moot_stone_10x10_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "slot": "hall:square",
+  "palette": "deepforge",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 8,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        4,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": []
+}

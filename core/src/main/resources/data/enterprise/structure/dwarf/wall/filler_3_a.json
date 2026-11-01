@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dwarf/wall/filler_3_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "part",
+  "slot": "wall:filler",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    3,
+    3
+  ],
+  "height": 12,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}
