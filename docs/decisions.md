@@ -1188,6 +1188,11 @@ mod's), but no road ever chose it. Then: build them first.
     tended 368 a day to 270). Kept so. A Farmer's plots a level (`plots_per_farmer_level`, 32) and a Fisherman's cod a
     level (`cod_per_fisher_level`, 4) are dials beside the herds' and the mines' that were already: a server that
     wants villagers to keep themselves turns them up; the default leaves the gap for the players' Create works.
+    Seed 1717's bid study, a lane each from day 0 at 32, 40 and 48 plots a level: treats met (by villagers) 0.06,
+    0.56, 0.74; mood 0.08 below nought, 0.43, 0.71; wheat tended 191, 440, 510 a day; reading 0.35, 0.24, 0.37;
+    clothing none in any (leather 1 in stock in each); 11, 23 and 25 towns, 107, 155 and 153 villagers; untended
+    plots 6,007, 6,077 and 15,711 (more hands, more fields). The run at 32 grew less than the last at 32 (19 towns,
+    150 villagers, treats 0.30): fresh runs differ that much. Left at 32 for now; the lanes take `--dial`.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

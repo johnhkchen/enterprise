@@ -411,9 +411,22 @@ def place_bids(desks, day, say):
         say(f"day {day}: bid at town {town}: " + (said[-1] if said else "(no answer)"))
 
 
+# `--dial NAME=VALUE`: a core dial set on the first day (`/enterprise dial`), kept with the world after: a run of its own
+# (its flags key its points), the lanes side by side tuning one (`plots_per_farmer_level=40`).
+DIALS = [sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--dial"]
+
+
+def set_dials(day, say):
+    for d in DIALS if day == 1 else []:
+        name, _, value = d.partition("=")
+        said = rcon(f"enterprise dial {name} {value}").strip().splitlines()
+        say(f"day {day}: dial: " + (said[-1] if said else "(no answer)"))
+
+
 def run_days(chosen, desks, roads, first, start, days, say, stages, points):
     for day in range(start, days + 1):
         started = time.time()
+        set_dials(day, say)
         place_bids(desks, day, say)
         if day == 2 and "--loaded" not in sys.argv:
             # After the first day, the towns left to the core's ledgers: each town's conversion and harbour are laid in
