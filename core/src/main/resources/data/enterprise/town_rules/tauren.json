@@ -1,6 +1,6 @@
 {
   "kingdom": "tauren",
-  "rev": 3,
+  "rev": 4,
   "about": "Tauren plains village: town rules for a kit race. Every building is a whole delivered part from town_kits/tauren/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/tauren.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "tauren/core",
   "tiers": {
@@ -106,6 +106,19 @@
         ],
         "beds": 4,
         "weight": 2
+      },
+      {
+        "asset": "enterprise:tauren/home/row_tents_22x6_a",
+        "tiles": [
+          6,
+          2
+        ],
+        "footprint": [
+          22,
+          6
+        ],
+        "beds": 3,
+        "weight": 1
       }
     ],
     "city": [
@@ -134,12 +147,25 @@
         ],
         "beds": 4,
         "weight": 3
+      },
+      {
+        "asset": "enterprise:tauren/home/row_tents_22x6_a",
+        "tiles": [
+          6,
+          2
+        ],
+        "footprint": [
+          22,
+          6
+        ],
+        "beds": 3,
+        "weight": 2
       }
     ]
   },
   "workshops": {
     "from": "village",
-    "slot": "workshop:weaponsmith",
+    "slot": "workshop:armorer",
     "asset": "enterprise:tauren/workshop/forge_tent_14x10_a",
     "tiles": [
       4,
@@ -152,7 +178,7 @@
     "trades": "the smiths (armorer, toolsmith, weaponsmith) take this workshop; the trades in by_trade take their own; every other trade works from a stall (stall:any, the trade's job block set at its marker) until its own workshop is delivered",
     "by_trade": [
       {
-        "slot": "workshop:weaponsmith",
+        "slot": "workshop:armorer",
         "asset": "enterprise:tauren/workshop/forge_tent_14x10_a",
         "tiles": [
           4,
@@ -331,13 +357,125 @@
       ],
       "from": "village"
     },
-    "watchtower": {
-      "asset": "enterprise:tauren/wall/watchtower_7x7_a",
+    "square": {
+      "asset": "enterprise:tauren/hall/gathering_circle_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
       "footprint": [
-        9,
-        9
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "granary": {
+      "asset": "enterprise:tauren/hall/granary_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "root_cellar": {
+      "asset": "enterprise:tauren/hall/root_cellar_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "counting_house": {
+      "asset": "enterprise:tauren/hall/counting_tent_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "library": {
+      "asset": "enterprise:tauren/hall/lore_lodge_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "smithy": {
+      "asset": "enterprise:tauren/hall/smithy_10x10_a",
+      "tiles": [
+        3,
+        3
+      ],
+      "footprint": [
+        10,
+        10
+      ],
+      "from": "village"
+    },
+    "watchtower": {
+      "asset": "enterprise:tauren/hall/lookout_6x6_a",
+      "tiles": [
+        2,
+        2
+      ],
+      "footprint": [
+        6,
+        6
+      ],
+      "from": "village"
+    },
+    "stone_docks": {
+      "asset": "enterprise:tauren/hall/stone_docks_14x6_a",
+      "tiles": [
+        4,
+        2
+      ],
+      "footprint": [
+        14,
+        6
       ],
       "from": "town"
+    },
+    "caravanserai": {
+      "asset": "enterprise:tauren/hall/caravan_lodge_14x10_a",
+      "tiles": [
+        4,
+        3
+      ],
+      "footprint": [
+        14,
+        10
+      ],
+      "from": "town"
+    },
+    "desk": {
+      "asset": "enterprise:tauren/hall/trade_lodge_14x14_a",
+      "tiles": [
+        4,
+        4
+      ],
+      "footprint": [
+        14,
+        14
+      ],
+      "from": "village"
     }
   },
   "forum": {
@@ -346,7 +484,7 @@
       "ring": [
         {
           "asset": "enterprise:tauren/stall/stall_3x3_a",
-          "for": "each trade's stall: one part serves every trade (its marker takes the trade's job block)"
+          "for": "each trade's stall: the trade's own stall from trade_stalls where there is one, else this one"
         }
       ]
     },
@@ -407,6 +545,36 @@
   "founding": {
     "set": "tauren/founding",
     "about": "the settlers' camp and the founding pieces, placed as Lordaeron's founding set says"
+  },
+  "founding_kit": {
+    "set": "tauren/founding_kit",
+    "about": "a new town's first buildings (bell, desk and chest, the farmer's stall and two more trade stalls, two homes) composed round a 13 x 13 forum; placements in its own file"
+  },
+  "trade_stalls": {
+    "stall:farmer": {
+      "asset": "enterprise:tauren/stall/stall_farmer_3x3_a",
+      "footprint": [
+        5,
+        5
+      ],
+      "job": "minecraft:composter"
+    },
+    "stall:mason": {
+      "asset": "enterprise:tauren/stall/stall_mason_3x3_a",
+      "footprint": [
+        5,
+        5
+      ],
+      "job": "minecraft:stonecutter"
+    },
+    "stall:librarian": {
+      "asset": "enterprise:tauren/stall/stall_librarian_3x3_a",
+      "footprint": [
+        5,
+        5
+      ],
+      "job": "minecraft:lectern"
+    }
   },
   "growth": {
     "rule": "a plot keeps its slot as the town grows: a hamlet's 7-wide cottage gives way to a 10-wide house on the merged plot when the ward fills; a home's palette steps up (daub to brick) at town tier on the seed's hash; yards follow the house's tier",

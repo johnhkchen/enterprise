@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:tauren/wall/filler_2_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "part",
+  "slot": "wall:filler",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    2,
+    3
+  ],
+  "height": 13,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

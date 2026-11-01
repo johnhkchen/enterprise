@@ -9,6 +9,10 @@
       "part": "enterprise:tauren/home/tent_10x10_a",
       "kind": "home",
       "slot": "home",
+      "tiles": [
+        3,
+        3
+      ],
       "size": [
         10,
         18,
@@ -22,6 +26,10 @@
       "part": "enterprise:tauren/home/yurt_14x10_a",
       "kind": "home",
       "slot": "home",
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -34,10 +42,14 @@
       "id": "forge_tent_14x10_a",
       "part": "enterprise:tauren/workshop/forge_tent_14x10_a",
       "kind": "workshop",
-      "slot": "workshop:weaponsmith",
+      "slot": "workshop:armorer",
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -46,7 +58,7 @@
       ],
       "beds": 3,
       "workstations": [
-        "minecraft:grindstone"
+        "minecraft:blast_furnace"
       ]
     },
     {
@@ -88,6 +100,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        5,
+        4
       ],
       "size": [
         18,
@@ -171,6 +187,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -189,6 +209,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -209,6 +233,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -227,6 +255,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -247,6 +279,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -265,6 +301,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -285,6 +325,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -303,6 +347,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -323,6 +371,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -342,6 +394,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -360,6 +416,10 @@
       "tiers": [
         "village",
         "town"
+      ],
+      "tiles": [
+        4,
+        3
       ],
       "size": [
         14,
@@ -393,6 +453,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         18,
@@ -410,6 +474,10 @@
         "village",
         "town"
       ],
+      "tiles": [
+        4,
+        3
+      ],
       "size": [
         14,
         16,
@@ -417,6 +485,367 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "row_tents_22x6_a",
+      "part": "enterprise:tauren/home/row_tents_22x6_a",
+      "kind": "home",
+      "slot": "home:terrace",
+      "tiles": [
+        6,
+        2
+      ],
+      "size": [
+        22,
+        20,
+        6
+      ],
+      "beds": 3,
+      "workstations": []
+    },
+    {
+      "id": "trade_lodge_14x14_a",
+      "part": "enterprise:tauren/hall/trade_lodge_14x14_a",
+      "kind": "hall",
+      "slot": "desk",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        4
+      ],
+      "size": [
+        14,
+        22,
+        14
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "gathering_circle_10x10_a",
+      "part": "enterprise:tauren/hall/gathering_circle_10x10_a",
+      "kind": "hall",
+      "slot": "hall:square",
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        15,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "granary_10x10_a",
+      "part": "enterprise:tauren/hall/granary_10x10_a",
+      "kind": "hall",
+      "slot": "hall:granary",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        22,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "root_cellar_10x10_a",
+      "part": "enterprise:tauren/hall/root_cellar_10x10_a",
+      "kind": "hall",
+      "slot": "hall:root_cellar",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        13,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "counting_tent_10x10_a",
+      "part": "enterprise:tauren/hall/counting_tent_10x10_a",
+      "kind": "hall",
+      "slot": "hall:counting_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        16,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "lore_lodge_10x10_a",
+      "part": "enterprise:tauren/hall/lore_lodge_10x10_a",
+      "kind": "hall",
+      "slot": "hall:library",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        22,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "smithy_10x10_a",
+      "part": "enterprise:tauren/hall/smithy_10x10_a",
+      "kind": "hall",
+      "slot": "hall:smithy",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "lookout_6x6_a",
+      "part": "enterprise:tauren/hall/lookout_6x6_a",
+      "kind": "hall",
+      "slot": "hall:watchtower",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        2,
+        2
+      ],
+      "size": [
+        6,
+        32,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "stone_docks_14x6_a",
+      "part": "enterprise:tauren/hall/stone_docks_14x6_a",
+      "kind": "hall",
+      "slot": "hall:stone_docks",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        2
+      ],
+      "size": [
+        14,
+        15,
+        6
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "caravan_lodge_14x10_a",
+      "part": "enterprise:tauren/hall/caravan_lodge_14x10_a",
+      "kind": "hall",
+      "slot": "hall:caravanserai",
+      "tiers": [
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        16,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_1_a",
+      "part": "enterprise:tauren/wall/filler_1_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        1,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_2_a",
+      "part": "enterprise:tauren/wall/filler_2_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        2,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "filler_3_a",
+      "part": "enterprise:tauren/wall/filler_3_a",
+      "kind": "part",
+      "slot": "wall:filler",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        3,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "curtain_4_a",
+      "part": "enterprise:tauren/wall/curtain_4_a",
+      "kind": "part",
+      "slot": "wall:curtain",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        4,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "step_4_a",
+      "part": "enterprise:tauren/wall/step_4_a",
+      "kind": "part",
+      "slot": "wall:step",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        4,
+        14,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "stall_farmer_3x3_a",
+      "part": "enterprise:tauren/stall/stall_farmer_3x3_a",
+      "kind": "stall",
+      "slot": "stall:farmer",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "stall_mason_3x3_a",
+      "part": "enterprise:tauren/stall/stall_mason_3x3_a",
+      "kind": "stall",
+      "slot": "stall:mason",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "stall_librarian_3x3_a",
+      "part": "enterprise:tauren/stall/stall_librarian_3x3_a",
+      "kind": "stall",
+      "slot": "stall:librarian",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:lectern"
+      ]
     }
   ],
   "held": [],

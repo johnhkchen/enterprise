@@ -89,11 +89,11 @@
   "workstations": [
     {
       "at": [
-        9,
+        12,
         3,
-        5
+        6
       ],
-      "block": "minecraft:grindstone"
+      "block": "minecraft:blast_furnace"
     }
   ],
   "lockers": [],
@@ -105,5 +105,5 @@
     "east",
     "west"
   ],
-  "slot": "workshop:weaponsmith"
+  "slot": "workshop:armorer"
 }

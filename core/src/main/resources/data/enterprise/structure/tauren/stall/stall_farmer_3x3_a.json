@@ -1,0 +1,52 @@
+{
+  "id": "enterprise:tauren/stall/stall_farmer_3x3_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "stall",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 11,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        4
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [
+    {
+      "at": [
+        2,
+        3,
+        3
+      ],
+      "block": "minecraft:composter"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "stall:farmer",
+  "notes": "tauren's market stall with a composter at its front counter, worked from the street: the farmer's stall"
+}

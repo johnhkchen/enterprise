@@ -1,0 +1,105 @@
+{
+  "id": "enterprise:tauren/hall/trade_lodge_14x14_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "hall",
+  "slot": "desk",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    4
+  ],
+  "footprint": [
+    14,
+    14
+  ],
+  "height": 22,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        6,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "desk",
+      "at": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "at": [
+        7,
+        3,
+        4
+      ],
+      "what": "blaze_banker"
+    },
+    {
+      "at": [
+        7,
+        3,
+        2
+      ],
+      "what": "vendor"
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "stock": [
+    {
+      "at": [
+        8,
+        3,
+        3
+      ],
+      "for": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "at": [
+        6,
+        3,
+        3
+      ],
+      "for": [
+        7,
+        3,
+        3
+      ]
+    }
+  ]
+}
