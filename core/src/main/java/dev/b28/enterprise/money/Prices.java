@@ -37,6 +37,9 @@ public final class Prices {
             Map.entry("minecraft:glass_pane", 11.0),
             Map.entry("minecraft:compass", 1.0),
             Map.entry("minecraft:coal", 15.0),
+            Map.entry("minecraft:charcoal", 15.0),
+            Map.entry("minecraft:oak_sapling", 12.0),
+            Map.entry("minecraft:spruce_sapling", 12.0),
             Map.entry("minecraft:raw_iron", 5.0),
             // What hands gather (no villager buys most of it; caravans carry it where it's wanted)
             Map.entry("minecraft:oak_log", 8.0),

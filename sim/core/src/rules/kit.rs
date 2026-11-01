@@ -143,6 +143,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             }
         }
         // Its hands gather, more with tools to hand, which wear out; the militia stand watch instead.
+        let lumberjacks = content.trade(crate::roster::LUMBERJACK).is_some();
         let hands: Vec<f64> = idle.iter()
             .map(|&i| if content.trades[roster.hands[i].trade].nitwit { NITWIT_FACTOR } else { 1.0 }).collect();
         let tooled = (hands.len() as f64).min(kits.hand_tools);
@@ -155,6 +156,10 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             for (i, weight) in hands.iter().enumerate().take(hands.len().saturating_sub(militia)) {
                 let land = map.land(hexes[i % hexes.len()]);
                 for &(name, per_day) in hauls(land) {
+                    // (Logs are the Lumberjacks' where the host has them: John, "Lumberjack only".)
+                    if lumberjacks && crate::works::LOGS.contains(&name) {
+                        continue;
+                    }
                     let Some(g) = content.good(name) else { continue };
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
                     if room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
@@ -191,6 +196,39 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             let owed = content.good("cod").and_then(|g| kits.pending.get(&g)).copied().unwrap_or(0.0);
             if catch > 0.0 && content.good("cod").is_some_and(|g| room(&content, trades, stock, crates, g, owed, wanted_far(g))) {
                 owe(&content, kits, "cod", catch * days);
+            }
+        }
+        // Its Lumberjacks fell its woodlots (John: "Woodlots, felled visibly"): so many grown lots a day a level each,
+        // `logs_per_lot` logs a lot, while it has room for the logs; each felled lot is replanted at once and stands
+        // grown `woodlot_grow_days` after. The town lays as many lots as its Lumberjacks can keep felling as they
+        // regrow, as far as its land holds them: the woods' first, standing grown, then saplings on open ground.
+        let lumberjack = content.trade(crate::roster::LUMBERJACK);
+        let fellers = levels(roster, lumberjack);
+        if fellers > 0.0 {
+            let grow = (d.woodlot_grow_days.max(0.0) * day as f64) as u64;
+            let (room_for, wooded) = woodland(&map, holding, town.hex);
+            let wanted_lots = ((fellers * d.lots_felled_per_level_day * d.woodlot_grow_days).ceil() as usize).min(room_for);
+            while kits.woodlots.len() < wanted_lots {
+                let grown = if kits.woodlots.len() < wooded { now } else { now + grow };
+                kits.woodlots.push(grown);
+            }
+            let log = log_of(town.hex.map_or(Land::Plains, |hex| map.land(hex)));
+            if let Some(g) = content.good(log) {
+                kits.felling += fellers * d.lots_felled_per_level_day * days;
+                for lot in kits.woodlots.iter_mut() {
+                    if kits.felling < 1.0 {
+                        break;
+                    }
+                    let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
+                    if *lot > now || !room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
+                        continue;
+                    }
+                    *lot = now + grow;
+                    kits.felling -= 1.0;
+                    *kits.pending.entry(g).or_insert(0.0) += d.logs_per_lot;
+                }
+                // (What it couldn't fell, nothing grown or no room, isn't carried: a day's felling is the day's.)
+                kits.felling = kits.felling.min(1.0 - 1e-9).max(0.0);
             }
         }
         // Its kit wears out.

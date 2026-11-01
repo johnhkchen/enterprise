@@ -214,11 +214,10 @@ fn a_nitwit_gathers_what_the_land_gives() {
         let t = town(&mut s, &[("nitwit", 1)]);
         s.set_land(s.town_hex(t).unwrap(), land);
         s.advance(DAY);
-        let hauls = kit::hauls(land);
-        let (first, per_day) = hauls[0];
-        assert_eq!(stock(&s, t, first), (per_day * 1.5).floor(), "a day of a Nitwit's gathering on {land:?}: {first}");
-        for &(name, per_day) in hauls {
-            assert_eq!(stock(&s, t, name), (per_day * 1.5).floor(), "{land:?}: {name}");
+        // (Logs are the Lumberjack's: John, "Lumberjack only".)
+        for &(name, per_day) in kit::hauls(land) {
+            let gathered = if enterprise_core::works::LOGS.contains(&name) { 0.0 } else { (per_day * 1.5).floor() };
+            assert_eq!(stock(&s, t, name), gathered, "a day of a Nitwit's gathering on {land:?}: {name}");
         }
     }
 }
@@ -492,4 +491,74 @@ fn ore_comes_from_the_hills() {
     assert_eq!(kit::ore_ground(1), 1.0);
     assert_eq!(kit::ore_ground(3), 2.0, "three hills: half again twice");
     assert_eq!(kit::ore_ground(9), 2.0, "no more past three");
+}
+
+/// The kit's goods and charcoal: a Lumberjack's workshop burns logs to it (`workshop::MOD_CONVERSIONS`).
+fn wood_content() -> Content {
+    Content::new(NAMES.iter().chain(&["charcoal"]).map(|n| Good::new(n, 0.1, 64)).collect(), DAY)
+}
+
+#[test]
+fn a_lumberjack_fells_its_woods_and_replants_them_and_no_idle_hand_gathers_logs() {
+    let mut s = Society::new(content());
+    // (No charcoal in the content: the logs it fells stay logs.)
+    let t = town(&mut s, &[("lumberjack", 1), ("none", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    s.content_mut().dials.woodlot_grow_days = 5.0;
+    s.advance(DAY);
+    // Half a lot a day at Novice: the first lot felled on its second day, 16 logs; the idle hand gathers sticks only.
+    assert_eq!(stock(&s, t, "oak_log"), 0.0, "half a lot felled, none brought in yet");
+    assert!(stock(&s, t, "stick") > 0.0, "the idle hand gathers the woods' sticks");
+    s.advance(2 * DAY);
+    assert_eq!(stock(&s, t, "oak_log"), 16.0, "a lot felled by its second day's work: 16 logs");
+    let kits: &Kits = s.kits(t);
+    assert_eq!(kits.woodlots.len(), 3, "as many lots as a Novice fells while they regrow: half a lot a day, 5 days");
+    assert_eq!(kits.woodlots.iter().filter(|&&grown| grown > 3 * DAY).count(), 1, "the felled lot replanted");
+    // It fells no more while it holds what it keeps of a good no trade of its takes (16).
+    s.advance(4 * DAY);
+    assert_eq!(stock(&s, t, "oak_log"), 16.0, "it keeps 16 logs and fells no more");
+}
+
+#[test]
+fn a_lumberjacks_lots_on_open_ground_grow_from_saplings_first() {
+    let mut s = Society::new(content());
+    // (No charcoal in the content: the logs it fells stay logs.)
+    let t = town(&mut s, &[("lumberjack", 1)]);
+    s.content_mut().dials.woodlot_grow_days = 2.0;
+    s.advance(2 * DAY);
+    assert_eq!(stock(&s, t, "oak_log"), 0.0, "saplings on the plains: nothing grown to fell for 2 days");
+    s.advance(3 * DAY);
+    assert_eq!(stock(&s, t, "oak_log"), 16.0, "grown 2 days after they were planted, and felled");
+}
+
+#[test]
+fn a_lumberjack_burns_logs_to_charcoal_for_the_fuel_its_town_keeps() {
+    let mut s = Society::new(wood_content());
+    let t = town(&mut s, &[("lumberjack", 1)]);
+    s.deliver(t, good(s.content(), "oak_log"), 30.0);
+    s.deliver(t, good(s.content(), "coal"), 6.0);
+    s.advance(DAY);
+    // 16 of fuel kept, its 6 coal counted: 10 charcoal, 5 batches of 3 logs into 2.
+    assert_eq!(stock(&s, t, "charcoal"), 10.0, "charcoal to 16 of fuel with its coal");
+    assert_eq!(stock(&s, t, "oak_log"), 15.0, "15 logs burnt");
+}
+
+#[test]
+fn a_town_whose_trades_want_wood_draws_a_lumberjack_for_its_woods() {
+    let c = wood_content();
+    let mut s = Society::new(c);
+    let t = town(&mut s, &[("mason", 1), ("none", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    let bag = s.job_bag(t);
+    assert!(bag.iter().any(|(trade, m)| trade == "lumberjack" && *m > 0.0), "a Mason's halls want wood: {bag:?}");
+    // Not where no trade of its uses wood, nor while it holds what it keeps of logs.
+    let mut s = Society::new(wood_content());
+    let t = town(&mut s, &[("farmer", 1), ("none", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    assert!(!s.job_bag(t).iter().any(|(trade, _)| trade == "lumberjack"), "no trade of its uses wood");
+    let mut s = Society::new(wood_content());
+    let t = town(&mut s, &[("mason", 1), ("none", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    s.deliver(t, good(s.content(), "oak_log"), 16.0);
+    assert!(!s.job_bag(t).iter().any(|(trade, _)| trade == "lumberjack"), "16 logs held");
 }

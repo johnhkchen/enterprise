@@ -814,6 +814,9 @@ const BUYS: &[(&str, u8, &str, u32, u8, u32)] = &[
     ("leatherworker", 3, "rabbit_hide", 9, 12, 20), ("leatherworker", 4, "turtle_scute", 4, 12, 30),
     ("mason", 1, "clay_ball", 10, 16, 2), ("mason", 2, "stone", 20, 16, 10), ("mason", 3, "granite", 16, 16, 20),
     ("mason", 3, "andesite", 16, 16, 20), ("mason", 3, "diorite", 16, 16, 20), ("mason", 4, "quartz", 12, 12, 30),
+    // The mod's Lumberjack (no vanilla trades): saplings for its woodlots, then an axe's iron.
+    ("lumberjack", 1, "oak_sapling", 12, 16, 2), ("lumberjack", 2, "spruce_sapling", 12, 16, 10),
+    ("lumberjack", 3, "iron_ingot", 4, 12, 20),
 ];
 
 /// A selling trade in the table: trade, level, good, emeralds, how many, uses, XP, multiplier.
@@ -843,6 +846,8 @@ const SELLS: &[Sells] = &[
     ("leatherworker", 2, "leather_helmet", 5, 1, 12, 5, 0.2), ("leatherworker", 2, "leather_boots", 4, 1, 12, 5, 0.2),
     ("leatherworker", 5, "saddle", 6, 1, 12, 30, 0.2),
     ("mason", 1, "brick", 1, 10, 16, 1, 0.05), ("mason", 4, "terracotta", 1, 1, 12, 15, 0.05),
+    ("lumberjack", 1, "oak_log", 1, 6, 16, 1, 0.05), ("lumberjack", 2, "charcoal", 1, 4, 16, 5, 0.05),
+    ("lumberjack", 3, "spruce_log", 1, 6, 16, 10, 0.05),
 ];
 
 /// The mod's trades get vanilla's offers for the goods the host has, by name with or without its namespace

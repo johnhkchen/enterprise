@@ -311,6 +311,12 @@ dials! {
     shelf_reading: f64 = 0.5,
     library_sockets: u32 = 6,
     cod_per_fisher_level: f64 = 4.0,
+    /// A Lumberjack fells so many grown woodlots a day a level (`kit::Woodlots`), each `logs_per_lot` logs, and a
+    /// felled lot replanted stands grown again `woodlot_grow_days` after: a Novice brings in 8 logs a day, as a hand
+    /// gathering the woods did before (6, 7.5 with an axe).
+    lots_felled_per_level_day: f64 = 0.5,
+    logs_per_lot: f64 = 16.0,
+    woodlot_grow_days: f64 = 5.0,
     /// The share of a town's fallow and untended plots its herds graze (`Herds::grazing`): 0 keeps them to their
     /// pastures, as before grazing.
     graze_share: f64 = 1.0,

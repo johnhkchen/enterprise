@@ -20,9 +20,9 @@ const WHEAT: usize = 5;
 const BREAD: usize = 6;
 
 #[test]
-fn the_sixteen_trades_are_content() {
+fn the_seventeen_trades_are_content() {
     let c = content();
-    assert_eq!(c.trades.len(), 16);
+    assert_eq!(c.trades.len(), 17);
     let leads: Vec<&str> = c.trades.iter().filter(|t| t.leads).map(|t| t.name.as_str()).collect();
     assert_eq!(leads, ["merchant", "cartographer", "librarian", "shepherd", "leatherworker", "fisherman"]);
     let squad: Vec<&str> = c.trades.iter().filter(|t| t.squad).map(|t| t.name.as_str()).collect();

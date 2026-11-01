@@ -36,7 +36,7 @@ use crate::roster::{Hand, Roster, TradeId};
 use crate::state::*;
 
 /// The trades a town can set up and the goods their villagers buy (`Jobs.TRADES`), in the mod's order.
-pub const TRADES: [(&str, &[&str]); 13] = [
+pub const TRADES: [(&str, &[&str]); 14] = [
     ("farmer", &["wheat", "potato", "carrot", "beetroot", "pumpkin", "melon"]),
     ("librarian", &["paper", "book", "ink_sac"]),
     ("cartographer", &["paper", "glass_pane", "compass"]),
@@ -50,7 +50,35 @@ pub const TRADES: [(&str, &[&str]); 13] = [
     ("armorer", &["coal", "iron_ingot"]),
     ("toolsmith", &["coal", "iron_ingot", "flint"]),
     ("weaponsmith", &["coal", "iron_ingot", "flint"]),
+    ("lumberjack", &["oak_sapling", "spruce_sapling"]),
 ];
+
+/// The trades whose work burns or builds with wood: a Librarian's shelves, a Mason's halls, the smiths' fires and a
+/// Butcher's smokehouse (charcoal where there's no coal). A town with none of them wants no Lumberjack for its woods.
+pub const USE_WOOD: [&str; 6] = ["librarian", "mason", "armorer", "toolsmith", "weaponsmith", "butcher"];
+
+/// A town's woods unfelled, a Lumberjack's marbles (as unfished grounds are a Fisherman's): four days of what a Novice
+/// would fell of the logs the woodlots its land holds would give a day beyond its Lumberjacks at home, while a trade
+/// of its uses wood ([`USE_WOOD`]), it holds fewer than `crate::kit::KEEP` logs and its warehouse has room for more
+/// (`crate::kit::room`'s slots: a town whose warehouse is full drew Lumberjack after Lumberjack, each a stall's fee,
+/// who felled nothing). None without a Lumberjack trade or land.
+pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>,
+        map: &crate::map::Map, roster: &Roster, stock: &Stock) -> Option<(TradeId, f64)> {
+    let lumberjack = content.trade(crate::roster::LUMBERJACK)?;
+    let uses = USE_WOOD.iter().filter_map(|t| content.trade(t)).any(|t| crate::kit::at_home(roster, Some(t)).next().is_some());
+    let logs: f64 = crate::works::LOGS.iter().filter_map(|l| content.good(l)).map(|g| stock.0[g]).sum();
+    let slots = crate::kit::free_slots(content, &stock.0, 0) > content.dials.free_slots as i64 + crate::kit::SPARE_SLOTS;
+    if !uses || logs >= crate::kit::KEEP || !slots {
+        return None;
+    }
+    let d = &content.dials;
+    let (lots, _) = crate::kit::woodland(map, holding, home);
+    let could = lots as f64 / d.woodlot_grow_days.max(1e-9) * d.logs_per_lot;
+    let felled = crate::kit::levels(roster, Some(lumberjack)) * d.lots_felled_per_level_day * d.logs_per_lot;
+    let log = content.good(crate::kit::log_of(home.map_or(crate::map::Land::Plains, |h| map.land(h))))?;
+    let unfelled = (could - felled).max(0.0).min(d.lots_felled_per_level_day * d.logs_per_lot);
+    (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0))
+}
 
 /// What else a trade takes, a glut of which trains a hand to it ([`for_glut`]; not as the mod): the Butcher cooks beef and
 /// mutton, the Armorer smelts ore. Every town held hundreds of beef, its cows' as their leather was taken, with no
@@ -559,6 +587,10 @@ impl crate::society::Society {
         }
         if let Some((t, m)) = fishing_marbles(content, e.get::<crate::works::Works>(),
                 self.world.resource::<crate::territory::Territory>().holding(town), self.map(), &roster) {
+            put(&mut bag, t, m);
+        }
+        if let Some((t, m)) = woodland_marbles(content, self.world.resource::<crate::territory::Territory>().holding(town),
+                e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock) {
             put(&mut bag, t, m);
         }
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()

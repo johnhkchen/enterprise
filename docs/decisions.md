@@ -1322,6 +1322,14 @@ mod's), but no road ever chose it. Then: build them first.
     its head clear, which the look's test (`isInWall`: the eyes' block) passes; it chokes a few ticks later. A look now
     stands out any creature whose body overlaps a block, as well (`Grounds.unbury`, its game test). Seed 1717, one
     day: no deaths, none rescued after the looks, 92 stood out by them.
+- **The Lumberjack, the mod's first trade of its own (John, 2026-11-01: "a big push on our first added profession:
+  lumberjack").** Woodlots felled visibly and replanted; wood for charcoal, builds and crates, and furnishings; logs
+  from Lumberjacks only; placeholder art, then the studio's. The plan and its four landings: `docs/lumberjack-plan.md`.
+  **Built (landing 1, the core):** the trade, a town's woodlots (each by when it stands grown: 8 a hex of woods, grown,
+  3 of open ground, saplings), felled half a lot a day a level for 16 logs a lot and replanted (grown again in 5 days),
+  charcoal from logs for the town's fuel with a charcoal twin of every coal recipe, and the job draw (a town whose trades
+  use wood, short of logs, draws one for its woods unfelled). Idle hands gather no logs where the host has the trade:
+  the mod's doesn't yet, so the game is as it was until landing 2.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

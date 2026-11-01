@@ -105,7 +105,7 @@ pub struct Content {
     /// The dials as the world started with them: what `reset` puts a dial back to. The core's defaults, or the content
     /// pack's own where it sets them (`wire/pack.rs`).
     pub dial_defaults: Dials,
-    /// The trades a town's hands can have (`roster.rs`): the mod's sixteen by default.
+    /// The trades a town's hands can have (`roster.rs`): the mod's seventeen by default.
     pub trades: Vec<crate::roster::Trade>,
     /// What a town's trades convert (`workshop.rs`): the mod's seven by default, for the goods the host has.
     pub conversions: Vec<crate::workshop::Conversion>,

@@ -257,15 +257,31 @@ pub struct Recipe {
 
 /// The mod's recipes the host has every good and the trade for, in the mod's order.
 pub fn recipes(content: &Content) -> Vec<Recipe> {
-    MOD_RECIPES.iter().filter_map(|&(name, trade, does, does_abroad, inputs, output, out,
-            per_level, fee_each, want, min_level)| {
+    let recipe = |&(name, trade, does, does_abroad, inputs, output, out, per_level, fee_each, want, min_level): &RecipeRow| {
         let trade = content.trade(trade)?;
         let inputs: Option<Vec<(GoodId, u32)>> = inputs.iter().map(|&(g, n)| content.good(g).map(|g| (g, n))).collect();
         let kit = KITS.iter().any(|k| k.good == output);
         Some(Recipe { name, trade, does, does_abroad, inputs: inputs?, output: content.good(output)?, out, per_level,
             fee_each, want, min_level, kit })
-    }).collect()
+    };
+    let mut all: Vec<Recipe> = MOD_RECIPES.iter().filter_map(recipe).collect();
+    // Each fired with coal, fired with charcoal too, after them all (a Lumberjack's: `workshop::MOD_CONVERSIONS`).
+    if let (Some(coal), Some(charcoal)) = (content.good("coal"), content.good("charcoal")) {
+        let twins: Vec<Recipe> = all.iter().filter(|r| r.inputs.iter().any(|&(g, _)| g == coal)).filter_map(|r| {
+            let name = CHARCOAL_TWINS.iter().find(|(coal_name, _)| *coal_name == r.name)?.1;
+            let inputs = r.inputs.iter().map(|&(g, n)| (if g == coal { charcoal } else { g }, n)).collect();
+            Some(Recipe { name, inputs, ..r.clone() })
+        }).collect();
+        all.extend(twins);
+    }
+    all
 }
+
+/// The recipes fired with coal, and their twins' names fired with charcoal ([`recipes`]).
+pub const CHARCOAL_TWINS: [(&str, &str); 7] = [("smelting", "smelting_charcoal"),
+    ("gold_smelting", "gold_smelting_charcoal"), ("smoking_beef", "smoking_beef_charcoal"),
+    ("smoking_porkchop", "smoking_porkchop_charcoal"), ("smoking_chicken", "smoking_chicken_charcoal"),
+    ("smoking_mutton", "smoking_mutton_charcoal"), ("smoking_rabbit", "smoking_rabbit_charcoal")];
 
 /// What a service does, for the runners to dispatch on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

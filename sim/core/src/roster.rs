@@ -43,6 +43,9 @@ pub const MERCHANT: &str = "merchant";
 /// An adult with no trade (`Labour.NONE`), and one that can't take one (`Labour.NITWIT`): the town's idle hands.
 pub const NONE: &str = "none";
 pub const NITWIT: &str = "nitwit";
+/// The mod's own trade, the first not the game's (John, 2026-11-01: "our first added profession"): fells and
+/// replants its town's woodlots (`kit::Woodlots`), the only hand that brings in logs where a host has it.
+pub const LUMBERJACK: &str = "lumberjack";
 
 /// The trades that can lead a squad, and that towns train for their caravans (`Squad.LEADS`).
 pub const LEADS: [&str; 6] = [MERCHANT, "cartographer", "librarian", "shepherd", "leatherworker", "fisherman"];
@@ -92,9 +95,10 @@ impl Trade {
     }
 }
 
-/// The mod's sixteen: the fourteen that go with caravans in the squad's order, then `none` and `nitwit`.
+/// The mod's seventeen: the fourteen that go with caravans in the squad's order, the Lumberjack, then `none` and
+/// `nitwit`.
 pub fn trades() -> Vec<Trade> {
-    SQUAD.iter().copied().chain([NONE, NITWIT]).map(trade_named).collect()
+    SQUAD.iter().copied().chain([LUMBERJACK, NONE, NITWIT]).map(trade_named).collect()
 }
 
 /// The trade a host calls `name` (without its namespace): what the core knows of it by that name. The Merchant's, `none`

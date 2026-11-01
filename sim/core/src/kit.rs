@@ -158,6 +158,32 @@ pub struct Kits {
     /// A Toolsmith mends its tools until then; an armoury keeps its guards' kit until then.
     pub mended_until: Option<u64>,
     pub armoury_until: Option<u64>,
+    /// The town's woodlots, each by when its trees stand grown (felled and replanted, grown again `woodlot_grow_days`
+    /// after), in the order they were laid; and the lots its Lumberjacks have felled of the next, a part carried.
+    #[serde(default)]
+    pub woodlots: Vec<u64>,
+    #[serde(default)]
+    pub felling: f64,
+}
+
+/// Woodlots a hex of woods or taiga holds, and a hex of open ground (planted as saplings: a forest's stand grown).
+pub const LOTS_PER_WOOD_HEX: usize = 8;
+pub const LOTS_PER_OPEN_HEX: usize = 3;
+
+/// How many woodlots a town's land holds (its held hexes and its own): [`LOTS_PER_WOOD_HEX`] a hex of woods or taiga,
+/// [`LOTS_PER_OPEN_HEX`] a hex of open ground; and how many of those are wooded, laid first and standing grown.
+pub fn woodland(map: &crate::map::Map, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>)
+        -> (usize, usize) {
+    let mut hexes: std::collections::BTreeSet<crate::hex::Hex> = holding.map(|h| h.hexes.iter().copied().collect()).unwrap_or_default();
+    hexes.extend(home);
+    let count = |lands: &[Land]| hexes.iter().filter(|&&h| lands.contains(&map.land(h))).count();
+    let wooded = count(&[Land::Woods, Land::Taiga]) * LOTS_PER_WOOD_HEX;
+    (wooded + count(&[Land::Plains]) * LOTS_PER_OPEN_HEX, wooded)
+}
+
+/// The log a town's woodlots give: spruce on taiga, oak elsewhere.
+pub fn log_of(land: Land) -> &'static str {
+    if land == Land::Taiga { "spruce_log" } else { "oak_log" }
 }
 
 /// Whole units in `x`, forgiving the dust floats leave.
@@ -437,6 +463,11 @@ impl crate::society::Society {
 
     pub fn armoured(&self, town: usize) -> f64 {
         self.world.resource::<Territory>().holding(town).map_or(0.0, |h| h.armoured)
+    }
+
+    /// A town's kit, its woodlots among it.
+    pub fn kits(&self, town: usize) -> &Kits {
+        self.world.get::<Kits>(self.towns[town]).expect("every town has its kit")
     }
 
     /// A town's mine, if it has dug one.

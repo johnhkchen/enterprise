@@ -91,6 +91,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         if let Some(marbles) = crate::jobs::fishing_marbles(&content, works, territory.holding(town.id), &map, &roster) {
             far.push(marbles);
         }
+        // Its woods unfelled while its trades want wood, a Lumberjack's.
+        if let Some(marbles) = crate::jobs::woodland_marbles(&content, territory.holding(town.id), town.hex, &map, &roster, stock) {
+            far.push(marbles);
+        }
         let people = &mut *people;
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,

@@ -46,7 +46,7 @@ pub struct Conversion {
 /// mutton over a campfire, no coal, as the game's campfire does): trade names, inputs, output, how many it makes. The
 /// game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
 #[allow(clippy::type_complexity)]
-pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 10] = [
+pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 12] = [
     (&["librarian", "cartographer"], &[("sugar_cane", 1.0)], "paper", 1.0),
     (&["farmer"], &[("wheat", 3.0)], "bread", 1.0),
     (&["shepherd"], &[("white_wool", 2.0)], "white_carpet", 3.0),
@@ -57,7 +57,14 @@ pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 10] = [
     (&["librarian"], &[("book", 3.0), ("oak_log", 2.0)], "bookshelf", 1.0),
     (&["butcher"], &[("beef", 1.0)], "cooked_beef", 1.0),
     (&["butcher"], &[("mutton", 1.0)], "cooked_mutton", 1.0),
+    // A Lumberjack burns its logs to charcoal, a third of them to fire the rest (the game's furnace: a log smelts a
+    // charcoal and fuels one and a half), for the town's smiths and smokehouse where it has no coal.
+    (&["lumberjack"], &[("oak_log", 3.0)], "charcoal", 2.0),
+    (&["lumberjack"], &[("spruce_log", 3.0)], "charcoal", 2.0),
 ];
+
+/// The fuel a town keeps for its smelting and smoking, coal and charcoal together, before its Lumberjacks burn more.
+pub const FUEL_PAR: f64 = 16.0;
 
 /// The mod's conversions, matched by name to the host's goods and trades; one the host lacks a good or trade for is
 /// skipped.
@@ -196,6 +203,11 @@ pub fn wanted(content: &Content, output: GoodId, people: &People, stock: &Stock,
         let read = content.comfort("reading").is_some_and(|k| people.comfort_met.get(k).copied().unwrap_or(0.0) >= 1.0);
         let empty = (people.beds.max(0.0) - people.home_shelves as f64 - stock.0[output]).max(0.0).floor();
         return if read { empty } else { 0.0 };
+    }
+    // Charcoal for the fuel the town keeps, its coal counted (or what a locker buys, if more).
+    if g.name.rsplit(':').next() == Some("charcoal") {
+        let coal = content.good("coal").map_or(0.0, |c| stock.0[c]);
+        return ((FUEL_PAR - coal).max(locker_par) - stock.0[output]).max(0.0).ceil();
     }
     if locker_par <= 0.0 {
         return 0.0;

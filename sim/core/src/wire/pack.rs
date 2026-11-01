@@ -41,7 +41,7 @@ pub struct ContentPack {
 }
 
 impl ContentPack {
-    /// A pack of these goods and nothing more: the core's own five kinds of comfort and sixteen trades, no recipes, no
+    /// A pack of these goods and nothing more: the core's own five kinds of comfort and seventeen trades, no recipes, no
     /// animals, every dial at the core's default.
     pub fn new(day_ticks: u64, goods: Vec<PackGood>) -> Self {
         ContentPack {

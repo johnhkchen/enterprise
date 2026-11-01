@@ -36,6 +36,9 @@ pub const ITEMS_PER_EMERALD: &[(&str, f64)] = &[
     ("minecraft:glass_pane", 11.0),
     ("minecraft:compass", 1.0),
     ("minecraft:coal", 15.0),
+    ("minecraft:charcoal", 15.0), // a Lumberjack's, burnt as coal
+    ("minecraft:oak_sapling", 12.0),
+    ("minecraft:spruce_sapling", 12.0),
     ("minecraft:raw_iron", 5.0),
     // What hands gather (no villager buys most of it; caravans carry it where it's wanted)
     ("minecraft:oak_log", 8.0),
