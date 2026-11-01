@@ -1,0 +1,104 @@
+{
+  "id": "enterprise:orc/workshop/mason_yard_14x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        8,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        4,
+        3,
+        6
+      ],
+      "foot": [
+        5,
+        3,
+        6
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        1,
+        3,
+        3
+      ],
+      "foot": [
+        2,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        10,
+        3,
+        7
+      ],
+      "block": "minecraft:stonecutter"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        11,
+        3,
+        7
+      ],
+      "for": [
+        10,
+        3,
+        7
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:mason"
+}

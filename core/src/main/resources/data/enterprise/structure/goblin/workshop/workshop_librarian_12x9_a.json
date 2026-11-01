@@ -1,0 +1,112 @@
+{
+  "id": "enterprise:goblin/workshop/workshop_librarian_12x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 21,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        7,
+        5
+      ],
+      "foot": [
+        11,
+        7,
+        6
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        2
+      ],
+      "foot": [
+        6,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        7,
+        3
+      ],
+      "foot": [
+        10,
+        7,
+        4
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        9,
+        3,
+        8
+      ],
+      "block": "minecraft:lectern"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        10,
+        3,
+        8
+      ],
+      "for": [
+        9,
+        3,
+        8
+      ]
+    },
+    {
+      "at": [
+        8,
+        3,
+        8
+      ],
+      "for": [
+        9,
+        3,
+        8
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:librarian"
+}

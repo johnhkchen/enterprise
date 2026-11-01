@@ -1,0 +1,112 @@
+{
+  "id": "enterprise:goblin/workshop/workshop_farmer_12x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    18,
+    15
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        9,
+        7,
+        4
+      ],
+      "foot": [
+        9,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        4
+      ],
+      "foot": [
+        7,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        4
+      ],
+      "foot": [
+        6,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        4,
+        7,
+        4
+      ],
+      "foot": [
+        4,
+        7,
+        5
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        9,
+        3,
+        10
+      ],
+      "block": "minecraft:composter"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        8,
+        3,
+        10
+      ],
+      "for": [
+        9,
+        3,
+        10
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:farmer"
+}
