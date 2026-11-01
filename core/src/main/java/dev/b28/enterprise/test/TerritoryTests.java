@@ -80,6 +80,22 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
+    public static void aStalkOfCaneIsOnePlot(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(1, 1, 1), Blocks.SAND);
+        helper.setBlock(new BlockPos(2, 1, 1), Blocks.WATER);
+        for (int y = 2; y <= 4; y++) {
+            helper.setBlock(new BlockPos(1, y, 1), Blocks.SUGAR_CANE);
+        }
+        var level = helper.getLevel();
+        java.util.function.IntPredicate plot = y -> dev.b28.enterprise.territory.Crops.isPlot(
+                level.getBlockState(helper.absolutePos(new BlockPos(1, y, 1))),
+                level.getBlockState(helper.absolutePos(new BlockPos(1, y - 1, 1))));
+        helper.assertTrue(plot.test(2), "the stalk's foot, on the sand, is a plot");
+        helper.assertTrue(!plot.test(3) && !plot.test(4), "the blocks above it are the same plot");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void farmersProduceWhatGrowsInTheirHex(GameTestHelper helper) {
         wheatField(helper);
         Hex hex = Hex.at(helper.absolutePos(BELL));

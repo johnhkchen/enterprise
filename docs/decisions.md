@@ -1139,6 +1139,15 @@ mod's), but no road ever chose it. Then: build them first.
     0.128 by day 30, 1,342 paper bought by day 60; cane plots 9,318 to 31,590, cane tended in days 30-60 2,226 to
     3,057; the towns 369 and 435 blocks off tend 9 and 42 a day (0 and 6), the one 760 off planted 16,395 plots and
     tends food on them. A fresh run apart: 17 towns to 27, mood -0.11.
+  - **Fixed: a cash crop is tended at its town's bid, and a stalk is one plot (John, 2026-11-01: "Make all fixes").**
+    The 760-block town, Hearthglen, had 224 plots of hands, 83 on its meals; its plan priced the cane its Librarians
+    drew at the workshop's 0.131 while its own shop bid 0.197 to 0.344, and put every spare plot on wheat, drawn at
+    0.157 (a field's choice read the bid; the plan didn't). The plan now prices a cash crop's draws at its town's bid at
+    the least. Its 16,395 plots were the census counting every block of cane in the hex: its ten fields were some 720.
+    The census counts a crop block standing on its own kind as no plot. The same bid study again: Hearthglen tends 92
+    cane a day (0), cane tended in days 30-60 3,057 to 5,152, cane plots 31,590 to 3,075; reading met 0.054 to 0 and
+    mood -0.11 to -0.18, one run each: reading waits on leather (paper 2,143 and 5,788 in stock at day 60, leather 3
+    and 0).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

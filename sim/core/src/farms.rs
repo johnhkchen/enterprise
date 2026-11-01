@@ -453,7 +453,8 @@ struct Use {
 
 /// A crop's uses (`Territory.usesOf`): as itself at its price to the town ([`Wants::price`]: its worth, where its book
 /// says no other); as what a trade makes of it alone (paper of cane, bread of wheat) at that good's price an item of
-/// the crop, and for that good's draws (paper bid for down the road); and its other draws.
+/// the crop, and for that good's draws (paper bid for down the road); and its other draws, a cash crop's at its price to
+/// the town at the least.
 fn uses_of(content: &Content, crop: GoodId, wants: &Wants) -> Vec<Use> {
     let mut uses = Vec::new();
     if wants.demand(crop) > 0.0 {
@@ -469,6 +470,9 @@ fn uses_of(content: &Content, crop: GoodId, wants: &Wants) -> Vec<Use> {
     }
     if let Some(&(per_day, each)) = wants.draws.get(&crop) {
         if per_day > 0.0 {
+            // (A cash crop's at its town's bid at the least: its shop bids for what its workshop draws, and seed 1717's
+            // Hearthglen, bidding 0.197 to 0.344 for cane, tended wheat at 0.157 over its cane at the workshop's 0.131.)
+            let each = if cash_crop(content, crop) { each.max(wants.price(content, crop)) } else { each };
             uses.push(Use { crop, per_day, each });
         }
     }

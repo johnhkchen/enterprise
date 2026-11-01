@@ -612,3 +612,21 @@ fn a_town_short_of_food_tends_its_food_crops_first() {
     assert_eq!(plan(0.0), (7.0, 9.0), "the meals' carrots first, the cane the rest");
     assert_eq!(plan(200.0), (0.0, 16.0), "fed: all on the cane");
 }
+
+// A cash crop's draws are tended at its town's bid at the least: seed 1717's Hearthglen bid 0.197 to 0.344 for cane its
+// Librarians drew at 0.131 and tended wheat, drawn at 0.157, on every spare plot.
+#[test]
+fn a_cash_crop_is_tended_at_its_towns_bid() {
+    let c = content();
+    let plots: BTreeMap<usize, u32> = [(WHEAT, 100), (CANE, 100)].into_iter().collect();
+    let mut wants = Wants::default();
+    wants.draws.insert(WHEAT, (1000.0, 0.157));
+    wants.draws.insert(CANE, (1000.0, 0.131));
+    let plan = |w: &Wants| farms::plan(&c, &plots, &[1], w, 1.0, false, &mut BTreeMap::new()).0;
+    assert_eq!(plan(&wants).get(&CANE), None, "at the workshop's price, the wheat");
+    wants.prices.insert(CANE, 0.197);
+    assert_eq!(plan(&wants)[&CANE], 16.0, "at its bid, the cane");
+    // Not a food crop's: its town's bid is for its own meals, which its demand carries.
+    wants.prices.insert(WHEAT, 0.3);
+    assert_eq!(plan(&wants)[&CANE], 16.0, "the wheat's bid doesn't lift its draws");
+}

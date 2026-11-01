@@ -89,7 +89,9 @@ public final class Crops {
             if (section.hasOnlyAir() || !section.maybeHas(state -> yields.containsKey(state.getBlock()))) {
                 continue;
             }
-            countSection(section, cx, sy, cz, hex, centerY, plots);
+            // (The section below too: a stalk standing across the sections' seam is one plot.)
+            LevelChunkSection below = index > 0 ? loaded.getSection(index - 1) : null;
+            countSection(section, below, cx, sy, cz, hex, centerY, plots);
         }
         return plots;
     }
@@ -150,8 +152,18 @@ public final class Crops {
         return turned;
     }
 
-    private static void countSection(
-            LevelChunkSection section, int cx, int sy, int cz, Hex hex, int centerY, Map<Item, Integer> plots) {
+    /**
+     * Is this block a plot of its crop: a crop block standing on anything but its own kind. A stalk of cane (or any
+     * crop that grows up in blocks) is one plot, not one a block: seed 1717's Hearthglen counted 16,395 plots of cane,
+     * its ten fields some 720 of them, against 224 its Farmers could tend.
+     */
+    public static boolean isPlot(net.minecraft.world.level.block.state.BlockState state,
+            net.minecraft.world.level.block.state.BlockState below) {
+        return yields().containsKey(state.getBlock()) && (below == null || !below.is(state.getBlock()));
+    }
+
+    private static void countSection(LevelChunkSection section, LevelChunkSection under, int cx, int sy, int cz,
+            Hex hex, int centerY, Map<Item, Integer> plots) {
         for (int y = 0; y < 16; y++) {
             int worldY = (sy << 4) + y;
             if (Math.abs(worldY - centerY) > HEIGHT) {
@@ -159,8 +171,13 @@ public final class Crops {
             }
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
-                    Item yield = yields.get(section.getBlockState(x, y, z).getBlock());
-                    if (yield != null && Hex.at((cx << 4) + x + 0.5, (cz << 4) + z + 0.5).equals(hex)) {
+                    var state = section.getBlockState(x, y, z);
+                    Item yield = yields.get(state.getBlock());
+                    if (yield == null) {
+                        continue;
+                    }
+                    var below = y > 0 ? section.getBlockState(x, y - 1, z) : under == null ? null : under.getBlockState(x, 15, z);
+                    if (isPlot(state, below) && Hex.at((cx << 4) + x + 0.5, (cz << 4) + z + 0.5).equals(hex)) {
                         plots.merge(yield, 1, Integer::sum);
                     }
                 }
