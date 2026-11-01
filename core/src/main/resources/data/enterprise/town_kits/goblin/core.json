@@ -1099,6 +1099,66 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "stall_farmer_3x3_a",
+      "part": "enterprise:goblin/stall/stall_farmer_3x3_a",
+      "kind": "stall",
+      "slot": "stall:farmer",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "stall_mason_3x3_a",
+      "part": "enterprise:goblin/stall/stall_mason_3x3_a",
+      "kind": "stall",
+      "slot": "stall:mason",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "stall_librarian_3x3_a",
+      "part": "enterprise:goblin/stall/stall_librarian_3x3_a",
+      "kind": "stall",
+      "slot": "stall:librarian",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:lectern"
+      ]
     }
   ],
   "held": [
