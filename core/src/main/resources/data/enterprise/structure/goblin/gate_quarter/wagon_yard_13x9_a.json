@@ -1,0 +1,41 @@
+{
+  "id": "enterprise:goblin/gate_quarter/wagon_yard_13x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "gate_quarter",
+  "slot": "wagon_yard",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    13,
+    9
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

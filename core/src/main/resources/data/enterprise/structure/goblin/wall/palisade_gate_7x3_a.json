@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/wall/palisade_gate_7x3_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "wall",
+  "slot": "wall:palisade",
+  "role": "gate",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    5
+  ],
+  "height": 13,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        4
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

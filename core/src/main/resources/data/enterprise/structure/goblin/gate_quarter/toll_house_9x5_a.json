@@ -1,0 +1,41 @@
+{
+  "id": "enterprise:goblin/gate_quarter/toll_house_9x5_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "gate_quarter",
+  "slot": "toll_house",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    7
+  ],
+  "height": 15,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
