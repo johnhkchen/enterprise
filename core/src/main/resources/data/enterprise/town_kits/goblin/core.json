@@ -8,6 +8,7 @@
       "id": "cottage_7x7_a",
       "part": "enterprise:goblin/home/cottage_7x7_a",
       "kind": "home",
+      "slot": "home",
       "size": [
         9,
         16,
@@ -20,6 +21,7 @@
       "id": "house_10x7_a",
       "part": "enterprise:goblin/home/house_10x7_a",
       "kind": "home",
+      "slot": "home",
       "size": [
         12,
         22,
@@ -69,6 +71,7 @@
       "id": "forum_centre_7x7_a",
       "part": "enterprise:goblin/forum/forum_centre_7x7_a",
       "kind": "forum",
+      "slot": "forum:centre",
       "size": [
         7,
         14,
@@ -81,6 +84,7 @@
       "id": "tavern_15x9_a",
       "part": "enterprise:goblin/hall/tavern_15x9_a",
       "kind": "hall",
+      "slot": "forum_front:inn",
       "tiers": [
         "village",
         "town"
@@ -97,6 +101,7 @@
       "id": "temple_9x9_a",
       "part": "enterprise:goblin/hall/temple_9x9_a",
       "kind": "hall",
+      "slot": "hall:temple",
       "tiers": [
         "village",
         "town"
@@ -113,6 +118,7 @@
       "id": "watchtower_7x7_a",
       "part": "enterprise:goblin/wall/watchtower_7x7_a",
       "kind": "wall",
+      "slot": "wall:tower",
       "tiers": [
         "town"
       ],
@@ -144,6 +150,7 @@
       "id": "gatehouse_11x7_a",
       "part": "enterprise:goblin/wall/gatehouse_11x7_a",
       "kind": "wall",
+      "slot": "wall:gatehouse",
       "tiers": [
         "town"
       ],

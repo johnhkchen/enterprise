@@ -1,0 +1,57 @@
+{
+  "rev": 1,
+  "race": "orc",
+  "about": "Town names for orc towns. Pick deterministically, as the town rules do: hash(town id) over the town's clan list followed by the shared list; skip a name another town already holds and take the next.",
+  "shared": [
+    "Grukmar",
+    "Thraka",
+    "Vol'gar",
+    "Skarnek",
+    "Drak'thul",
+    "Muzgash",
+    "Ghorrak",
+    "Krozzuk",
+    "Urgath",
+    "Narzul",
+    "Bokhar",
+    "Zug'marok",
+    "Rathgor",
+    "Mokra",
+    "Harnak's Rest",
+    "Blood Ridge"
+  ],
+  "clans": {
+    "mudhide": [
+      "Mudhollow",
+      "Grakk's Mire",
+      "Slogmar",
+      "Reedfang",
+      "Bogtusk",
+      "Mire Camp"
+    ],
+    "sunscar": [
+      "Sunscar Hold",
+      "Ash Dune",
+      "Kharzad",
+      "Burnt Hollow",
+      "Scorchgate",
+      "Redsand Camp"
+    ],
+    "ashfang": [
+      "Ashfang Rock",
+      "Cinder Crag",
+      "Vorgath",
+      "Black Mesa",
+      "Emberhold",
+      "Fangpeak"
+    ],
+    "bleakbone": [
+      "Bleakbone Hold",
+      "Frostjaw",
+      "Grimrime",
+      "Ulgar's Cairn",
+      "Whitetusk",
+      "Skullfrost"
+    ]
+  }
+}

@@ -61,5 +61,6 @@
     "north",
     "east",
     "west"
-  ]
+  ],
+  "slot": "home"
 }

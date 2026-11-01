@@ -41,5 +41,6 @@
     "north",
     "east",
     "west"
-  ]
+  ],
+  "slot": "forum:centre"
 }

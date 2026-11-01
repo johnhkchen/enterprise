@@ -85,5 +85,6 @@
     "north",
     "east",
     "west"
-  ]
+  ],
+  "slot": "forum_front:inn"
 }

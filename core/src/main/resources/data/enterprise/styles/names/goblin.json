@@ -1,0 +1,49 @@
+{
+  "rev": 1,
+  "race": "goblin",
+  "about": "Town names for goblin towns. Pick deterministically, as the town rules do: hash(town id) over the town's clan list followed by the shared list; skip a name another town already holds and take the next.",
+  "shared": [
+    "Sprocketon",
+    "Gizzlewick",
+    "Fizzport",
+    "Boomtown",
+    "Copperclank",
+    "Nozzlebay",
+    "Zapgulch",
+    "Rivet Row",
+    "Greaseville",
+    "Kaboomville",
+    "Sparkwater",
+    "Gearjaw",
+    "Tinkerdock",
+    "Cogsby",
+    "Profit's End",
+    "Fuse Point"
+  ],
+  "clans": {
+    "rustbolt": [
+      "Rustbolt Wharf",
+      "Brinecrank",
+      "Saltcog",
+      "Barnacle Bay",
+      "Corrode Point",
+      "Rustwater"
+    ],
+    "brassgut": [
+      "Brassgut Junction",
+      "Dustdollar",
+      "Goldgrit",
+      "Sandsprocket",
+      "Mirage Mart",
+      "Hotpipe"
+    ],
+    "sootvein": [
+      "Sootvein Works",
+      "Smokestack",
+      "Ashkettle",
+      "Cinderpump",
+      "Blackflue",
+      "Shalecrank"
+    ]
+  }
+}

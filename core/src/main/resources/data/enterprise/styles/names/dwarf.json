@@ -1,0 +1,49 @@
+{
+  "rev": 1,
+  "race": "dwarf",
+  "about": "Town names for dwarf towns. Pick deterministically, as the town rules do: hash(town id) over the town's clan list followed by the shared list; skip a name another town already holds and take the next.",
+  "shared": [
+    "Khaz Torrin",
+    "Thundermar",
+    "Bronzebarrow",
+    "Grimhold",
+    "Stonebeard Gate",
+    "Durnhallow",
+    "Kragmoor",
+    "Ironvale",
+    "Barak Dun",
+    "Anvilmere",
+    "Hammerdeep",
+    "Gol Varak",
+    "Brandhall",
+    "Oakenhearth",
+    "Kettlerock",
+    "Durin's Step"
+  ],
+  "clans": {
+    "deepforge": [
+      "Deepforge Hold",
+      "Coldanvil",
+      "Frostdelve",
+      "Snowhammer",
+      "Highpeak Halls",
+      "Rimeforge"
+    ],
+    "redcrag": [
+      "Redcrag Gate",
+      "Rust Delve",
+      "Ochre Hall",
+      "Crimson Mine",
+      "Copperdeep",
+      "Sandstone Keep"
+    ],
+    "brasshammer": [
+      "Brasshammer Hall",
+      "Pinewatch",
+      "Timberdelve",
+      "Bellforge",
+      "Gildmoor",
+      "Ambervault"
+    ]
+  }
+}

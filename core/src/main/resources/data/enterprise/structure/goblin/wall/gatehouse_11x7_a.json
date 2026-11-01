@@ -33,5 +33,6 @@
   "relief_faces": [
     "south",
     "north"
-  ]
+  ],
+  "slot": "wall:gatehouse"
 }

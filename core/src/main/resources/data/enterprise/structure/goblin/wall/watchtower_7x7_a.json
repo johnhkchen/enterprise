@@ -44,5 +44,6 @@
     "north",
     "east",
     "west"
-  ]
+  ],
+  "slot": "wall:tower"
 }
