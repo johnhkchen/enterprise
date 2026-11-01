@@ -1,0 +1,98 @@
+{
+  "id": "enterprise:dalaran/spires/farmstead/farmstead_19x18_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "farmstead",
+  "palette": "base",
+  "footprint": [
+    19,
+    18
+  ],
+  "height": 28,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        5,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        15,
+        3,
+        17
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        16,
+        8,
+        11
+      ],
+      "foot": [
+        15,
+        8,
+        11
+      ]
+    },
+    {
+      "head": [
+        16,
+        8,
+        4
+      ],
+      "foot": [
+        15,
+        8,
+        4
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "farmstead"
+}

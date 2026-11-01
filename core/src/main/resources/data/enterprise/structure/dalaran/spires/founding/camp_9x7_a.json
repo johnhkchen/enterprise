@@ -1,0 +1,25 @@
+{
+  "id": "enterprise:dalaran/spires/founding/camp_9x7_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "part",
+  "slot": "wall:curtain",
+  "palette": "base",
+  "footprint": [
+    11,
+    9
+  ],
+  "height": 17,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

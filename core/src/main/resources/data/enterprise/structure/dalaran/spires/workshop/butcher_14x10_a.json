@@ -1,0 +1,91 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/butcher_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        8,
+        7
+      ],
+      "foot": [
+        6,
+        8,
+        6
+      ]
+    },
+    {
+      "head": [
+        6,
+        8,
+        2
+      ],
+      "foot": [
+        6,
+        8,
+        3
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        7
+      ],
+      "foot": [
+        4,
+        8,
+        6
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        8,
+        3,
+        7
+      ],
+      "block": "minecraft:smoker"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:butcher"
+}

@@ -1,0 +1,128 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/weaver_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        9,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        8,
+        2
+      ],
+      "foot": [
+        6,
+        8,
+        3
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        2
+      ],
+      "foot": [
+        4,
+        8,
+        3
+      ]
+    },
+    {
+      "head": [
+        2,
+        8,
+        6
+      ],
+      "foot": [
+        2,
+        8,
+        5
+      ]
+    },
+    {
+      "head": [
+        2,
+        8,
+        2
+      ],
+      "foot": [
+        2,
+        8,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        5,
+        3,
+        6
+      ],
+      "block": "minecraft:loom"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        6,
+        3,
+        6
+      ],
+      "for": [
+        5,
+        3,
+        6
+      ]
+    },
+    {
+      "at": [
+        4,
+        3,
+        6
+      ],
+      "for": [
+        5,
+        3,
+        6
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:shepherd"
+}

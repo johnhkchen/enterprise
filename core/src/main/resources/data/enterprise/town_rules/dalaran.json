@@ -1,6 +1,6 @@
 {
   "kingdom": "dalaran",
-  "rev": 3,
+  "rev": 4,
   "about": "Dalaran, city of the Kirin Tor: town rules for a kit race. Every building is a whole delivered part from town_kits/dalaran/spires.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/dalaran.json (this race has no clans: no swaps). The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "dalaran/spires",
   "tiers": {
@@ -149,7 +149,126 @@
       14,
       10
     ],
-    "trades": "the smiths (armorer, toolsmith, weaponsmith) take this workshop; every other trade works from a stall (stall:any, the trade's job block set at its marker) until its own workshop is delivered",
+    "trades": "the smiths (armorer, toolsmith, weaponsmith) take this workshop; the trades in by_trade take their own; every other trade works from a stall (stall:any, the trade's job block set at its marker) until its own workshop is delivered",
+    "by_trade": [
+      {
+        "slot": "workshop:armorer",
+        "asset": "enterprise:dalaran/spires/workshop/arcane_smithy_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:farmer",
+        "asset": "enterprise:dalaran/spires/workshop/herbalist_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:librarian",
+        "asset": "enterprise:dalaran/spires/workshop/scriptorium_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:mason",
+        "asset": "enterprise:dalaran/spires/workshop/atelier_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:fletcher",
+        "asset": "enterprise:dalaran/spires/workshop/bowyer_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:butcher",
+        "asset": "enterprise:dalaran/spires/workshop/butcher_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:shepherd",
+        "asset": "enterprise:dalaran/spires/workshop/weaver_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 4
+      },
+      {
+        "slot": "workshop:leatherworker",
+        "asset": "enterprise:dalaran/spires/workshop/leatherworks_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 2
+      },
+      {
+        "slot": "workshop:toolsmith",
+        "asset": "enterprise:dalaran/spires/workshop/artificer_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 3
+      }
+    ],
     "on": "plots fronting an avenue or the forum, nearest the forum first"
   },
   "halls": {
@@ -221,7 +340,31 @@
     },
     "city": "as town"
   },
-  "yards": "no yard tiles yet for this race: the ring round each part is its yard, authored as the yard marker (red_sand, dead_bush) that the placer swaps for the land's ground and plant",
+  "yards": {
+    "set": "dalaran/yards",
+    "about": "front and back yard tiles on Lordaeron's yard contract, in this race's materials; ground and plants are the yard markers (red_sand, dead_bush) the placer swaps for the land's"
+  },
+  "earthworks": {
+    "set": "dalaran/earthworks",
+    "about": "retaining walls, steps and cut faces on Lordaeron's earthworks contract"
+  },
+  "farmstead": {
+    "asset": "enterprise:dalaran/spires/farmstead/farmstead_19x18_a",
+    "footprint": [
+      19,
+      18
+    ],
+    "beds": 2,
+    "at": "the head of a holding's first field, as Lordaeron's farmstead"
+  },
+  "harbour": {
+    "set": "dalaran/harbour",
+    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; its customs house and warehouse in the set's buildings"
+  },
+  "founding": {
+    "set": "dalaran/founding",
+    "about": "the settlers' camp and the founding pieces, placed as Lordaeron's founding set says"
+  },
   "growth": {
     "rule": "a plot keeps its slot as the town grows: a hamlet's 7-wide cottage gives way to a 10-wide house on the merged plot when the ward fills; a home's palette steps up (daub to brick) at town tier on the seed's hash; yards follow the house's tier",
     "never": "lose a bed or a workstation the census counted"

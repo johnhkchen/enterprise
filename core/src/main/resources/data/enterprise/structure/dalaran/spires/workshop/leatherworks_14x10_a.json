@@ -1,0 +1,88 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/leatherworks_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        8,
+        5
+      ],
+      "foot": [
+        10,
+        8,
+        5
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        5
+      ],
+      "foot": [
+        5,
+        8,
+        5
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        1,
+        3,
+        7
+      ],
+      "block": "minecraft:cauldron"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:leatherworker"
+}
