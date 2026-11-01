@@ -1,0 +1,115 @@
+{
+  "set": "orc/founding_kit",
+  "rev": 1,
+  "slot": "founding_kit",
+  "about": "A new town's first buildings as settlers lay them (message 16), composed from delivered parts round a 13 x 13 forum. Coordinates are the kit's frame: x east, z south, the forum's north-west corner at forum_at; each placement gives its part's north-west corner after turning (at) and its clockwise quarter turns (q), parts authored facing south. The street leaves the forum's south edge at its middle, 3 wide.",
+  "size": [
+    35,
+    26
+  ],
+  "forum_at": [
+    11,
+    6
+  ],
+  "forum": [
+    13,
+    13
+  ],
+  "bell": {
+    "at": [
+      17,
+      5,
+      9
+    ],
+    "from": "the forum centrepiece's bell marker"
+  },
+  "desk": {
+    "at": [
+      15,
+      3,
+      7
+    ],
+    "facing": "south",
+    "what": "the settlers' desk (yours), on the forum's north edge"
+  },
+  "chest": {
+    "at": [
+      19,
+      3,
+      7
+    ],
+    "facing": "south",
+    "what": "the settlers' chest (yours), beside the desk"
+  },
+  "place": [
+    {
+      "role": "forum:centre",
+      "part": "enterprise:orc/forum/war_square_7x7_a",
+      "at": [
+        14,
+        9
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:farmer",
+      "part": "enterprise:orc/stall/stall_farmer_3x3_a",
+      "at": [
+        11,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:mason",
+      "part": "enterprise:orc/stall/stall_mason_3x3_a",
+      "at": [
+        15,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "stall:librarian",
+      "part": "enterprise:orc/stall/stall_librarian_3x3_a",
+      "at": [
+        19,
+        1
+      ],
+      "q": 0,
+      "faces": "south"
+    },
+    {
+      "role": "home",
+      "part": "enterprise:orc/home/hut_10x10_a",
+      "at": [
+        1,
+        7
+      ],
+      "q": 3,
+      "faces": "east"
+    },
+    {
+      "role": "home",
+      "part": "enterprise:orc/home/hut_10x10_a",
+      "at": [
+        24,
+        7
+      ],
+      "q": 1,
+      "faces": "west"
+    }
+  ],
+  "census": {
+    "bell": 1,
+    "beds": 8,
+    "job_sites": 3,
+    "outside_48": 0,
+    "pass": true,
+    "note": "counted on the composed demo: bed heads and job blocks within 48 of the bell; the desk is not counted"
+  },
+  "order": "Bell, desk and chest first; the farmer's stall; the two homes; then the mason's and librarian's stalls."
+}
