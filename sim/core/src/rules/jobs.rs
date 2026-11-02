@@ -11,7 +11,7 @@ use bevy_ecs::prelude::*;
 
 use super::Step;
 use crate::bills::Bills;
-use crate::cash_book::CashBook;
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::farms::{Deposits, Farm};
 use crate::jobs::{employ, Hiring, Place, Signals};
@@ -23,6 +23,73 @@ pub fn register(schedule: &mut Schedule) {
     // After the census and the farm's review, as the mod's `grow` hires after `afterCensus` counts the town.
     schedule.add_systems(review.in_set(Step::Review).after(super::lockers::review).after(super::settlers::review)
         .after(super::farms::review).after(super::territory::review));
+    schedule.add_systems(relocate.in_set(Step::Review).after(super::lockers::review).after(super::settlers::review)
+        .after(super::farms::review).after(super::territory::review).after(super::works::review)
+        .after(super::atlas::consider).before(review));
+}
+
+/// A town short of a comfort it holds the makings of, with no hand of its maker, none idle and a bed free, hires one from
+/// a town down its roads (John: "Allow a long cooldown retraining or hire-relocated-worker mechanism"): one of two or
+/// more of that trade at home there, the least trained, its trade and level kept; else an idle adult of a town that
+/// left one idle at its last review (no work there for it), to learn the trade. Paid its stall, on the road the route's
+/// travel ticks (`jobs::Mover`, landed by `Society::land_movers`). Once in `comfort_retrain_days`, as a retraining is
+/// (the nearest such town first, a trade's spare before an idle hand; with none, its review may retrain one of its
+/// own, `jobs::employ`). Seed 1717's 60 days had a town with two of a comfort's trade once (two Librarians, day 60),
+/// while settlers' villages kept three idle each.
+#[allow(clippy::type_complexity)]
+pub fn relocate(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut hiring: ResMut<Hiring>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
+        mut towns: Query<(&Town, &mut Money, &mut People, &Stock, Option<&mut Roster>)>) {
+    let (now, today) = (clock.now, clock.now / content.day_ticks.max(1));
+    let stall = crate::fixed::Fixed::ceil(content.dials.stall_emeralds);
+    let mut roads: Vec<&Route> = routes.iter().collect();
+    roads.sort_by_key(|r| r.seq);
+    for &e in &order.0 {
+        let want = {
+            let Ok((town, money, people, stock, Some(roster))) = towns.get(e) else { continue };
+            let cooled = roster.comfort_retrained.is_none_or(|d| {
+                now.saturating_sub(d) as f64 >= content.dials.comfort_retrain_days * content.day_ticks as f64
+            });
+            if roster.merchant.is_none() || !roster.idle(&content).is_empty() || !cooled
+                || people.beds - people.villagers < 1.0 || money.0 < stall || hiring.movers.iter().any(|m| m.to == town.id) {
+                continue;
+            }
+            crate::jobs::for_comfort(&content, stock, &people.comfort_met, roster)
+        };
+        let Some(trade) = want else { continue };
+        // The nearest town down its roads with a hand to spare: (ticks, a spare of the trade 0 or an idle hand 1, town,
+        // hand).
+        let mut best: Option<(u64, u8, Entity, usize)> = None;
+        for r in &roads {
+            let (other, ticks) = if r.from == e { (r.to, r.travel_ticks) } else if r.to == e { (r.from, r.travel_ticks) } else { continue };
+            let Ok((far, _, _, _, Some(roster))) = towns.get(other) else { continue };
+            let at_home: Vec<usize> = roster.hands.iter().enumerate()
+                .filter(|&(i, h)| h.trade == trade && !h.away && !h.is_baby() && Some(i) != roster.merchant).map(|(i, _)| i).collect();
+            let spare = (at_home.len() >= 2)
+                .then(|| *at_home.iter().min_by_key(|&&i| (roster.hands[i].level, std::cmp::Reverse(i))).unwrap());
+            // An idle adult with no trade before a Nitwit, as `jobs::employ` takes them.
+            let left_idle = hiring.left_idle.get(&far.id).is_some_and(|&d| d + 1 >= today);
+            let idle = roster.idle(&content);
+            let idle = left_idle.then(|| idle.iter().copied().find(|&i| content.trades[roster.hands[i].trade].none)
+                .or(idle.first().copied())).flatten();
+            let Some(found) = spare.map(|i| (0, i)).or(idle.map(|i| (1, i))) else { continue };
+            if best.is_none_or(|(t, k, ..)| (ticks, found.0) < (t, k)) {
+                best = Some((ticks, found.0, other, found.1));
+            }
+        }
+        let Some((ticks, kind, donor, i)) = best else { continue };
+        let Ok([(town, mut money, _, _, Some(mut roster)), (from, _, mut from_people, _, Some(mut from_roster))]) =
+            towns.get_many_mut([e, donor]) else { continue };
+        let mut hand = crate::settlers::take_hand(&mut from_roster, i);
+        from_people.villagers = from_roster.residents() as f64;
+        if kind == 1 {
+            hand = crate::roster::Hand { id: hand.id, ..crate::roster::Hand::new(&content, trade, 1) };
+        }
+        post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), stall,
+            Reason::Other("relocation".into()), now, content.day_ticks);
+        roster.comfort_retrained = Some(now);
+        hiring.movers.push(crate::jobs::Mover { hand, from: from.id, to: town.id, arrives: now + ticks.max(1) });
+    }
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]

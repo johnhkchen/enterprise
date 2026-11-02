@@ -220,6 +220,17 @@ impl Society {
         true
     }
 
+    /// The stall a hand's town paid for that its villager hasn't put up yet, for the host to put up: a hand that came
+    /// from another town (`jobs::Society::land_movers`) has a new villager to give it to.
+    fn stall_waiting(&self, id: HandId) -> Option<Output> {
+        let (t, &e) = self.towns.iter().enumerate().find(|(_, &e)| {
+            self.world.get::<crate::lockers::Lockers>(e).is_some_and(|l| l.stalls.contains(&id))
+        })?;
+        let hand = self.world.get::<Roster>(e)?.hands.iter().find(|h| h.id == id)?;
+        Some(Output::Stall { town: crate::wire::no(t), hand: id, tag: self.world.resource::<Hands>().tag(id)?.to_string(),
+            trade: self.content().trades[hand.trade].name.clone() })
+    }
+
     /// Forgets when hands no longer held were seen.
     fn prune_sightings(&mut self) {
         let living: BTreeSet<HandId> = self.hands_now().into_keys().collect();
@@ -236,6 +247,12 @@ impl Society {
                     now.insert(h.id, Was { town: Some(t), trade: h.trade, level: h.level, xp: h.xp, away: h.away,
                         baby: h.is_baby() });
                 }
+            }
+        }
+        for m in &self.world.resource::<crate::jobs::Hiring>().movers {
+            let h = &m.hand;
+            if h.id != 0 {
+                now.insert(h.id, Was { town: None, trade: h.trade, level: h.level, xp: h.xp, away: true, baby: h.is_baby() });
             }
         }
         for p in &self.world.resource::<crate::settlers::Settlers>().parties {
@@ -309,9 +326,12 @@ impl Society {
         match input {
             Input::Census { town, beds, residents } => Some(self.census(*town as TownId, *beds, residents)),
             Input::TagHand { hand, tag } => {
-                // A hand that isn't at home by now, or a tag another has, is a stale view: ignored.
-                let _ = self.tag_hand(*hand, tag);
-                Some(Vec::new())
+                // A hand that isn't at home by now, or a tag another has, is a stale view: ignored. One whose stall is
+                // paid for and not yet up (a hand hired from another town, `jobs::Mover`) has it put up by its villager.
+                if !self.tag_hand(*hand, tag) {
+                    return Some(Vec::new());
+                }
+                Some(self.stall_waiting(*hand).into_iter().collect())
             }
             _ => None,
         }

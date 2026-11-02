@@ -125,6 +125,48 @@ pub struct Hiring {
     /// hand the squad may train that day (`rules/squad.rs` `train`).
     #[serde(default)]
     pub left_idle: BTreeMap<usize, u64>,
+    /// Hands on the road to the town that hired them from another (`rules/jobs.rs` `relocate`).
+    #[serde(default)]
+    pub movers: Vec<Mover>,
+}
+
+/// A hand hired away by a town down its roads (John: "hire-relocated-worker"): its trade and level kept, on the road from
+/// `from` to `to`, there at `arrives`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Mover {
+    pub hand: crate::roster::Hand,
+    pub from: usize,
+    pub to: usize,
+    pub arrives: u64,
+}
+
+impl crate::society::Society {
+    /// The hands hired away that have come to their new town: on its roster, a resident, its stall paid for (put up
+    /// once the host's villager for it is named, `Society::tag_hand`).
+    pub(crate) fn land_movers(&mut self) {
+        let now = self.now();
+        let content = self.content().clone();
+        let here: Vec<Mover> = {
+            let mut hiring = self.world.resource_mut::<Hiring>();
+            let (here, rest) = std::mem::take(&mut hiring.movers).into_iter().partition(|m| m.arrives <= now);
+            hiring.movers = rest;
+            here
+        };
+        for m in here {
+            let Some(&e) = self.towns.get(m.to) else { continue };
+            let mut q = self.world.query::<(&mut Roster, &mut Lockers)>();
+            let Ok((mut roster, mut lockers)) = q.get_mut(&mut self.world, e) else { continue };
+            let id = m.hand.id;
+            roster.add(&content, m.hand);
+            if let Some(i) = roster.hands.iter().position(|h| h.id == id) {
+                open_stall(&content, &mut lockers, &roster, i);
+            }
+            let residents = roster.residents() as f64;
+            if let Some(mut people) = self.world.get_mut::<crate::state::People>(e) {
+                people.villagers = residents;
+            }
+        }
+    }
 }
 
 /// A good by name, with or without the host's namespace (`paper`, `minecraft:paper`).
@@ -557,27 +599,32 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     let paid = stall.min(*place.money);
     post(books.ledger, books.book, Side::treasury(place.town, place.money), Side::outside(), paid,
         Reason::Other("stall".into()), now, content.day_ticks);
-    // The hand takes the job at once: a locker of the trade's, its trades that buy goods for emeralds switched on, and
-    // time to get going (its herd to breed, its first goods) before it is judged slack.
-    // The same villager in a new trade: its id stays.
+    // The hand takes the job at once, a locker of the trade's (`open_stall`): the same villager in a new trade, its id
+    // stays.
     place.roster.hands[hand] = Hand { id: place.roster.hands[hand].id, ..Hand::new(content, trade, 1) };
-    // Its stall paid for: its locker in the books until the host puts the stall up and places it (`Lockers::stalls`);
-    // a locker it had stood at its old trade's workstation, which the host takes down (`Jobs.leaveTrade`).
-    let id = place.roster.hands[hand].id;
-    if let Some(placed) = place.lockers.placed.as_mut() {
-        placed.remove(&id);
-    }
-    place.lockers.stalls.insert(id);
-    place.lockers.sync(content, place.roster);
-    let locker = &mut place.lockers.hands[hand];
-    for o in locker.offers.iter_mut().filter(|o| !o.sells && o.level <= 1) {
-        o.on = true;
-    }
-    locker.slack = -2 * content.dials.slack_days as i32;
+    open_stall(content, place.lockers, place.roster, hand);
     if retrain_for_comfort && Some(trade) == comfort {
         place.roster.comfort_retrained = Some(now);
     }
     Some(Hired { hand, trade, retrained: retraining })
+}
+
+/// A hand's stall paid for: its locker in the books until the host puts the stall up and places it (`Lockers::stalls`);
+/// a locker it had stood at its old trade's workstation, which the host takes down (`Jobs.leaveTrade`). Its trades that
+/// buy goods for emeralds switched on, and time to get going (its herd to breed, its first goods) before it is judged
+/// slack.
+pub(crate) fn open_stall(content: &Content, lockers: &mut Lockers, roster: &Roster, hand: usize) {
+    let id = roster.hands[hand].id;
+    if let Some(placed) = lockers.placed.as_mut() {
+        placed.remove(&id);
+    }
+    lockers.stalls.insert(id);
+    lockers.sync(content, roster);
+    let locker = &mut lockers.hands[hand];
+    for o in locker.offers.iter_mut().filter(|o| !o.sells && o.level <= 1) {
+        o.on = true;
+    }
+    locker.slack = -2 * content.dials.slack_days as i32;
 }
 
 // The host's calls for jobs.

@@ -431,6 +431,7 @@ impl Society {
             self.look.run(&mut self.world);
             self.wear_roads();
             self.land_parties();
+            self.land_movers(); // hands hired away by a town down their roads (`rules/jobs.rs` `relocate`)
             self.open_commissions(); // routes towns commissioned at its reviews (`atlas.rs`)
             self.open_freight_runs(); // runs the hubs and route owners opened at its reviews (`freight.rs`)
             self.open_call_runs(); // runs on call the hubs booked by post (`post.rs`)

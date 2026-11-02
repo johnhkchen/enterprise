@@ -635,3 +635,63 @@ fn a_town_holding_a_comforts_makings_retrains_a_hand_to_make_it_once_in_a_while(
     let after = s.roster(t).hands.iter().map(|h| h.trade).collect::<Vec<_>>();
     assert_eq!(before.iter().filter(|&&x| x == librarian).count(), after.iter().filter(|&&x| x == librarian).count());
 }
+
+/// A town short of a comfort it holds the makings of, none idle and a bed free, hires a hand of its maker away from a town
+/// down its roads that has two (John: "hire-relocated-worker"): the far town's least-trained Librarian walks the road,
+/// its trade and level kept, and the town that hired it retrains none of its own.
+#[test]
+fn a_town_hires_a_librarian_away_from_a_town_down_its_roads_that_has_two() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Inkwell", 100.0);
+    let far = s.add_town("Quillby", 100.0);
+    s.set_people(t, 5.0, 8.0, 20.0);
+    s.set_people(far, 5.0, 5.0, 20.0);
+    s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("fletcher", 1), ("fletcher", 1), ("cartographer", 1)]);
+    s.set_roster(far, &[("merchant", 1), ("librarian", 3), ("librarian", 1), ("farmer", 1), ("farmer", 1)]);
+    for (town, hex) in [(t, enterprise_core::Hex::new(3, 3)), (far, enterprise_core::Hex::new(6, 3))] {
+        s.place_town(town, hex.center_x(), hex.center_z());
+    }
+    s.add_route(t, far, 1.0, 0.5, 4.0);
+    s.deliver(t, PAPER, 64.0);
+    s.deliver(t, LEATHER, 3.0);
+    s.advance(DAY + DAY / 2);
+    let librarian = s.content().trade("librarian").unwrap();
+    assert_eq!(s.roster(far).count(librarian), 1, "its least-trained Librarian hired away: {:?}", s.roster(far).hands);
+    s.advance(3 * DAY);
+    let r = s.roster(t);
+    assert_eq!(r.count(librarian), 1, "on Inkwell's roster now: {:?}", r.hands);
+    assert!(r.hands.iter().any(|h| h.trade == librarian && h.level == 1), "the Novice, its level kept");
+    assert_eq!(r.count(s.content().trade("fletcher").unwrap()), 2, "none of its own retrained");
+}
+
+#[test]
+fn a_town_with_no_spare_of_a_trade_down_its_roads_hires_an_idle_hand_to_learn_it() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Inkwell", 100.0);
+    let far = s.add_town("Quillby", 0.0); // no stall's money: its idle hand stays idle
+    s.set_people(t, 5.0, 8.0, 20.0);
+    s.set_people(far, 4.0, 4.0, 20.0);
+    s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("fletcher", 1), ("fletcher", 1), ("cartographer", 1)]);
+    s.set_roster(far, &[("merchant", 1), ("farmer", 1), ("farmer", 1), ("none", 1)]);
+    for (town, hex) in [(t, enterprise_core::Hex::new(3, 3)), (far, enterprise_core::Hex::new(6, 3))] {
+        s.place_town(town, hex.center_x(), hex.center_z());
+    }
+    s.add_route(t, far, 1.0, 0.5, 4.0);
+    s.advance(DAY + DAY / 2); // Quillby's review leaves its hand idle
+    let none = s.content().trade("none").unwrap();
+    let idle = s.roster(far).hands.iter().find(|h| h.trade == none).unwrap().id;
+    s.deliver(t, PAPER, 64.0);
+    s.deliver(t, LEATHER, 3.0);
+    s.advance(3 * DAY + DAY / 2);
+    let librarian = s.content().trade("librarian").unwrap();
+    assert_eq!(s.roster(far).count(none), 0, "Quillby's idle hand hired away: {:?}", s.roster(far).hands);
+    s.advance(6 * DAY);
+    let r = s.roster(t);
+    assert_eq!(r.count(librarian), 1, "a Librarian on Inkwell's roster now: {:?}", r.hands);
+    let id = r.hands.iter().find(|h| h.trade == librarian).unwrap().id;
+    assert_eq!(id, idle, "Quillby's hand, not one of its own retrained: {:?}", r.hands);
+    // Its stall waits for its villager: put up once the host names one for it.
+    let out = s.apply(&enterprise_core::messages::Input::TagHand { hand: id, tag: "newcomer".into() });
+    assert!(out.iter().any(|o| matches!(o, enterprise_core::messages::Output::Stall { trade, .. } if trade == "librarian")),
+        "its stall to put up: {out:?}");
+}
