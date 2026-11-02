@@ -1376,6 +1376,14 @@ mod's), but no road ever chose it. Then: build them first.
   the day's budget too (a full keep of them is a few emeralds, and what it ships earns its wages). Seed 1717's 30 days:
   none packed loose; Pyrewood bought its crates of its neighbour's wagons on days 18, 27 and 28; the first five towns
   as before (to a villager), the settlers' villages as their parties went.
+- **Reading sooner: a book lasts 20 villager-days, and a first Leatherworker brings 6 cows (John, 2026-11-02:
+  "Let's figure out reading"; "A, B").** Reading waited on leather: a book takes a hide, and the hides came only once
+  the cows filled their pastures (seed 1717's first five towns read nothing till day 42, full by 46). Culling early for
+  hides was tried and dropped: down to the breeding stock the five towns kept 22 cows and read less by day 60; half
+  each tending's births, full reading came on day 60. Now `comforts/book.json` serves 20 days (10 before) and the
+  first Leatherworker's herd is 6 (`herds::LEATHERWORKER_COWS`, the mod's Husbandry the same). Seed 1717's 60 days: two
+  towns reading in full by day 20, three by 40, all five by 60; clothing met in all five from day 25; mood at days 30,
+  40 and 60 0.77, 2.05 and 2.61 (0.16, 1.46 and 2.53 before).
 - **A Lumberjack makes a home's furniture, of any wood (John, 2026-11-02: "give lumberjacks/carpenters the ability to
   make furnishing happiness goods").** Its workshop (`workshop::WOODWORK`, the mod's `Workshop` the same) works each of
   the pack's logs into furnishings: a chest and a barrel of two logs, a crafting table of one, and an item frame of a

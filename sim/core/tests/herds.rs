@@ -106,7 +106,7 @@ fn leatherworkers_keep_cows_for_hides() {
     let c = content();
     let mut h = Herds::default();
     seed(&c, &mut h, LEATHERWORKER);
-    assert_eq!(count(&c, &h, "cow"), 2.0, "a Leatherworker brings 2 cows");
+    assert_eq!(count(&c, &h, "cow"), 6.0, "a Leatherworker brings 6 cows");
     let mut led = ledger(&c);
     let mut stock = stocked(&c, WHEAT, 64.0);
     let mut h = herd_of(&c, "cow", 16.0); // a full pasture: culled down toward three quarters of it

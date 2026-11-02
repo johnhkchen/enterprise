@@ -2,7 +2,7 @@
 //! touch. Ported from `territory/Husbandry.java`: `KINDS` (37), `seed` (69), `feedDemand` (84), `capacity` (94),
 //! `tend` (101-140) and its constants.
 //!
-//! A town's first Shepherd brings 3 sheep, its first Leatherworker 2 cows, its first Butcher 2 pigs and 2 chickens,
+//! A town's first Shepherd brings 3 sheep, its first Leatherworker 6 cows, its first Butcher 2 pigs and 2 chickens,
 //! once only (a flock that starves away isn't given back). The animals eat from the warehouse (the farms ask for the
 //! feed: [`feed_demand`]), breed while fed into the room the pastures hold, and dwindle while hungry. A Shepherd shears
 //! the sheep; a Butcher culls any kind above the breeding stock for meat, a Leatherworker its cows (for beef and
@@ -44,6 +44,9 @@ pub struct Animal {
     /// Leather a slaughtered one gives, if it is a cow (`LEATHER_PER_COW`).
     pub hide: Option<GoodId>,
 }
+
+/// The cows a town's first Leatherworker brings ([`seed`]).
+pub const LEATHERWORKER_COWS: f64 = 6.0;
 
 /// A slaughtered cow gives this much leather (`Husbandry.LEATHER_PER_COW`).
 pub const LEATHER_PER_COW: f64 = 1.0;
@@ -183,8 +186,9 @@ fn kind_named(content: &Content, name: &str) -> Option<usize> {
     content.animals.iter().position(|a| a.name == name)
 }
 
-/// The town's first Shepherd brings 3 sheep, its first Leatherworker 2 cows, its first Butcher 2 pigs and 2 chickens.
-/// Once only (`Husbandry.seed`).
+/// The town's first Shepherd brings 3 sheep, its first Leatherworker 6 cows (John, 2026-11-02: the herd fills its
+/// pastures, and its hides come, a week sooner: seed 1717's towns read nothing till day 42, their books short of
+/// leather), its first Butcher 2 pigs and 2 chickens. Once only (`Husbandry.seed`).
 pub fn seed(content: &Content, herds: &mut Herds, keepers: Keepers) {
     herds.fit(content.animals.len());
     let (sheep, cow, pig, chicken) = (kind_named(content, "sheep"), kind_named(content, "cow"),
@@ -200,7 +204,7 @@ pub fn seed(content: &Content, herds: &mut Herds, keepers: Keepers) {
         give(herds, sheep, 3.0);
     }
     if keepers.leatherworker && cow.is_some() && !seeded(herds, cow) {
-        give(herds, cow, 2.0);
+        give(herds, cow, LEATHERWORKER_COWS);
     }
     if keepers.butcher && (pig.is_some() || chicken.is_some()) && !seeded(herds, pig) && !seeded(herds, chicken) {
         give(herds, pig, 2.0);

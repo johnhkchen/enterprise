@@ -30,6 +30,12 @@ paths = ["core/src/main/resources/data/enterprise/structure/**", "core/src/main/
 why = "the buildings a town lays and which (its kits, its kingdom's style): the blocks its villagers live and work in"
 
 [[points]]
+paths = ["core/src/main/resources/data/enterprise/comforts/**", "core/src/main/resources/data/enterprise/crops/**",
+         "core/src/main/java/dev/b28/enterprise/money/Prices.java"]
+why = """the content pack, sent to the core once when the world is made (binding/ModPack): its comforts' days and quality,
+its crops, its goods' worth; a world kept from before plays the old ones"""
+
+[[points]]
 paths = ["core/src/main/resources/data/enterprise/tags/**"]
 why = "what counts as a crop, a workstation, a bed: what a census and a crop count read from the world"
 

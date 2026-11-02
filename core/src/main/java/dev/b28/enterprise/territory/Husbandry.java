@@ -62,7 +62,7 @@ public final class Husbandry {
     }
 
     /**
-     * The town's first Shepherd brings 3 sheep, its first Leatherworker 2 cows, its first Butcher 2 pigs and 2
+     * The town's first Shepherd brings 3 sheep, its first Leatherworker 6 cows, its first Butcher 2 pigs and 2
      * chickens. Once only: a flock that
      * starves away isn't given back.
      */
@@ -71,7 +71,7 @@ public final class Husbandry {
             herd.put("minecraft:sheep", 3.0);
         }
         if (trades.contains("minecraft:leatherworker") && !herd.containsKey("minecraft:cow")) {
-            herd.put("minecraft:cow", 2.0);
+            herd.put("minecraft:cow", 6.0);
         }
         if (trades.contains("minecraft:butcher") && !herd.containsKey("minecraft:pig")
                 && !herd.containsKey("minecraft:chicken")) {

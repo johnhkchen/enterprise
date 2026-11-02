@@ -42,7 +42,7 @@ public final class HusbandryTests {
     public static void leatherworkersKeepCowsForHides(GameTestHelper helper) {
         Map<String, Double> herd = new HashMap<>();
         Husbandry.seed(herd, Set.of("minecraft:leatherworker"));
-        helper.assertTrue(herd.get("minecraft:cow") == 2, "a Leatherworker brings 2 cows");
+        helper.assertTrue(herd.get("minecraft:cow") == 6, "a Leatherworker brings 6 cows");
         MerchantStock stock = warehouse(helper);
         stock.insert(new ItemStack(Items.WHEAT, 64));
         herd.put("minecraft:cow", 16.0); // a full pasture: culled down toward three quarters of it
