@@ -1367,7 +1367,8 @@ public final class LandAdapter {
             case Work.Waystation w -> {
                 // Out on its hex, the ground round its centre loaded first.
                 Hex hex = new Hex(w.hex().q(), w.hex().r());
-                int half = Works.WAYSTATION_SIZE;
+                // An inn's footprint (to 18 x 14) at the top level.
+                int half = w.level() >= 3 ? 10 : Works.WAYSTATION_SIZE;
                 BlockPos centre = BlockPos.containing(hex.centerX(), 0, hex.centerZ());
                 Set<ChunkPos> chunks = new LinkedHashSet<>();
                 for (int dx = -half; dx <= half; dx += 4) {
@@ -1379,7 +1380,8 @@ public final class LandAdapter {
                 if (!loadedFor(level, chunks)) {
                     yield false;
                 }
-                yield Works.layWaystation(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), hex);
+                yield Works.layWaystation(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), hex,
+                        w.level());
             }
             case Work.Wall w -> {
                 // The inner wall of the town's plan, square to the compass; a ring round the bell for a town with none.

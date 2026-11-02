@@ -87,7 +87,8 @@ pub enum Work {
     /// A berth on the town's waterfront (`works.rs` `call_at_port`): its ships outgrew the berths it has, and it paid for
     /// the next stretch of quay along its shore, a jetty and a building behind it, for the host to lay.
     Berth,
-    Waystation { hex: HexAt },
+    /// A town's stop on the road at its level (`waystations.rs`): 1 a stop, 2 a waystation, 3 a caravan inn.
+    Waystation { hex: HexAt, level: u8 },
 }
 
 /// One of a town's works as the core has it: how much of it is laid by its masons (0 to 1), whether it's finished, and

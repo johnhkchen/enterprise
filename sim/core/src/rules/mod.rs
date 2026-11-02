@@ -51,6 +51,7 @@ pub mod touch;
 pub mod training;
 pub mod workshop;
 pub mod works;
+pub mod waystations;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SingleThreadedExecutor;

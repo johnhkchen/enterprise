@@ -1643,6 +1643,7 @@ Work:
         STRUCT:
           - hex:
               TYPENAME: HexAt
+          - level: U8
 WorkView:
   STRUCT:
     - work:

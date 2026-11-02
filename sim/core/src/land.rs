@@ -95,7 +95,7 @@ impl Society {
             What::Bridge { hex, from, to } => Work::Bridge { hex: HexAt::of(hex), from: HexAt::of(from), to: HexAt::of(to) },
             What::Wall => Work::Wall,
             What::Hall(kind) => Work::Hall { kind: kind.id().to_string() },
-            What::Waystation { hex } => Work::Waystation { hex: HexAt::of(hex) },
+            What::Waystation { hex } => Work::Waystation { hex: HexAt::of(hex), level: 1 },
         }
     }
 
@@ -189,6 +189,12 @@ impl Society {
                     out.push(Output::Build { town: crate::wire::no(t), work: self.work(&p.what), share });
                 }
             }
+            // Its stops risen a level the host hasn't shown.
+            for s in self.world.resource::<crate::waystations::Waystations>().stations.iter()
+                    .filter(|s| s.owner == t && s.level > 1 && s.shown < s.level) {
+                out.push(Output::Build { town: crate::wire::no(t), work: Work::Waystation { hex: HexAt::of(s.hex), level: s.level },
+                    share: 1.0 });
+            }
             for &crop in book.unlaid.get(&t).into_iter().flatten() {
                 out.push(Output::Build { town: crate::wire::no(t), work: Work::Field { crop: crate::wire::no(crop) }, share: 1.0 });
             }
@@ -248,6 +254,16 @@ impl Society {
                 }
             }
             return;
+        }
+        if let Work::Waystation { hex, level } = *work {
+            if level > 1 {
+                let hex = crate::hex::Hex::new(hex.q, hex.r);
+                let mut ways = self.world.resource_mut::<crate::waystations::Waystations>();
+                if let Some(s) = ways.stations.iter_mut().find(|s| s.hex == hex && s.owner == town) {
+                    s.shown = s.shown.max(level);
+                }
+                return;
+            }
         }
         let Some(what) = self.works(town).projects.iter().map(|p| p.what).find(|w| self.work(w) == *work) else { return };
         let mut book = self.world.resource_mut::<LandBook>();

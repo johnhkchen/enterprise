@@ -1386,6 +1386,21 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **A waystation keeps itself and rises in levels out of its takings (John, 2026-11-02: "Way stations should be able
+  to collect a small toll for water, resting, and sell their own food for caravans"; "Let's use a level up mechanism
+  for these, so towns can improve the way station in stages, so starting small is possible").** A town builds the stop
+  (level 1); from then on it keeps itself (`waystations.rs`, `rules/waystations.rs`): a wagon of another town home
+  again pays each stop it passed within a hex of, there and back, its own town's and its far end's excepted: 0.1
+  emeralds each way at a stop, 0.2 at a waystation, 0.3 at an inn, and from level 2 a meal a mouth each way out of the
+  food its garden grows (6 points a day, 48 kept; 12 and 96 at an inn) at bread's worth and a quarter. It's paid to
+  the stop's town and banked to the stop (`Station::banked`, money in the town's treasury, so the books need nothing
+  new); a stop that banked 12 emeralds rises to a waystation, its keepers taking 4 days, one that banked 30 more to a
+  caravan inn in 10, its town's own works going on meanwhile. The host lays each level on the hex (`Work::Waystation`'s
+  `level`): the plain stop; the people's waystation kit; its inn, else its caravanserai (`structure/<kingdom>/hall/`);
+  a level a people has no kit for keeps the one standing. Seed 1717's 90 days built two stops (Corin's Crossing day 7,
+  Pyrewood day 19) and took nothing: of 447 trips home after day 8, 424 sailed (a ship passes no stop, as it pays no
+  toll), and the 23 by land ran 11 hexes or more from them. Next: road works out of the takings, and a stop on the
+  roads wagons take.
 - **Waystations out on the road carry word of a town further, and chain (John, 2026-11-02: "There's a bunch of
   assets that are waystations. Maybe towns with masons or carpenters can build these to extend their road range?";
   "Out on the road"; "Also build for the 2-3+ way station daisy chaining effect").** Roads weren't short of food (a leg

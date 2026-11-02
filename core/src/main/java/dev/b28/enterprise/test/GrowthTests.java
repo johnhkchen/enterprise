@@ -301,25 +301,31 @@ public final class GrowthTests {
     }
 
     /**
-     * A town's waystation out on the road (the core's `Work::Waystation`): a dwarf town's is its kingdom's kit, a
-     * kingdom with none yet (Lordaeron) gets a plain stop, a roof on posts over a trough and a bale.
+     * A town's waystation out on the road (the core's `waystations.rs`), by its level: 1, a stop of its own, a roof on
+     * posts over a trough and a bale; 2, its kingdom's kit (the dwarves'); 3, its inn, else its caravanserai (Lordaeron
+     * an inn, orcs a caravanserai); a level a kingdom has no kit for keeps the one standing.
      */
     @GameTest(template = "floor", skyAccess = true)
-    public static void aWaystationIsItsKingdomsKitOrAPlainStop(GameTestHelper helper) {
+    public static void aWaystationRisesFromAStopToItsKingdomsKitAndInn(GameTestHelper helper) {
         var level = helper.getLevel();
         var resources = level.getServer().getResourceManager();
         helper.assertTrue(dev.b28.enterprise.territory.Works.waystationKit(resources, "dwarf")
                 .equals(java.util.Optional.of("enterprise:dwarf/gate_quarter/waystation_6x6_a")), "the dwarves' kit");
         helper.assertTrue(dev.b28.enterprise.territory.Works.waystationKit(resources, "lordaeron").isEmpty(), "Lordaeron has none");
+        helper.assertTrue(dev.b28.enterprise.territory.Works.innKit(resources, "lordaeron")
+                .equals(java.util.Optional.of("enterprise:lordaeron/hall/inn_15x12_a")), "Lordaeron's inn");
+        helper.assertTrue(dev.b28.enterprise.territory.Works.innKit(resources, "orc")
+                .equals(java.util.Optional.of("enterprise:orc/hall/caravanserai_14x10_a")), "the orcs' caravanserai");
         BlockPos centre = helper.absolutePos(new BlockPos(3, 2, 3));
-        dev.b28.enterprise.territory.Works.layWaystation(level, "lordaeron", centre);
+        helper.assertTrue(dev.b28.enterprise.territory.Works.layWaystation(level, "dwarf", centre, 1), "a stop");
         BlockPos at = centre.offset(-1, 0, -1);
         helper.assertTrue(level.getBlockState(at.offset(1, 0, 0)).is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON),
                 "its trough");
         helper.assertTrue(level.getBlockState(at).is(net.minecraft.world.level.block.Blocks.SPRUCE_FENCE), "a post");
         helper.assertTrue(level.getBlockState(at.offset(1, 3, 1)).is(net.minecraft.world.level.block.Blocks.SPRUCE_SLAB), "its roof");
-        BlockPos dwarves = helper.absolutePos(new BlockPos(3, 2, 3)).above(6);
-        helper.assertTrue(dev.b28.enterprise.territory.Works.layWaystation(level, "dwarf", dwarves), "the dwarves' kit laid");
+        helper.assertTrue(dev.b28.enterprise.territory.Works.layWaystation(level, "dwarf", centre.above(6), 2), "the dwarves' kit laid");
+        helper.assertTrue(dev.b28.enterprise.territory.Works.layWaystation(level, "lordaeron", centre.above(12), 2),
+                "Lordaeron's stop stands at level 2");
         helper.succeed();
     }
 

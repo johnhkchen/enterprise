@@ -592,29 +592,53 @@ public final class Works extends SavedData {
     }
 
     /**
-     * Lays a town's waystation on {@code hex} (the core's `What::Waystation`: a roadside stop word of the town carries
-     * from), its corner at the hex's centre on the ground: the kingdom's kit facing south, else a plain stop of its own
-     * (a roof on four posts over a trough and a bale, a people with no kit yet: John, "Out on the road"). False if its
-     * kit couldn't be laid yet (its ground not loaded): tried again later, not laid plain.
+     * The kingdom's caravan inn, a waystation's top level: its inn hall, else its caravanserai (`structure/<kingdom>/hall/`),
+     * if it has either.
      */
-    public static boolean layWaystation(ServerLevel level, String kingdom, Hex hex) {
-        int x = (int) Math.floor(hex.centerX());
-        int z = (int) Math.floor(hex.centerZ());
-        return layWaystation(level, kingdom, new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z));
+    public static Optional<String> innKit(net.minecraft.server.packs.resources.ResourceManager resources, String kingdom) {
+        List<String> halls = new ArrayList<>();
+        resources.listResources("structure/" + kingdom + "/hall", rl -> rl.getNamespace().equals("enterprise")
+                && rl.getPath().endsWith(".nbt")).keySet().forEach(rl -> halls.add(rl.getPath()
+                .substring("structure/".length(), rl.getPath().length() - ".nbt".length())));
+        halls.sort(Comparator.naturalOrder());
+        return halls.stream().filter(h -> h.contains("/hall/inn_")).findFirst()
+                .or(() -> halls.stream().filter(h -> h.contains("/hall/caravanserai_")).findFirst())
+                .map(h -> "enterprise:" + h);
     }
 
-    /** Lays a waystation as {@link #layWaystation(ServerLevel, String, Hex)} does, round {@code centre} on the ground. */
-    public static boolean layWaystation(ServerLevel level, String kingdom, BlockPos centre) {
-        BlockPos corner = centre.offset(-WAYSTATION_SIZE / 2, 0, -WAYSTATION_SIZE / 2);
-        var kit = waystationKit(level.getServer().getResourceManager(), kingdom);
-        if (kit.isPresent()) {
-            if (Kits.place(level, kit.get(), corner, net.minecraft.core.Direction.SOUTH).isEmpty()) {
+    /**
+     * Lays a town's waystation on {@code hex} at its level (the core's `waystations.rs`), round the hex's centre on the
+     * ground: 1, a stop of its own (a roof on four posts over a trough and a bale: "starting small"); 2, the kingdom's
+     * waystation kit; 3, its inn or caravanserai. A level the kingdom has no kit for keeps the one standing. False if a
+     * kit couldn't be laid yet (its ground not loaded): tried again later.
+     */
+    public static boolean layWaystation(ServerLevel level, String kingdom, Hex hex, int stage) {
+        int x = (int) Math.floor(hex.centerX());
+        int z = (int) Math.floor(hex.centerZ());
+        return layWaystation(level, kingdom, new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z),
+                stage);
+    }
+
+    /** Lays a waystation as {@link #layWaystation(ServerLevel, String, Hex, int)} does, round {@code centre}. */
+    public static boolean layWaystation(ServerLevel level, String kingdom, BlockPos centre, int stage) {
+        var resources = level.getServer().getResourceManager();
+        if (stage >= 2) {
+            var kit = stage >= 3 ? innKit(resources, kingdom) : waystationKit(resources, kingdom);
+            if (kit.isEmpty()) {
+                Enterprise.LOGGER.info("No {} kit for a level {} waystation: the one at {} stands", kingdom, stage,
+                        centre.toShortString());
+                return true;
+            }
+            var meta = Kits.meta(resources, kit.get());
+            int w = meta.map(Kits.Meta::width).orElse(WAYSTATION_SIZE);
+            int d = meta.map(Kits.Meta::depth).orElse(WAYSTATION_SIZE);
+            if (Kits.place(level, kit.get(), centre.offset(-w / 2, 0, -d / 2), net.minecraft.core.Direction.SOUTH).isEmpty()) {
                 return false;
             }
-            Enterprise.LOGGER.info("A {} waystation laid at {}", kingdom, corner.toShortString());
+            Enterprise.LOGGER.info("A level {} {} waystation laid at {}", stage, kingdom, centre.toShortString());
             return true;
         }
-        BlockPos at = corner.offset(2, 0, 2);
+        BlockPos at = centre.offset(-1, 0, -1);
         for (int dx = 0; dx <= 2; dx++) {
             for (int dz = 0; dz <= 2; dz++) {
                 BlockPos ground = at.offset(dx, -1, dz);
@@ -634,7 +658,7 @@ public final class Works extends SavedData {
         level.setBlock(at.offset(1, 0, 0), Blocks.WATER_CAULDRON.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.LayeredCauldronBlock.LEVEL, 3), 3);
         level.setBlock(at.offset(1, 0, 2), Blocks.HAY_BLOCK.defaultBlockState(), 3);
-        Enterprise.LOGGER.info("A waystation laid at {} (no {} kit: a plain one)", at.toShortString(), kingdom);
+        Enterprise.LOGGER.info("A waystation's stop laid at {}", at.toShortString());
         return true;
     }
 

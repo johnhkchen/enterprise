@@ -31,7 +31,7 @@ public sealed interface Work
             case 4 -> new Home();
             case 5 -> new Pasture(in.u32());
             case 6 -> new Berth();
-            case 7 -> new Waystation(HexAt.decode(in));
+            case 7 -> new Waystation(HexAt.decode(in), in.u8());
             default -> throw in.unknownVariant("Work", at);
         };
     }
@@ -118,7 +118,10 @@ public sealed interface Work
         }
     }
 
-    record Waystation(HexAt hex) implements Work {
+    /**
+     * A town's stop on the road at its level ({@code waystations.rs}): 1 a stop, 2 a waystation, 3 a caravan inn.
+     */
+    record Waystation(HexAt hex, int level) implements Work {
         public Waystation {
             Objects.requireNonNull(hex, "hex");
         }
@@ -127,6 +130,7 @@ public sealed interface Work
         public void encode(PostcardOut out) {
             out.variant(7);
             this.hex.encode(out);
+            out.u8(this.level);
         }
     }
 }
