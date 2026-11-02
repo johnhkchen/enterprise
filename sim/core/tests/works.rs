@@ -550,9 +550,9 @@ use crate::common;
 
 #[test]
 fn the_random_worlds_exercise_the_works() {
-    let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
-    for (w, b, h, st) in common::each_seed(common::seeds(60), |seed| {
-        let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
+    let (mut walls, mut bridges, mut halls, mut ways, mut started_by_towns) = (0, 0, 0, 0, 0);
+    for (w, b, h, y, st) in common::each_seed(common::seeds(60), |seed| {
+        let (mut walls, mut bridges, mut halls, mut ways, mut started_by_towns) = (0, 0, 0, 0, 0);
         let mut s = common::world(seed);
         for day in 1..=80 {
             s.advance(day * DAY);
@@ -564,18 +564,21 @@ fn the_random_worlds_exercise_the_works() {
                     What::Wall => walls += 1,
                     What::Bridge { .. } => bridges += 1,
                     What::Hall(_) => halls += 1,
+                    What::Waystation { .. } => ways += 1,
                 }
             }
             started_by_towns += s.works(t).projects.iter().filter(|p| p.started.is_some()).count();
         }
-        (walls, bridges, halls, started_by_towns)
+        (walls, bridges, halls, ways, started_by_towns)
     }) {
         walls += w;
         bridges += b;
         halls += h;
+        ways += y;
         started_by_towns += st;
     }
     assert!(walls > 0 && bridges > 0 && halls > 0 && started_by_towns > 20, "{walls} walls, {bridges} bridges, {halls} halls");
+    eprintln!("random worlds' works: {walls} walls, {bridges} bridges, {halls} halls, {ways} waystations");
 }
 
 #[test]
@@ -596,4 +599,68 @@ fn a_mason_learns_from_the_works_it_builds() {
     assert_eq!((mason(&s).level, mason(&s).xp), (1, 4), "two days' work");
     s.advance(t0 + 5 * DAY);
     assert_eq!(mason(&s).level, 2, "five days: an Apprentice ({} XP)", mason(&s).xp);
+}
+
+#[test]
+fn a_town_with_a_lumberjack_builds_a_waystation_halfway_to_a_town_it_hadnt_heard_of() {
+    let mut s = Society::new(Content::new(vec![Good::new("bread", 0.2, 64).food(5.0)], DAY));
+    s.content_mut().dials.budget_share = 1.0;
+    let town = s.add_town("Ashwood", 200.0);
+    let far = s.add_town("Stromgarde", 40.0);
+    let home = Hex::at(0.0, 0.0);
+    s.place_town(town, home.center_x(), home.center_z());
+    s.place_town(far, home.center_x() + 600.0, home.center_z());
+    for hex in std::iter::once(home).chain(home.neighbors()) {
+        s.claim_hex(town, hex);
+    }
+    // The ground between them surveyed, dry and flat.
+    for x in (0..=600).step_by(4) {
+        let h = Hex::at(home.center_x() + x as f64, home.center_z());
+        for hex in std::iter::once(h).chain(h.neighbors()) {
+            s.set_ground(hex, 0.0, 0.0);
+        }
+    }
+    assert!(!s.known(far).contains(&town) && !s.known(town).contains(&far), "600 blocks: beyond word of mouth");
+    s.set_roster(town, &[("merchant", 1), ("farmer", 1)]);
+    s.advance(20 * DAY);
+    assert!(!s.works(town).has_waystation(), "no Mason nor Lumberjack: none");
+    s.set_roster(town, &[("merchant", 1), ("farmer", 1), ("lumberjack", 1)]);
+    s.advance(40 * DAY);
+    let works = s.works(town);
+    let way = works.projects.iter().find_map(|p| match p.what {
+        What::Waystation { hex } => Some(hex),
+        _ => None,
+    }).unwrap_or_else(|| panic!("a waystation started: {:?}", works.projects));
+    assert!(way.distance(Hex::at(home.center_x() + 300.0, home.center_z())) <= 1, "halfway: {way:?}");
+    s.advance(100 * DAY);
+    assert_eq!(s.works(town).waystations().collect::<Vec<_>>(), vec![way], "built");
+    assert!(s.known(far).contains(&town), "Stromgarde hears of Ashwood from its waystation");
+    assert!(s.known(town).contains(&far), "and Ashwood of Stromgarde");
+}
+
+#[test]
+fn waystations_daisy_chain_toward_a_town_too_far_for_one() {
+    let mut s = Society::new(Content::new(vec![Good::new("bread", 0.2, 64).food(5.0)], DAY));
+    s.content_mut().dials.budget_share = 1.0;
+    let town = s.add_town("Ashwood", 400.0);
+    let far = s.add_town("Theramore", 40.0);
+    let home = Hex::at(0.0, 0.0);
+    s.place_town(town, home.center_x(), home.center_z());
+    s.place_town(far, home.center_x() + 900.0, home.center_z());
+    for hex in std::iter::once(home).chain(home.neighbors()) {
+        s.claim_hex(town, hex);
+    }
+    for x in (0..=900).step_by(4) {
+        let h = Hex::at(home.center_x() + x as f64, home.center_z());
+        for hex in std::iter::once(h).chain(h.neighbors()) {
+            s.set_ground(hex, 0.0, 0.0);
+        }
+    }
+    s.set_roster(town, &[("merchant", 1), ("farmer", 1), ("mason", 2)]);
+    s.advance(300 * DAY);
+    let ways: Vec<Hex> = s.works(town).waystations().collect();
+    assert_eq!(ways.len(), 2, "two links: {:?}", s.works(town).projects);
+    let east = |h: &Hex| h.center_x() - home.center_x();
+    assert!(east(&ways[0]) < 400.0 && east(&ways[1]) > east(&ways[0]), "each out from the last: {ways:?}");
+    assert!(s.known(far).contains(&town) && s.known(town).contains(&far), "900 blocks, heard of by the chain");
 }

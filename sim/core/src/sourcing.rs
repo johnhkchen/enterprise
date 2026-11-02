@@ -353,10 +353,7 @@ impl<'a> Env<'a> {
         let n = towns.len();
         let mut places = Places { hexes: vec![None; n], reach: vec![content.dials.word_of_mouth; n], ..Default::default() };
         for (t, &e) in towns.iter().enumerate() {
-            if let Some(town) = world.get::<Town>(e) {
-                places.hexes[t] = town.hex;
-            }
-            places.reach[t] = crate::atlas::reach(content, world.get::<Works>(e));
+            places.set_town(content, t, world.get::<Town>(e).and_then(|town| town.hex), world.get::<Works>(e));
         }
         for r in &routes {
             places.roads.entry((r.route.from_id, r.route.to_id)).and_modify(|b| *b = (*b).min(r.route.blocks))

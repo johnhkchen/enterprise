@@ -72,7 +72,8 @@ impl LandKind {
 /// Something a town builds that the host lays in its world: a bridge's deck on a hex, between two of its neighbours;
 /// the town's wall round its bell; a hall (by its name: `square`, `granary`, `root_cellar`, `counting_house`, `temple`,
 /// `library`, `smithy`, `watchtower`, `stone_docks`, `caravanserai`); a field of a crop; a family's home (two beds,
-/// `people.rs`), where the host finds room by the bell.
+/// `people.rs`), where the host finds room by the bell; a waystation on a hex out on the road, the town's people's own
+/// (`works.rs` `What::Waystation`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Work {
     Bridge { hex: HexAt, from: HexAt, to: HexAt },
@@ -86,6 +87,7 @@ pub enum Work {
     /// A berth on the town's waterfront (`works.rs` `call_at_port`): its ships outgrew the berths it has, and it paid for
     /// the next stretch of quay along its shore, a jetty and a building behind it, for the host to lay.
     Berth,
+    Waystation { hex: HexAt },
 }
 
 /// One of a town's works as the core has it: how much of it is laid by its masons (0 to 1), whether it's finished, and

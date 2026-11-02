@@ -130,6 +130,7 @@ fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
         mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>, places: Query<&Town>,
+        atlas: Res<crate::atlas::Atlas>,
         mut q: Query<(&Town, &mut Works, &mut Money, &mut Stock, &Trades, &mut Budget, &People, Option<&Farm>,
             Option<&Roster>, &Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -140,6 +141,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             What::Bridge { hex, .. } => Some(hex),
             _ => None,
         }).collect::<Vec<_>>()).collect();
+    // Where each town stands and who has heard of whom, as the day began: where a waystation would carry word.
+    let mut sites = crate::atlas::Places { hexes: vec![None; towns.0.len()], reach: vec![d.word_of_mouth; towns.0.len()],
+        ..Default::default() };
+    for (town, works, ..) in q.iter() {
+        sites.set_town(&content, town.id, town.hex, Some(works));
+    }
+    for r in routes.iter() {
+        sites.roads.entry((r.from_id, r.to_id)).and_modify(|b| *b = (*b).min(r.blocks)).or_insert(r.blocks);
+    }
     for &e in &towns.0 {
         let Ok((town, mut works, mut money, mut stock, trades, mut budget, people, farm, roster, paperwork)) = q.get_mut(e)
             else { continue };
@@ -248,6 +258,27 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             if let Some(((hex, from, to, deck), _)) = best {
                 works.start(What::Bridge { hex, from, to }, deck);
                 continue;
+            }
+        }
+        // A waystation out toward a town it hasn't heard of (John: "towns with masons or carpenters can build these to
+        // extend their road range"; "Out on the road"), by its Mason or Lumberjack and hired builders: if it can pay
+        // the builders' wages and its materials and keep `commission_spare` beyond (what opening a road asks). One at a time, each out from
+        // the last, up to `waystations_most` ("the 2-3+ way station daisy chaining effect").
+        let (ways, going_up) = works.waystations_started();
+        if toll_review && !going_up && ways < d.waystations_most as usize && builds_waystations(&content, roster) {
+            let built: Vec<crate::hex::Hex> = works.waystations().collect();
+            if let Some(hex) = waystation_site(&content, &atlas, &sites, &map, t, &built) {
+                let blocks = WAYSTATION_SIZE * WAYSTATION_SIZE * WAYSTATION_HEIGHT;
+                let wages = blocks as f64 / per_day * d.masons as f64 * d.mason_pay;
+                let timber = if crate::works::takes_timber(&content) { WAYSTATION_LOGS } else { 0.0 };
+                let materials = crate::fixed::Fixed::ceil(WAYSTATION_EMERALDS);
+                if spare >= wages + WAYSTATION_EMERALDS + d.commission_spare && logs(&content, &stock.0) >= timber {
+                    take_logs(&content, &mut stock, &mut ledger, timber);
+                    post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), materials,
+                        Reason::Other("a waystation".into()), now, day);
+                    works.start(What::Waystation { hex }, blocks);
+                    continue;
+                }
             }
         }
         // Nothing that pays: a content town with money to spare walls itself in, if it can pay all the masons'

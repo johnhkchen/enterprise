@@ -1638,6 +1638,11 @@ Work:
           - grass: U32
     6:
       Berth: UNIT
+    7:
+      Waystation:
+        STRUCT:
+          - hex:
+              TYPENAME: HexAt
 WorkView:
   STRUCT:
     - work:

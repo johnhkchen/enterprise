@@ -95,6 +95,7 @@ impl Society {
             What::Bridge { hex, from, to } => Work::Bridge { hex: HexAt::of(hex), from: HexAt::of(from), to: HexAt::of(to) },
             What::Wall => Work::Wall,
             What::Hall(kind) => Work::Hall { kind: kind.id().to_string() },
+            What::Waystation { hex } => Work::Waystation { hex: HexAt::of(hex) },
         }
     }
 

@@ -1386,6 +1386,20 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Waystations out on the road carry word of a town further, and chain (John, 2026-11-02: "There's a bunch of
+  assets that are waystations. Maybe towns with masons or carpenters can build these to extend their road range?";
+  "Out on the road"; "Also build for the 2-3+ way station daisy chaining effect").** Roads weren't short of food (a leg
+  carries 3,200 blocks): towns were short of word. A town hears of a market within `word_of_mouth` (400 blocks), and
+  seed 1717's roadless towns stood 487 and 670 blocks from the nearest (Stromgarde, 39 emeralds to spend, heard of
+  none). A town with a Mason (level 2) or a Lumberjack at home builds a waystation (`works::What::Waystation`, hired
+  builders as a bridge's, 8 logs and 4 emeralds: a shelter's, as seed 1717's would-be builders held a median 4 to
+  spare) toward the nearest town it hasn't heard of nor been heard of by, within a leg's food: halfway when that's
+  within 680 blocks, else a link of 340 out from its last (`waystation_site`), at most `waystations_most` (3).
+  Word of the town carries 400 blocks from each one built, and of a town by one back to it (`atlas::Places::known`).
+  The host lays the people's kit on the hex (`town_rules` `land.waystation`: dwarf, goblin, orc, tauren), else a
+  plain stop of four posts, a roof, a trough and a bale. The core tests' random worlds build 77 in 80 days, halls and
+  walls as before; seed 1717's 90 days one (Corin's Crossing, day 7). Next: levels, the stop's fees, its food, and
+  road works out of its takings.
 - **A town hires a comfort's maker from a town down its roads (John, 2026-11-02: "hire-relocated-worker mechanism";
   "relocation").** A town short of a comfort it holds the makings of, with no hand of its maker, none idle, a bed free
   and a stall's money, hires before it retrains (`rules/jobs.rs` `relocate`, the same `comfort_retrain_days`): from the

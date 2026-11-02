@@ -61,6 +61,15 @@ pub const MAX_DAYS: f64 = 60.0;
 /// Flowers a town's beds can be planted from, by the host's names (`MasterServices.FLOWER_ITEMS`).
 pub const FLOWER_ITEMS: [&str; 8] = ["dandelion", "poppy", "blue_orchid", "allium", "azure_bluet", "oxeye_daisy",
     "cornflower", "lily_of_the_valley"];
+/// A waystation's footprint and height (the kits' `waystation`, 6x6 or 7x7, a trough and a shelter): its blocks.
+pub const WAYSTATION_SIZE: u32 = 7;
+pub const WAYSTATION_HEIGHT: u32 = 3;
+/// Its materials, in emeralds, beside its timber where the host has Lumberjacks: a shelter's, not a hall's (seed 1717's
+/// towns that could have built one held a median 4 emeralds to spare and 0 to 16 logs, a hall's 32 asked).
+pub const WAYSTATION_EMERALDS: f64 = 4.0;
+pub const WAYSTATION_LOGS: f64 = 8.0;
+/// The Mason's level a town's own needs for one (a square's); a Lumberjack of any level will do.
+pub const WAYSTATION_MASON_LEVEL: u8 = 2;
 /// Logs a town might hold, by the host's names (`BuildServices.LOGS`).
 pub const LOGS: [&str; 8] = ["oak_log", "spruce_log", "birch_log", "jungle_log", "acacia_log", "dark_oak_log",
     "mangrove_log", "cherry_log"];
@@ -252,13 +261,16 @@ pub enum What {
     Bridge { hex: Hex, from: Hex, to: Hex },
     Wall,
     Hall(Kind),
+    /// A waystation out on a hex between the town and a town it hadn't heard of (John: "towns with masons or
+    /// carpenters can build these to extend their road range"; "Out on the road"): word of the town carries from it.
+    Waystation { hex: Hex },
 }
 
 impl What {
     /// The order the mod works its projects in: bridges, then the wall, then the halls (`Works.projectsOf`).
     fn rank(&self) -> u8 {
         match self {
-            What::Bridge { .. } => 0,
+            What::Bridge { .. } | What::Waystation { .. } => 0,
             What::Wall => 1,
             What::Hall(_) => 2,
         }
@@ -270,6 +282,7 @@ impl What {
             (What::Bridge { hex: a, .. }, What::Bridge { hex: b, .. }) => a == b,
             (What::Wall, What::Wall) => true,
             (What::Hall(a), What::Hall(b)) => a == b,
+            (What::Waystation { hex: a }, What::Waystation { hex: b }) => a == b,
             _ => false,
         }
     }
@@ -411,6 +424,25 @@ impl Works {
         self.projects.iter().any(|p| p.done && matches!(p.what, What::Bridge { hex: h, .. } if h == hex))
     }
 
+    /// The hexes of its waystations finished: word of the town carries from each.
+    pub fn waystations(&self) -> impl Iterator<Item = Hex> + '_ {
+        self.projects.iter().filter(|p| p.done).filter_map(|p| match p.what {
+            What::Waystation { hex } => Some(hex),
+            _ => None,
+        })
+    }
+
+    /// Has it started a waystation (finished or not)?
+    pub fn has_waystation(&self) -> bool {
+        self.projects.iter().any(|p| matches!(p.what, What::Waystation { .. }))
+    }
+
+    /// How many waystations it has started, and whether one is still going up.
+    pub fn waystations_started(&self) -> (usize, bool) {
+        let ways = self.projects.iter().filter(|p| matches!(p.what, What::Waystation { .. }));
+        (ways.clone().count(), ways.clone().any(|p| !p.done))
+    }
+
     /// Has a bridge on this hex been started or finished?
     pub fn has_bridge(&self, hex: Hex) -> bool {
         self.projects.iter().any(|p| matches!(p.what, What::Bridge { hex: h, .. } if h == hex))
@@ -490,7 +522,7 @@ pub fn apply(works: &mut Works, map: &mut crate::map::Map, mut farm: Option<&mut
                     }
                 }
             }
-            What::Wall => {}
+            What::Wall | What::Waystation { .. } => {}
         }
     }
 }
@@ -517,6 +549,60 @@ pub fn skills(content: &crate::content::Content, roster: Option<&crate::roster::
 
 /// The best level among a town's Masons at home, if it has a Mason at all (`Crafts.hasOwn`): `Some(None)` when they
 /// are all away.
+/// Can a town build a waystation: a Mason of [`WAYSTATION_MASON_LEVEL`] at home, or a Lumberjack (John: "towns with
+/// masons or carpenters")?
+pub fn builds_waystations(content: &crate::content::Content, roster: Option<&crate::roster::Roster>) -> bool {
+    let Some(r) = roster else { return false };
+    let (mason, lumberjack) = (content.trade("mason"), content.trade(crate::roster::LUMBERJACK));
+    r.hands.iter().any(|h| !h.away && !h.is_baby()
+        && (Some(h.trade) == mason && h.level >= WAYSTATION_MASON_LEVEL || Some(h.trade) == lumberjack))
+}
+
+/// Where a town builds its next waystation, out from its last (John: "Out on the road"; "the 2-3+ way station daisy
+/// chaining effect"): toward the nearest town it hasn't heard of, nor been heard of by, within a leg's food, measured
+/// from the nearest of the town and its waystations; halfway there when that's within twice word of mouth, else a
+/// step of [`WAYSTATION_STEP`] of word of mouth toward it, a link of the chain (a town only so many links,
+/// `waystations_most`, could ever reach). On that hex or the first of its neighbours surveyed and dry. Word of the town
+/// carries from each one built, and of a town by one of them back to the town (`atlas::Places::known`).
+pub fn waystation_site(content: &crate::content::Content, atlas: &crate::atlas::Atlas, places: &crate::atlas::Places,
+        map: &crate::map::Map, town: usize, built: &[Hex]) -> Option<Hex> {
+    let home = places.hexes.get(town).copied().flatten()?;
+    let reach = content.dials.word_of_mouth;
+    let links = (content.dials.waystations_most as usize).saturating_sub(built.len());
+    if links == 0 {
+        return None;
+    }
+    let chain: Vec<Hex> = std::iter::once(home).chain(built.iter().copied()).collect();
+    let apart = |a: Hex, b: Hex| ((a.center_x() - b.center_x()).powi(2) + (a.center_z() - b.center_z()).powi(2)).sqrt();
+    let knows = places.known(content, atlas, town);
+    let mut far: Vec<(u64, usize, Hex, Hex)> = (0..places.hexes.len())
+        .filter(|&o| o != town && !knows.contains(&o))
+        .filter(|&o| places.distance(town, o).is_some_and(|d| crate::road::in_range(content, d)))
+        .filter_map(|o| {
+            let there = places.hexes[o]?;
+            let from = *chain.iter().min_by(|a, b| apart(**a, there).total_cmp(&apart(**b, there)))?;
+            let d = apart(from, there);
+            (d > reach && d <= (links + 1) as f64 * reach).then_some(((d * 1000.0) as u64, o, from, there))
+        })
+        .filter(|&(_, o, ..)| !places.known(content, atlas, o).contains(&town))
+        .collect();
+    far.sort_unstable_by_key(|&(d, o, ..)| (d, o));
+    far.into_iter().find_map(|(_, _, from, there)| {
+        let d = apart(from, there);
+        let t = if d <= 2.0 * WAYSTATION_STEP * reach { 0.5 } else { WAYSTATION_STEP * reach / d };
+        let at = Hex::at(from.center_x() + t * (there.center_x() - from.center_x()),
+            from.center_z() + t * (there.center_z() - from.center_z()));
+        std::iter::once(at).chain(at.neighbors()).find(|h| {
+            !chain.contains(h) && map.ground.get(h)
+                .is_some_and(|g| g.water_share <= crate::map::IMPASSABLE && g.relief < crate::map::CLIFF)
+        })
+    })
+}
+
+/// A link of a waystation chain at most this share of word of mouth from the last: a hex's width short of it, so the
+/// next is within it.
+pub const WAYSTATION_STEP: f64 = 0.85;
+
 pub fn mason(content: &crate::content::Content, roster: Option<&crate::roster::Roster>) -> Option<Option<u8>> {
     let (r, trade) = (roster?, content.trade("mason")?);
     if r.count(trade) == 0 {
@@ -611,6 +697,7 @@ impl crate::society::Society {
             What::Bridge { hex, from, to } => deck_size(hex, from, to),
             What::Wall => self.content().dials.wall_blocks,
             What::Hall(kind) => kind.blocks(),
+            What::Waystation { .. } => WAYSTATION_SIZE * WAYSTATION_SIZE * WAYSTATION_HEIGHT,
         };
         let mut works = self.works(town);
         works.start(what, blocks);

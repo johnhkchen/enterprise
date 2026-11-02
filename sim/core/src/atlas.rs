@@ -396,9 +396,22 @@ pub struct Places {
     pub hexes: Vec<Option<Hex>>,
     pub reach: Vec<f64>,
     pub roads: BTreeMap<(TownId, TownId), u32>,
+    /// Each town's waystations finished (`works::What::Waystation`): word of it carries from each as from the town.
+    pub waystations: Vec<Vec<Hex>>,
 }
 
 impl Places {
+    /// A town as the atlas reads it: where it stands, how far word of it carries, and its waystations.
+    pub fn set_town(&mut self, content: &Content, town: TownId, hex: Option<Hex>, works: Option<&crate::works::Works>) {
+        if town >= self.hexes.len() {
+            return;
+        }
+        self.waystations.resize(self.hexes.len(), Vec::new());
+        self.hexes[town] = hex;
+        self.reach[town] = reach(content, works);
+        self.waystations[town] = works.map(|w| w.waystations().collect()).unwrap_or_default();
+    }
+
     /// How far apart two towns are, in blocks (`Atlas.known`'s `distSqr`): between their hexes' centres if both are
     /// placed, else a route's length between them, else not known.
     pub fn distance(&self, a: TownId, b: TownId) -> Option<u32> {
@@ -411,8 +424,20 @@ impl Places {
         }
     }
 
+    /// Does word of one town reach the other by a waystation: within word of mouth of one of `of`'s waystations, or of
+    /// one of `at`'s (a wagon stopping there hears of it)?
+    fn by_waystation(&self, content: &Content, of: TownId, at: TownId) -> bool {
+        let near = |w: &Hex, t: TownId| self.hexes.get(t).copied().flatten().is_some_and(|h| {
+            let (dx, dz) = (w.center_x() - h.center_x(), w.center_z() - h.center_z());
+            (dx * dx + dz * dz).sqrt() <= content.dials.word_of_mouth
+        });
+        let of_ways = self.waystations.get(of).map_or(&[][..], |w| &w[..]);
+        let at_ways = self.waystations.get(at).map_or(&[][..], |w| &w[..]);
+        of_ways.iter().any(|w| near(w, at)) || at_ways.iter().any(|w| near(w, of))
+    }
+
     /// The markets a town knows (`Atlas.known`), nearest first (then by number): those it has heard of, and every
-    /// placed town within word of mouth of it (further for one with a caravanserai).
+    /// placed town within word of mouth of it (further for one with a caravanserai), or of a waystation of either's.
     pub fn known(&self, content: &Content, atlas: &Atlas, town: TownId) -> Vec<TownId> {
         let mut out: Vec<TownId> = atlas.heard(town).filter(|&o| o != town && o < self.hexes.len()).collect();
         if self.hexes.get(town).copied().flatten().is_some() {
@@ -421,7 +446,7 @@ impl Places {
                     continue;
                 }
                 let reach = self.reach.get(other).copied().unwrap_or(content.dials.word_of_mouth);
-                if self.distance(town, other).is_some_and(|d| d as f64 <= reach) {
+                if self.distance(town, other).is_some_and(|d| d as f64 <= reach) || self.by_waystation(content, other, town) {
                     out.push(other);
                 }
             }
@@ -479,11 +504,10 @@ impl Society {
     /// What the atlas reads of the towns now.
     pub(crate) fn places(&self) -> Places {
         let n = self.towns.len();
-        let mut places = Places { hexes: vec![None; n], reach: vec![0.0; n], roads: BTreeMap::new() };
+        let mut places = Places { hexes: vec![None; n], reach: vec![0.0; n], ..Default::default() };
         for t in 0..n {
             let e = self.world.entity(self.towns[t]);
-            places.hexes[t] = e.get::<Town>().and_then(|t| t.hex);
-            places.reach[t] = reach(self.content(), e.get::<crate::works::Works>());
+            places.set_town(self.content(), t, e.get::<Town>().and_then(|t| t.hex), e.get::<crate::works::Works>());
         }
         for r in self.routes.iter().filter_map(|&e| self.world.get::<Route>(e)) {
             places.roads.entry((r.from_id, r.to_id)).and_modify(|b| *b = (*b).min(r.blocks)).or_insert(r.blocks);

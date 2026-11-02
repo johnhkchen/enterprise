@@ -1364,6 +1364,23 @@ public final class LandAdapter {
                 Works.layDeck(level, hex, deck);
                 yield true;
             }
+            case Work.Waystation w -> {
+                // Out on its hex, the ground round its centre loaded first.
+                Hex hex = new Hex(w.hex().q(), w.hex().r());
+                int half = Works.WAYSTATION_SIZE;
+                BlockPos centre = BlockPos.containing(hex.centerX(), 0, hex.centerZ());
+                Set<ChunkPos> chunks = new LinkedHashSet<>();
+                for (int dx = -half; dx <= half; dx += 4) {
+                    for (int dz = -half; dz <= half; dz += 4) {
+                        chunks.add(new ChunkPos(centre.offset(dx, 0, dz)));
+                    }
+                }
+                chunks.add(new ChunkPos(centre.offset(half, 0, half)));
+                if (!loadedFor(level, chunks)) {
+                    yield false;
+                }
+                yield Works.layWaystation(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), hex);
+            }
             case Work.Wall w -> {
                 // The inner wall of the town's plan, square to the compass; a ring round the bell for a town with none.
                 var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);

@@ -32,7 +32,7 @@ use bevy_ecs::prelude::*;
 
 use super::farms::reserve;
 use super::Step;
-use crate::atlas::{reach, Atlas, Places, Stocktakes};
+use crate::atlas::{Atlas, Places, Stocktakes};
 use crate::bargain;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::contracts::{self, Book, Incoterm};
@@ -97,8 +97,7 @@ fn places_of(content: &Content, sites: &Query<(&Town, Option<&Works>)>, routes: 
     let n = sites.iter().map(|(t, _)| t.id + 1).max().unwrap_or(0);
     let mut places = Places { hexes: vec![None; n], reach: vec![content.dials.word_of_mouth; n], ..Default::default() };
     for (town, works) in sites.iter() {
-        places.hexes[town.id] = town.hex;
-        places.reach[town.id] = reach(content, works);
+        places.set_town(content, town.id, town.hex, works);
     }
     for r in routes.iter() {
         places.roads.entry((r.from_id, r.to_id)).and_modify(|b| *b = (*b).min(r.blocks)).or_insert(r.blocks);

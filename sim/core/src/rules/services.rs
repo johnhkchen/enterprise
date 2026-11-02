@@ -56,8 +56,7 @@ fn places<'a>(content: &Content, n: usize, towns: impl Iterator<Item = (&'a Town
     let mut places = Places { hexes: vec![None; n], reach: vec![content.dials.word_of_mouth; n], ..Default::default() };
     for (town, works) in towns {
         if town.id < n {
-            places.hexes[town.id] = town.hex;
-            places.reach[town.id] = crate::atlas::reach(content, works);
+            places.set_town(content, town.id, town.hex, works);
         }
     }
     for r in routes {

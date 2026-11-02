@@ -1,5 +1,5 @@
 curves: e07eb9211095ebf0
-seed 3: a48fde08f03361d2 (426795 bytes saved)
-seed 77: 92bc6c495d91c590 (368805 bytes saved)
-seed 1234: bc654c3a35aab3d1 (423231 bytes saved)
-seed 2026: 6c8a190338b0eb2c (386772 bytes saved)
+seed 3: 2aae515e1bb3345b (422333 bytes saved)
+seed 77: dacd78122990b089 (375220 bytes saved)
+seed 1234: 15a767f48aff5d82 (429531 bytes saved)
+seed 2026: 04167ab36da69a3d (403523 bytes saved)

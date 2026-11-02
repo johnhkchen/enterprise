@@ -238,8 +238,7 @@ pub fn consider(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, sto
     for &e in &towns.0 {
         if let Ok((town, _, _, _, _, works)) = q.get(e) {
             if town.id < n {
-                places.hexes[town.id] = town.hex;
-                places.reach[town.id] = reach(&content, works);
+                places.set_town(&content, town.id, town.hex, works);
             }
         }
     }

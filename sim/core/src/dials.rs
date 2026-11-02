@@ -446,6 +446,9 @@ dials! {
     word_of_mouth: f64 = 400.0,
     /// A town commissions a caravan of its own only with this much to spare beyond its reserve (`COMMISSION_SPARE`).
     commission_spare: f64 = 8.0,
+    /// The most waystations a town builds, each out from the last toward a town it hadn't heard of (`works.rs`
+    /// `waystation_site`; John: "the 2-3+ way station daisy chaining effect").
+    waystations_most: u32 = 3,
     /// A far end's books are stale this many days after a Librarian last copied them (`STALE_BOOKS_TICKS`).
     stale_books_days: f64 = 3.0,
     /// A commissioned route's wagon goes every so many days, or full (`Dials.WAGON_WAIT_DAYS`).

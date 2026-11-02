@@ -7,7 +7,8 @@ import java.util.Objects;
  * Something a town builds that the host lays in its world: a bridge's deck on a hex, between two of its neighbours;
  * the town's wall round its bell; a hall (by its name: {@code square}, {@code granary}, {@code root_cellar}, {@code counting_house}, {@code temple},
  * {@code library}, {@code smithy}, {@code watchtower}, {@code stone_docks}, {@code caravanserai}); a field of a crop; a family's home (two beds,
- * {@code people.rs}), where the host finds room by the bell.
+ * {@code people.rs}), where the host finds room by the bell; a waystation on a hex out on the road, the town's people's own
+ * ({@code works.rs} {@code What::Waystation}).
  */
 public sealed interface Work
         permits Work.Bridge,
@@ -16,7 +17,8 @@ public sealed interface Work
                 Work.Field,
                 Work.Home,
                 Work.Pasture,
-                Work.Berth {
+                Work.Berth,
+                Work.Waystation {
     void encode(PostcardOut out);
 
     static Work decode(PostcardIn in) {
@@ -29,6 +31,7 @@ public sealed interface Work
             case 4 -> new Home();
             case 5 -> new Pasture(in.u32());
             case 6 -> new Berth();
+            case 7 -> new Waystation(HexAt.decode(in));
             default -> throw in.unknownVariant("Work", at);
         };
     }
@@ -112,6 +115,18 @@ public sealed interface Work
         @Override
         public void encode(PostcardOut out) {
             out.variant(6);
+        }
+    }
+
+    record Waystation(HexAt hex) implements Work {
+        public Waystation {
+            Objects.requireNonNull(hex, "hex");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(7);
+            this.hex.encode(out);
         }
     }
 }

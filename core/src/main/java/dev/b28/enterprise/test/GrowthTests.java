@@ -301,6 +301,29 @@ public final class GrowthTests {
     }
 
     /**
+     * A town's waystation out on the road (the core's `Work::Waystation`): a dwarf town's is its kingdom's kit, a
+     * kingdom with none yet (Lordaeron) gets a plain stop, a roof on posts over a trough and a bale.
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aWaystationIsItsKingdomsKitOrAPlainStop(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var resources = level.getServer().getResourceManager();
+        helper.assertTrue(dev.b28.enterprise.territory.Works.waystationKit(resources, "dwarf")
+                .equals(java.util.Optional.of("enterprise:dwarf/gate_quarter/waystation_6x6_a")), "the dwarves' kit");
+        helper.assertTrue(dev.b28.enterprise.territory.Works.waystationKit(resources, "lordaeron").isEmpty(), "Lordaeron has none");
+        BlockPos centre = helper.absolutePos(new BlockPos(3, 2, 3));
+        dev.b28.enterprise.territory.Works.layWaystation(level, "lordaeron", centre);
+        BlockPos at = centre.offset(-1, 0, -1);
+        helper.assertTrue(level.getBlockState(at.offset(1, 0, 0)).is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON),
+                "its trough");
+        helper.assertTrue(level.getBlockState(at).is(net.minecraft.world.level.block.Blocks.SPRUCE_FENCE), "a post");
+        helper.assertTrue(level.getBlockState(at.offset(1, 3, 1)).is(net.minecraft.world.level.block.Blocks.SPRUCE_SLAB), "its roof");
+        BlockPos dwarves = helper.absolutePos(new BlockPos(3, 2, 3)).above(6);
+        helper.assertTrue(dev.b28.enterprise.territory.Works.layWaystation(level, "dwarf", dwarves), "the dwarves' kit laid");
+        helper.succeed();
+    }
+
+    /**
      * The placer (`Kits`, the asset studio's structures): a kingdom's home kit found for its slot, laid turned to face
      * its street (east here), its two beds where its metadata says, claimable, and its door in the east wall.
      */

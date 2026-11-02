@@ -577,6 +577,67 @@ public final class Works extends SavedData {
         Enterprise.LOGGER.debug("Laid the bridge on {}: {} wet columns of {}", bridge.hex, laid, columns.size());
     }
 
+    /** A waystation's footprint a side, the kits' largest (6x6, 7x7): the ground it clears at a hex's centre. */
+    public static final int WAYSTATION_SIZE = 7;
+
+    /**
+     * The kingdom's waystation kit (its town rules' {@code land.waystation.asset}: dwarf, goblin, orc and tauren have
+     * one), if it has one.
+     */
+    public static Optional<String> waystationKit(net.minecraft.server.packs.resources.ResourceManager resources, String kingdom) {
+        return WallKit.json(resources, "town_rules/" + kingdom + ".json")
+                .filter(r -> r.has("land") && r.get("land").isJsonObject()).map(r -> r.getAsJsonObject("land"))
+                .filter(l -> l.has("waystation") && l.get("waystation").isJsonObject()).map(l -> l.getAsJsonObject("waystation"))
+                .filter(w -> w.has("asset")).map(w -> w.get("asset").getAsString());
+    }
+
+    /**
+     * Lays a town's waystation on {@code hex} (the core's `What::Waystation`: a roadside stop word of the town carries
+     * from), its corner at the hex's centre on the ground: the kingdom's kit facing south, else a plain stop of its own
+     * (a roof on four posts over a trough and a bale, a people with no kit yet: John, "Out on the road"). False if its
+     * kit couldn't be laid yet (its ground not loaded): tried again later, not laid plain.
+     */
+    public static boolean layWaystation(ServerLevel level, String kingdom, Hex hex) {
+        int x = (int) Math.floor(hex.centerX());
+        int z = (int) Math.floor(hex.centerZ());
+        return layWaystation(level, kingdom, new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z));
+    }
+
+    /** Lays a waystation as {@link #layWaystation(ServerLevel, String, Hex)} does, round {@code centre} on the ground. */
+    public static boolean layWaystation(ServerLevel level, String kingdom, BlockPos centre) {
+        BlockPos corner = centre.offset(-WAYSTATION_SIZE / 2, 0, -WAYSTATION_SIZE / 2);
+        var kit = waystationKit(level.getServer().getResourceManager(), kingdom);
+        if (kit.isPresent()) {
+            if (Kits.place(level, kit.get(), corner, net.minecraft.core.Direction.SOUTH).isEmpty()) {
+                return false;
+            }
+            Enterprise.LOGGER.info("A {} waystation laid at {}", kingdom, corner.toShortString());
+            return true;
+        }
+        BlockPos at = corner.offset(2, 0, 2);
+        for (int dx = 0; dx <= 2; dx++) {
+            for (int dz = 0; dz <= 2; dz++) {
+                BlockPos ground = at.offset(dx, -1, dz);
+                if (!level.getBlockState(ground).isSolid()) {
+                    level.setBlock(ground, Blocks.COARSE_DIRT.defaultBlockState(), 3);
+                }
+                for (int up = 0; up <= 3; up++) {
+                    level.setBlock(at.offset(dx, up, dz), Blocks.AIR.defaultBlockState(), 3);
+                }
+                boolean post = (dx == 0 || dx == 2) && (dz == 0 || dz == 2);
+                for (int up = 0; up < 3 && post; up++) {
+                    level.setBlock(at.offset(dx, up, dz), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+                }
+                level.setBlock(at.offset(dx, 3, dz), Blocks.SPRUCE_SLAB.defaultBlockState(), 3);
+            }
+        }
+        level.setBlock(at.offset(1, 0, 0), Blocks.WATER_CAULDRON.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LayeredCauldronBlock.LEVEL, 3), 3);
+        level.setBlock(at.offset(1, 0, 2), Blocks.HAY_BLOCK.defaultBlockState(), 3);
+        Enterprise.LOGGER.info("A waystation laid at {} (no {} kit: a plain one)", at.toShortString(), kingdom);
+        return true;
+    }
+
     /**
      * Lays a bridge's deck on {@code hex} as {@link #lay} does (the view of a bridge whatever keeps its rules: the core
      * in core mode): every wet column of {@code columns} ({@link #deck}). Returns the columns laid.

@@ -184,6 +184,7 @@ impl Society {
             What::Bridge { hex, .. } => format!("bridge on {},{}", hex.q, hex.r),
             What::Wall => "wall".to_string(),
             What::Hall(kind) => kind.id().to_string(),
+            What::Waystation { hex } => format!("waystation on {},{}", hex.q, hex.r),
         };
         ProjectLine { what, progress: p.progress(), done: p.done, wages: p.wages_paid }
     }
@@ -222,7 +223,7 @@ impl Society {
         let (bridges, wall, buildings) = (
             works.projects.iter().filter(|p| matches!(p.what, crate::works::What::Bridge { .. })).map(|p| self.project_line(p)).collect(),
             works.projects.iter().find(|p| matches!(p.what, crate::works::What::Wall)).map(|p| self.project_line(p)),
-            works.projects.iter().filter(|p| matches!(p.what, crate::works::What::Hall(_))).map(|p| self.project_line(p)).collect(),
+            works.projects.iter().filter(|p| matches!(p.what, crate::works::What::Hall(_) | crate::works::What::Waystation { .. })).map(|p| self.project_line(p)).collect(),
         );
         Answer::Territory {
             town: no(town), name: v.name.clone(), rate, hexes: h.hexes.iter().map(|&x| HexAt::of(x)).collect(), culture: h.culture,
