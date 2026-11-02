@@ -921,7 +921,8 @@
           "r": -2
         }
       ],
-      "llama": false
+      "llama": false,
+      "surface": 2
     }
   },
   {
@@ -940,7 +941,8 @@
       },
       "width": 4294967295,
       "path": [],
-      "llama": true
+      "llama": true,
+      "surface": 255
     }
   },
   {
