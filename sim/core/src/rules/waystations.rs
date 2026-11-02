@@ -6,6 +6,8 @@
 //! - **Serve:** a wagon home again paid each stop it passed within a hex of, there and back, that isn't its own
 //!   town's or its far end's: the rest, and its crew's meals where the stop grows food. Paid to the stop's town,
 //!   banked to the stop.
+//! - **Mend:** once a day a stop lays a surface on the most worn trail hex of a road by it, within its reach, that its
+//!   level can better: graded, then paved; out of what it banked first, its town's spare money besides.
 
 use bevy_ecs::prelude::*;
 
@@ -20,6 +22,7 @@ pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         keep.in_set(Step::Review).after(super::works::review).after(super::atlas::consider)
             .before(super::jobs::relocate).before(super::jobs::review),
+        mend.in_set(Step::Review).after(keep).before(super::jobs::relocate).before(super::jobs::review),
         serve.in_set(Step::Services).after(super::territory::tolls).after(super::atlas::copy_books)
             .after(super::chokepoints::takings).after(super::services::abroad).after(super::training::copies),
     ));
@@ -97,5 +100,61 @@ pub fn serve(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut wa
             s.meals += meals;
             s.passes += 1;
         }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+pub fn mend(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut ways: ResMut<Waystations>,
+        mut map: ResMut<crate::map::Map>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut outbox: ResMut<Outbox>,
+        roads: Query<(&Route, &RoutePath)>,
+        mut q: Query<(&mut Money, &Trades, Option<&crate::farms::Farm>)>) {
+    if ways.stations.is_empty() {
+        return;
+    }
+    let (now, day) = (clock.now, content.day_ticks.max(1));
+    let today = now / day;
+    let mut land: Vec<(&Route, &RoutePath)> = roads.iter().filter(|(r, _)| r.carrier != crate::map::Carrier::Ship).collect();
+    land.sort_by_key(|(r, _)| r.seq);
+    for s in ways.stations.iter_mut() {
+        if s.mended >= today {
+            continue;
+        }
+        s.mended = today;
+        let (reach, best) = (road_reach(s.level), best_surface(s.level));
+        // The most worn trail hex by it its level can better, on a land road, with that road's path.
+        let mut pick: Option<(f64, crate::hex::Hex, &Route, &RoutePath)> = None;
+        for &(route, path) in &land {
+            for &h in &path.0 {
+                if h.distance(s.hex) > reach || !map.trail(h) || map.surface(h) >= best {
+                    continue;
+                }
+                let worn = map.wear.get(&h).map_or(0.0, |w| w.at(now, day));
+                if pick.as_ref().is_none_or(|(w, ph, ..)| worn > *w || worn == *w && h < *ph) {
+                    pick = Some((worn, h, route, path));
+                }
+            }
+        }
+        let Some((_, hex, route, path)) = pick else { continue };
+        let next = map.surface(hex) + 1;
+        let cost = Fixed::ceil(if next >= crate::map::PAVED { PAVE_COST } else { GRADE_COST });
+        let Some(&owner) = towns.0.get(s.owner) else { continue };
+        let Ok((mut money, trades, farm)) = q.get_mut(owner) else { continue };
+        // Its town's money beyond its reserve and what opening a road asks, besides what the stop banked.
+        let spare = money.0 - super::farms::build_reserve(&content, trades, farm) - Fixed::ceil(content.dials.commission_spare);
+        let from_bank = s.banked.min(cost).at_least_zero();
+        if cost - from_bank > spare.at_least_zero() || money.0 < cost {
+            continue;
+        }
+        post(&mut ledger, &mut book, Side::treasury(s.owner, &mut money.0), Side::outside(), cost,
+            Reason::Other("road works".into()), now, day as u64);
+        s.banked -= from_bank;
+        s.laid += 1;
+        map.surface.insert(hex, next);
+        let at = path.0.iter().position(|&h| h == hex).unwrap_or(0);
+        let (from, to) = (path.0[at.saturating_sub(1)], path.0[(at + 1).min(path.0.len() - 1)]);
+        let width = map.widths.get(&hex).copied().unwrap_or(crate::map::TRAIL_WIDTH);
+        outbox.0.push(crate::messages::Output::Trail { hex: crate::wire::HexAt::of(hex), from: crate::wire::HexAt::of(from),
+            to: crate::wire::HexAt::of(to), width, path: path.0.iter().map(|&h| crate::wire::HexAt::of(h)).collect(),
+            llama: route.carrier == crate::map::Carrier::Llama, surface: next });
     }
 }

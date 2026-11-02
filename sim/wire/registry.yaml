@@ -1074,6 +1074,7 @@ Output:
               SEQ:
                 TYPENAME: HexAt
           - llama: BOOL
+          - surface: U8
     30:
       Stall:
         STRUCT:

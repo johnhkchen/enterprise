@@ -75,7 +75,7 @@ public sealed interface Output
             case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
             case 27 -> new CrownShopDown(Point.decode(in));
             case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
-            case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode), in.bool());
+            case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode), in.bool(), in.u8());
             case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
             case 31 -> new Explore(in.list(2, HexAt::decode));
             default -> throw in.unknownVariant("Output", at);
@@ -580,8 +580,9 @@ public sealed interface Output
      * what grows in its way. Said once a width. {@code path}: the whole road's hexes, end to end, for the host to lay it as
      * the road it is rather than hex by hex (John: "roads should follow actual optimal paths not hex-optimized paths").
      * {@code llama}: the road's carrier is a llama train (steeper ground it can take), else a wagon.
+     * {@code surface}: what a waystation's road works laid on it ({@code map.rs}): 0 trodden, 1 graded, 2 paved.
      */
-    record Trail(HexAt hex, HexAt from, HexAt to, long width, List<HexAt> path, boolean llama) implements Output {
+    record Trail(HexAt hex, HexAt from, HexAt to, long width, List<HexAt> path, boolean llama, int surface) implements Output {
         public Trail {
             Objects.requireNonNull(hex, "hex");
             Objects.requireNonNull(from, "from");
@@ -599,6 +600,7 @@ public sealed interface Output
             out.u32(this.width);
             out.list(this.path, (o1, e1) -> e1.encode(o1));
             out.bool(this.llama);
+            out.u8(this.surface);
         }
     }
 

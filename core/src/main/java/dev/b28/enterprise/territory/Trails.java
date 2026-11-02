@@ -34,11 +34,17 @@ public final class Trails extends SavedData {
 
     /**
      * A trail to lay: its hex, the hexes before and after it on the road (the same hex at a road's end), its width, and
-     * the whole road's hexes end to end (empty: a trail saved before roads were laid whole, laid hex by hex).
+     * the whole road's hexes end to end (empty: a trail saved before roads were laid whole, laid hex by hex), and the
+     * surface a waystation's road works laid on it (the core's `map.rs`: 0 trodden to path, 1 graded to gravel, 2 paved
+     * in cobblestone).
      */
-    public record Trail(Hex hex, Hex from, Hex to, int width, List<Hex> path, boolean llama) {
+    public record Trail(Hex hex, Hex from, Hex to, int width, List<Hex> path, boolean llama, int surface) {
         public Trail(Hex hex, Hex from, Hex to, int width) {
-            this(hex, from, to, width, List.of(), false);
+            this(hex, from, to, width, List.of(), false, 0);
+        }
+
+        public Trail(Hex hex, Hex from, Hex to, int width, List<Hex> path, boolean llama) {
+            this(hex, from, to, width, path, llama, 0);
         }
     }
 
@@ -570,7 +576,8 @@ public final class Trails extends SavedData {
         // Through a town's forum hex, its main street: three wide at the least.
         boolean forum = bells.values().stream().anyMatch(b -> Hex.at(b).equals(t.hex()));
         double[][] line = line(t, bells);
-        return layLine(level, line, forum ? Math.max(t.width(), Forums.ROAD_WIDTH) : t.width(), t.path().size() >= 2);
+        return layLine(level, line, forum ? Math.max(t.width(), Forums.ROAD_WIDTH) : t.width(), t.path().size() >= 2,
+                t.surface());
     }
 
     /** A gentle, smooth value in [0, 1) fixed by the place (a few blocks' worth of wavelength). */
@@ -593,6 +600,13 @@ public final class Trails extends SavedData {
      * it in planks at the surface, so it goes on to the far bank rather than ending at the water's edge.
      */
     public static int layLine(ServerLevel level, double[][] points, int width, boolean bridges) {
+        return layLine(level, points, width, bridges, 0);
+    }
+
+    /** As {@link #layLine(ServerLevel, double[][], int, boolean)}, its top {@code surface}'s: path, gravel or cobblestone. */
+    public static int layLine(ServerLevel level, double[][] points, int width, boolean bridges, int surface) {
+        net.minecraft.world.level.block.Block tread = surface >= 2 ? Blocks.COBBLESTONE : surface == 1 ? Blocks.GRAVEL
+                : Blocks.DIRT_PATH;
         List<BlockPos> cols = columns(points, width);
         int[] top = new int[cols.size()];
         for (int i = 0; i < cols.size(); i++) {
@@ -645,7 +659,8 @@ public final class Trails extends SavedData {
                 ground = level.getBlockState(c.atY(y));
                 cut.add(c.atY(y));
             }
-            if (!soil(ground)) {
+            // A road resurfaced: its gravel paved over too.
+            if (!soil(ground) && !(surface > 0 && (ground.is(Blocks.GRAVEL) || ground.is(Blocks.COBBLESTONE)))) {
                 continue;
             }
             // A lone block's bump or dip along the way (the columns a step before and after, WIDTH apart, both level).
@@ -671,7 +686,7 @@ public final class Trails extends SavedData {
                     level.setBlock(c.atY(h), Blocks.AIR.defaultBlockState(), 3);
                 }
             }
-            level.setBlock(c.atY(y), Blocks.DIRT_PATH.defaultBlockState(), 3);
+            level.setBlock(c.atY(y), tread.defaultBlockState(), 3);
             laid++;
         }
         for (BlockPos c : cut) {
@@ -850,6 +865,7 @@ public final class Trails extends SavedData {
             }
             e.putIntArray("path", road);
             e.putBoolean("llama", t.llama());
+            e.putInt("surface", t.surface());
             list.add(e);
         }
         tag.put("waiting", list);
@@ -868,7 +884,7 @@ public final class Trails extends SavedData {
             }
             if (h.length == 6) {
                 trails.waiting.add(new Trail(new Hex(h[0], h[1]), new Hex(h[2], h[3]), new Hex(h[4], h[5]), width,
-                        List.copyOf(path), ((CompoundTag) t).getBoolean("llama")));
+                        List.copyOf(path), ((CompoundTag) t).getBoolean("llama"), ((CompoundTag) t).getInt("surface")));
             }
         }
         return trails;

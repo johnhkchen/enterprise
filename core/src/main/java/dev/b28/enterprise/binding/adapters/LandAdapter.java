@@ -621,7 +621,7 @@ public final class LandAdapter {
             trailsShown.add(new Trails.Trail(new Hex(trail.hex().q(), trail.hex().r()),
                     new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r()),
                     (int) Math.min(trail.width(), 8), trail.path().stream().map(h -> new Hex(h.q(), h.r())).toList(),
-                    trail.llama()));
+                    trail.llama(), trail.surface()));
         }
     }
 

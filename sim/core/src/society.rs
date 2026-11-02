@@ -275,7 +275,9 @@ impl Society {
         let way = |carrier: crate::map::Carrier| {
             let path = self.plan_road(from, to, carrier)?;
             // A ship's way counts its blocks at its pace: its days and its crew's food (`map::SHIP_PACE`).
-            let blocks = self.road_blocks(from, to, &path) / carrier.pace();
+            // A paved road's wagon goes quicker, and eats for the time it's out (`map::PAVED_PACE`).
+            let paved = if carrier == crate::map::Carrier::Ship { 1.0 } else { self.map().pace(&path.hexes) };
+            let blocks = self.road_blocks(from, to, &path) / carrier.pace() * paved;
             let short = !crate::road::road_food(self.content()) || crate::road::in_range(self.content(), blocks.round() as u32);
             short.then_some((carrier, path, blocks))
         };
@@ -353,15 +355,16 @@ impl Society {
                 continue;
             }
             map.worn.insert(id, left);
-            let new = map.wear(&path, 2.0, now, day_ticks);
-            for (hex, width) in new {
+            let new: Vec<(crate::hex::Hex, u32, u8)> = map.wear(&path, 2.0, now, day_ticks).into_iter()
+                .map(|(hex, width)| (hex, width, map.surface(hex))).collect();
+            for (hex, width, surface) in new {
                 let at = path.iter().position(|&h| h == hex).expect("worn on the path");
                 let from = path[at.saturating_sub(1)];
                 let to = path[(at + 1).min(path.len() - 1)];
                 self.world.resource_mut::<Outbox>().0.push(Output::Trail { hex: crate::wire::HexAt::of(hex),
                     from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to), width,
                     path: path.iter().map(|&h| crate::wire::HexAt::of(h)).collect(),
-                    llama: llama_road });
+                    llama: llama_road, surface });
             }
         }
         let today = now / day_ticks.max(1);
@@ -390,7 +393,11 @@ impl Society {
             let Some((carrier, better, blocks)) = self.best_road(route.from_id, route.to_id) else { continue };
             // A bare road (no way over the map when it opened) takes only a ship's way: both its towns have ports now.
             let Some(path) = path.or_else(|| (carrier == crate::map::Carrier::Ship).then(Vec::new)) else { continue };
-            if carrier == route.carrier && (better.hexes == path
+            // The same way taken again where its road works laid a surface since: its days and food as they are now.
+            let resurfaced = carrier == route.carrier && better.hexes == path
+                && path.iter().any(|&h| self.map().surface(h) > 0)
+                && ((blocks.max(1.0)).round() as u32 != route.blocks || Fixed::ceil(better.cost) != route.road_cost);
+            if !resurfaced && carrier == route.carrier && (better.hexes == path
                     || better.cost >= self.map().path_cost(&path, per_hex, carrier) - 1e-9) {
                 continue;
             }

@@ -1386,6 +1386,21 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **A stop's road works grade and pave the trails by it, and a town with none to reach puts its stop on its busiest
+  road (John, 2026-11-02: "invest the income in road improvements that over time allow for longer, quicker travel. It
+  should work hand in hand with the desire path and path slope system to create trade roads over time that branch into
+  more settlements"; "Stops on busy roads"; "We cared about way stations so distant but reachable areas can connect,
+  remember?").** Once a day a stop lays a surface on the most worn trail hex of a land road within its reach (2 hexes,
+  3 a waystation, 4 an inn): graded (2 emeralds) at a stop, paved over that (4) from a waystation; out of what it
+  banked first, its town's money beyond its reserve and `commission_spare` besides (`rules/waystations.rs` `mend`).
+  Only a trail wagons wore is worked. A graded hex takes 0.75 of what its ground and climb add off (a trail 0.5), a
+  paved one 0.9 and costs 0.8 of open ground besides, and a wagon crosses it in 0.67 of the time (`map.rs`
+  `surface`, `pace`): a road's days and food follow (`best_road`; a road kept on the same hexes takes its new days once
+  resurfaced), and a cheaper land road beats a ship's between two ports. The host lays them gravel, then cobblestone
+  (`Output::Trail`'s `surface`). A town's stop goes toward a town it hasn't heard of first; with none, halfway along
+  its busiest land road (3 trips at least, 6 hexes long, no stop within 3: `busy_road_site`). Seed 1717's 90 days: four
+  stops, three hexes graded, nothing taken (no other town's wagon passed one); of the trips home in its last 30 days
+  227 sailed, 25 went by land.
 - **A waystation keeps itself and rises in levels out of its takings (John, 2026-11-02: "Way stations should be able
   to collect a small toll for water, resting, and sell their own food for caravans"; "Let's use a level up mechanism
   for these, so towns can improve the way station in stages, so starting small is possible").** A town builds the stop

@@ -64,6 +64,15 @@ pub const TRAIL_WIDTH: u32 = 2;
 pub const TRAIL_WIDEST: u32 = 4;
 /// A trail takes off this share of what its ground and its climb add to open ground's cost: the way is trodden level.
 pub const TRAIL_EASE: f64 = 0.5;
+/// A trail's surface, laid by a waystation's road works (`waystations.rs`): graded, then paved. Each takes off more of
+/// what its ground and climb add; a paved hex costs [`PAVED_COST`] of open ground besides, and a wagon crosses it in
+/// [`PAVED_PACE`] of the time (John: "road improvements that over time allow for longer, quicker travel").
+pub const GRADED: u8 = 1;
+pub const PAVED: u8 = 2;
+pub const GRADED_EASE: f64 = 0.75;
+pub const PAVED_EASE: f64 = 0.9;
+pub const PAVED_COST: f64 = 0.8;
+pub const PAVED_PACE: f64 = 0.67;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
 /// A ship sails a hex of water at this much a hex of open ground: the wind and the current do a team's work, so its
@@ -249,6 +258,9 @@ pub struct Map {
     pub wear: BTreeMap<Hex, Wear>,
     #[serde(default)]
     pub trails: BTreeSet<Hex>,
+    /// Each trail hex's surface, if its road works laid one ([`GRADED`], [`PAVED`]).
+    #[serde(default)]
+    pub surface: BTreeMap<Hex, u8>,
     /// Each trail's width in blocks, as the host was last told (wider as it's worn more).
     #[serde(default)]
     pub widths: BTreeMap<Hex, u32>,
@@ -424,11 +436,29 @@ impl Map {
         let climb = if sailed { 1.0 } else { self.climb_factor(hex, next, carrier) };
         let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + gait.max_grade / GRADE_PER_FACTOR } else { climb };
         let hard = if end { climb } else { self.ground(next).factor(carrier) * climb };
-        if self.trail(next) && hard.is_finite() && hard > 1.0 {
-            1.0 + (hard - 1.0) * (1.0 - TRAIL_EASE)
-        } else {
-            hard
+        let surface = self.surface(next);
+        let ease = match surface {
+            PAVED => PAVED_EASE,
+            GRADED => GRADED_EASE,
+            _ if self.trail(next) => TRAIL_EASE,
+            _ => 0.0,
+        };
+        let eased = if hard.is_finite() && hard > 1.0 { 1.0 + (hard - 1.0) * (1.0 - ease) } else { hard };
+        if surface == PAVED && carrier != Carrier::Ship { eased * PAVED_COST } else { eased }
+    }
+
+    /// A hex's surface: [`GRADED`], [`PAVED`], or 0 (as the ground lies, or a trail).
+    pub fn surface(&self, hex: Hex) -> u8 {
+        self.surface.get(&hex).copied().unwrap_or(0)
+    }
+
+    /// The share of its blocks' time a wagon takes along `hexes`: its paved hexes at [`PAVED_PACE`].
+    pub fn pace(&self, hexes: &[Hex]) -> f64 {
+        if hexes.is_empty() {
+            return 1.0;
         }
+        let paved = hexes.iter().filter(|&&h| self.surface(h) == PAVED).count() as f64;
+        (hexes.len() as f64 - paved * (1.0 - PAVED_PACE)) / hexes.len() as f64
     }
 
     /// The height of a hex's ground (none: unknown), keeping the rest of it.

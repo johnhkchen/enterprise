@@ -518,6 +518,13 @@ public final class TollTests {
                 helper.assertBlockPresent(Blocks.DIRT_PATH, new BlockPos(x, 1, z));
             }
         }
+        // A waystation's road works (the core's surfaces): graded to gravel, then paved over it in cobblestone.
+        Trails.layLine(helper.getLevel(), line, 3, false, 1);
+        helper.assertBlockPresent(Blocks.GRAVEL, new BlockPos(3, 1, 3));
+        Trails.layLine(helper.getLevel(), line, 3, false, 2);
+        for (int x = 0; x <= 6; x++) {
+            helper.assertBlockPresent(Blocks.COBBLESTONE, new BlockPos(x, 1, 3));
+        }
         helper.succeed();
     }
 

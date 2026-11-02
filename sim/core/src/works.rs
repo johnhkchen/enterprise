@@ -599,6 +599,29 @@ pub fn waystation_site(content: &crate::content::Content, atlas: &crate::atlas::
     })
 }
 
+/// Where a town with no town to reach builds a stop instead: halfway along its busiest land road (`roads`: each road's
+/// trips and path, its own), one of [`BUSY_TRIPS`] at least and [`BUSY_HEXES`] long, no stop within [`STOP_APART`]
+/// hexes of the spot (John: "Stops on busy roads": its takings pay for the road's works). On that hex or the first of
+/// its neighbours surveyed and dry.
+pub fn busy_road_site(map: &crate::map::Map, roads: &[(u32, &[Hex])], stops: &[Hex]) -> Option<Hex> {
+    let mut busy: Vec<&(u32, &[Hex])> = roads.iter().filter(|(trips, path)| *trips >= BUSY_TRIPS && path.len() >= BUSY_HEXES)
+        .collect();
+    busy.sort_by_key(|(trips, _)| std::cmp::Reverse(*trips));
+    busy.into_iter().find_map(|(_, path)| {
+        let mid = path[path.len() / 2];
+        if stops.iter().any(|s| s.distance(mid) <= STOP_APART) {
+            return None;
+        }
+        std::iter::once(mid).chain(mid.neighbors()).find(|h| {
+            map.ground.get(h).is_some_and(|g| g.water_share <= crate::map::IMPASSABLE && g.relief < crate::map::CLIFF)
+        })
+    })
+}
+
+pub const BUSY_TRIPS: u32 = 3;
+pub const BUSY_HEXES: usize = 6;
+pub const STOP_APART: i32 = 3;
+
 /// A link of a waystation chain at most this share of word of mouth from the last: a hex's width short of it, so the
 /// next is within it.
 pub const WAYSTATION_STEP: f64 = 0.85;

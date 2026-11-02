@@ -130,7 +130,7 @@ fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
         mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>, places: Query<&Town>,
-        atlas: Res<crate::atlas::Atlas>,
+        (atlas, roads): (Res<crate::atlas::Atlas>, Query<(&Route, &RouteState, &RoutePath)>),
         mut q: Query<(&Town, &mut Works, &mut Money, &mut Stock, &Trades, &mut Budget, &People, Option<&Farm>,
             Option<&Roster>, &Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -267,7 +267,16 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         let (ways, going_up) = works.waystations_started();
         if toll_review && !going_up && ways < d.waystations_most as usize && builds_waystations(&content, roster) {
             let built: Vec<crate::hex::Hex> = works.waystations().collect();
-            if let Some(hex) = waystation_site(&content, &atlas, &sites, &map, t, &built) {
+            // Toward a town it hasn't heard of first (John: "We cared about way stations so distant but reachable
+            // areas can connect"); with none, on its busiest land road.
+            let mut own: Vec<(usize, u32, &[crate::hex::Hex])> = roads.iter()
+                .filter(|(r, _, _)| r.from_id == t && r.carrier != crate::map::Carrier::Ship)
+                .map(|(r, st, p)| (r.seq, st.trips, &p.0[..])).collect();
+            own.sort_by_key(|&(seq, ..)| seq);
+            let own: Vec<(u32, &[crate::hex::Hex])> = own.into_iter().map(|(_, trips, p)| (trips, p)).collect();
+            let stops: Vec<crate::hex::Hex> = sites.waystations.iter().flatten().copied().collect();
+            if let Some(hex) = waystation_site(&content, &atlas, &sites, &map, t, &built)
+                    .or_else(|| busy_road_site(&map, &own, &stops)) {
                 let blocks = WAYSTATION_SIZE * WAYSTATION_SIZE * WAYSTATION_HEIGHT;
                 let wages = blocks as f64 / per_day * d.masons as f64 * d.mason_pay;
                 let timber = if crate::works::takes_timber(&content) { WAYSTATION_LOGS } else { 0.0 };

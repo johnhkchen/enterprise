@@ -36,6 +36,22 @@ pub fn food_kept(level: u8) -> f64 {
     [0.0, 0.0, 48.0, 96.0][level.min(TOP) as usize]
 }
 
+/// Hexes from a stop its road works reach, by level, and the surface they lay at most: a stop grades its trails, a
+/// waystation and an inn pave them (John: "invest the income in road improvements that over time allow for longer,
+/// quicker travel. It should work hand in hand with the desire path and path slope system"): only a trail wagons wore
+/// is worked, the most worn first, a hex a day.
+pub fn road_reach(level: u8) -> i32 {
+    [0, 2, 3, 4][level.min(TOP) as usize]
+}
+
+pub fn best_surface(level: u8) -> u8 {
+    if level >= 2 { crate::map::PAVED } else { crate::map::GRADED }
+}
+
+/// Emeralds a hex of trail takes to grade, and to pave once graded.
+pub const GRADE_COST: f64 = 2.0;
+pub const PAVE_COST: f64 = 4.0;
+
 /// A meal sells at its food's worth (`purse_per_food_point`) and this much again.
 pub const MEAL_MARKUP: f64 = 1.25;
 
@@ -74,6 +90,11 @@ pub struct Station {
     pub passes: u64,
     pub taken: Fixed,
     pub meals: f64,
+    /// The day its road works last laid a hex, and the hexes they laid.
+    #[serde(default)]
+    pub mended: u64,
+    #[serde(default)]
+    pub laid: u32,
 }
 
 /// Every town's stops, in the order they were built.
