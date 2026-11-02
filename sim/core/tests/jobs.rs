@@ -695,3 +695,35 @@ fn a_town_with_no_spare_of_a_trade_down_its_roads_hires_an_idle_hand_to_learn_it
     assert!(out.iter().any(|o| matches!(o, enterprise_core::messages::Output::Stall { trade, .. } if trade == "librarian")),
         "its stall to put up: {out:?}");
 }
+
+#[test]
+fn a_town_hires_an_idle_hand_two_roads_away() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Inkwell", 100.0);
+    let far = s.add_town("Quillby", 0.0); // no stall's money: its idle hand stays idle
+    let mid = s.add_town("Midway", 100.0);
+    s.set_people(t, 5.0, 8.0, 20.0);
+    s.set_people(far, 4.0, 4.0, 20.0);
+    s.set_people(mid, 3.0, 3.0, 20.0);
+    s.set_roster(mid, &[("merchant", 1), ("farmer", 1), ("farmer", 1)]);
+    s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("fletcher", 1), ("fletcher", 1), ("cartographer", 1)]);
+    s.set_roster(far, &[("merchant", 1), ("farmer", 1), ("farmer", 1), ("none", 1)]);
+    for (town, hex) in [(t, enterprise_core::Hex::new(3, 3)), (mid, enterprise_core::Hex::new(6, 3)), (far, enterprise_core::Hex::new(9, 3))] {
+        s.place_town(town, hex.center_x(), hex.center_z());
+    }
+    s.add_route(t, mid, 1.0, 0.5, 4.0);
+    s.add_route(mid, far, 1.0, 0.5, 4.0); // Quillby's only road is Midway's
+    s.advance(DAY + DAY / 2); // Quillby's review leaves its hand idle
+    let none = s.content().trade("none").unwrap();
+    let idle = s.roster(far).hands.iter().find(|h| h.trade == none).unwrap().id;
+    s.deliver(t, PAPER, 64.0);
+    s.deliver(t, LEATHER, 3.0);
+    s.advance(3 * DAY + DAY / 2);
+    let librarian = s.content().trade("librarian").unwrap();
+    assert_eq!(s.roster(far).count(none), 0, "Quillby's idle hand hired away: {:?}", s.roster(far).hands);
+    s.advance(6 * DAY);
+    let r = s.roster(t);
+    assert_eq!(r.count(librarian), 1, "a Librarian on Inkwell's roster now: {:?}", r.hands);
+    let id = r.hands.iter().find(|h| h.trade == librarian).unwrap().id;
+    assert_eq!(id, idle, "Quillby's hand, not one of its own retrained: {:?}", r.hands);
+}

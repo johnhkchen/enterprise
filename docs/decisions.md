@@ -1389,15 +1389,17 @@ mod's), but no road ever chose it. Then: build them first.
 - **A town hires a comfort's maker from a town down its roads (John, 2026-11-02: "hire-relocated-worker mechanism";
   "relocation").** A town short of a comfort it holds the makings of, with no hand of its maker, none idle, a bed free
   and a stall's money, hires before it retrains (`rules/jobs.rs` `relocate`, the same `comfort_retrain_days`): from the
-  nearest town down its roads with two or more of the trade at home, the least trained, trade and level kept; else an
+  nearest town one or two roads away ("Two roads": the idle sit in villages whose one road is to a neighbour) with two
+  or more of the trade at home, the least trained, trade and level kept; else an
   idle adult of a town whose last review left one idle, to learn the trade. It pays the stall, the hand is on the road
   the route's travel ticks (`jobs::Mover`, away from every roster: the host takes its villager away and spawns one at
-  the new town), and its stall goes up once the host names that villager (`TagHand` answers with the `Stall`). That
+  the new town; its locker goes with it, as a settler's does), and its stall goes up once the host names that villager (`TagHand` answers with the `Stall`). That
   last mends hires generally: a hand hired before it had a villager was sent its stall with no tag, which the host
   never found (seed 1717's Corin's Crossing, two Farmers' stalls). Seed 1717's 60 days relocated nobody: one town was ever short
-  of reading with leather in hand and a bed free (Hearthglen, days 29-30), and none down its roads had a Librarian to
-  spare or a hand idle (the idle sit in villages no road leaves); reading and mood as before (days 31-60 met 0.89,
-  full 126 of 150), the first five's villagers on day 60 82 (79).
+  of reading with leather in hand and a bed free (Hearthglen, days 29-30), and none within two roads had a Librarian
+  to spare or a hand idle (Darkshire's idle had no road yet); reading and mood as before (days 31-60 met 0.89, full 127
+  of 150), the first five's villagers on day 60 82 (79). The core tests' random worlds relocate: six in the stranded
+  sweep's 60 days (three a trade's spare, three an idle hand learning it).
 - **Reading sooner: a book lasts 20 villager-days, and a first Leatherworker brings 6 cows (John, 2026-11-02:
   "Let's figure out reading"; "A, B").** Reading waited on leather: a book takes a hide, and the hides came only once
   the cows filled their pastures (seed 1717's first five towns read nothing till day 42, full by 46). Culling early for
