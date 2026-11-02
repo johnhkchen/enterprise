@@ -142,7 +142,13 @@ def main():
         server.wait()
         os.execve(sys.executable, [sys.executable] + sys.argv, dict(os.environ, ENTERPRISE_LANE_TRY=str(attempt + 1)))
     subprocess.run([sys.executable, "scripts/rcon.py", "stop"], cwd=REPO, env=env, capture_output=True)
-    server.wait()
+    try:
+        server.wait(timeout=120)
+    except subprocess.TimeoutExpired:
+        # A server frozen past answering (a dead light worker): stopped by force, by its folder.
+        print(f"lane {n}'s server didn't stop: stopped by force", flush=True)
+        kill_lane_server(n)
+        server.wait()
     for line in Path(f"{out}.log").read_text().splitlines():
         if line.startswith(("stage", "replay", "point", "resumed")):
             print(line)
