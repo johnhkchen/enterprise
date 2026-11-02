@@ -119,6 +119,11 @@ fn main() {
             }
         }
         println!("money {:.0}: treasuries {treasuries:.0}, households {households:.0}, wagons {wagons:.0}", totals.money.to_f64());
+        for w in s.waystations() {
+            println!("stop at {:?} of town {}: level {}{}, {} passes, {:.1} taken, {:.1} banked, {:.1} pledged to roads, {} hexes laid",
+                w.hex, w.owner, w.level, if w.rising.is_some() { " (rising)" } else { "" }, w.passes, w.taken.to_f64(),
+                w.banked.to_f64(), w.roads.to_f64(), w.laid);
+        }
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();
         println!("outside, net since the world began: {:.0} (+ out of the world, - into it)", book.net(Account::Outside).to_f64());
         let mut months: std::collections::BTreeMap<u64, (f64, f64)> = Default::default();
