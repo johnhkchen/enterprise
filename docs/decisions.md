@@ -1376,6 +1376,17 @@ mod's), but no road ever chose it. Then: build them first.
   the day's budget too (a full keep of them is a few emeralds, and what it ships earns its wages). Seed 1717's 30 days:
   none packed loose; Pyrewood bought its crates of its neighbour's wagons on days 18, 27 and 28; the first five towns
   as before (to a villager), the settlers' villages as their parties went.
+- **Towns ration their comforts, and retrain for one they hold the makings of only once in a while (John, 2026-11-02:
+  "Towns ration happiness goods, and trade to cover the difference. Export the creations instead of rapidly
+  retraining. Allow a long cooldown retraining or hire-relocated-worker mechanism").** Reading flickered where a town
+  had no Librarian: a wagon's books read in full for a day or two, then none. Now a town holding under
+  `comfort_ration_days` (3) of a comfort spreads it over that many days, its people going part without each day (a
+  stocked town keeps 6 days and isn't touched); and a town short of a comfort (met under half) holding a batch's
+  makings, with no hand of its maker and none idle or slack, retrains its least-trained hand to it (not its Merchant
+  nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
+  (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
+  1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before. A villager
+  moving from another town to work is not built.
 - **Reading sooner: a book lasts 20 villager-days, and a first Leatherworker brings 6 cows (John, 2026-11-02:
   "Let's figure out reading"; "A, B").** Reading waited on leather: a book takes a hide, and the hides came only once
   the cows filled their pastures (seed 1717's first five towns read nothing till day 42, full by 46). Culling early for

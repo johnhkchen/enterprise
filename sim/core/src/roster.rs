@@ -220,12 +220,15 @@ impl Hand {
 pub struct Roster {
     pub hands: Vec<Hand>,
     pub merchant: Option<usize>,
+    /// When it last retrained a hand to make a comfort it lacked (`jobs::for_comfort`): once in `comfort_retrain_days`.
+    #[serde(default)]
+    pub comfort_retrained: Option<u64>,
 }
 
 impl Roster {
     /// A roster of `hands`; the desk's Merchant is the most experienced Merchant among them, if any.
     pub fn new(content: &Content, hands: Vec<Hand>) -> Self {
-        let mut roster = Roster { hands, merchant: None };
+        let mut roster = Roster { hands, merchant: None, comfort_retrained: None };
         if let Some(trade) = content.trade(MERCHANT) {
             roster.merchant = roster.best(trade);
         }

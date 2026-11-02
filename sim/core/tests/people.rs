@@ -223,9 +223,24 @@ fn a_book_serves_the_villager_days_its_file_gives() {
         (s.town(t).stock[0], p.comfort_met[reading], p.comfort_fine[reading])
     };
     let (left, met, _) = read(None);
-    assert_eq!((left, met), (0.0, 0.0), "at its worth, ten books last two and a half days of ten readers");
+    // (Under three days of them, rationed: by day 5 a book or so left, read a little a day, not gone on day 2.5.)
+    assert!(left <= 2.0 && met > 0.0 && met < 0.5, "at its worth, ten books two and a half days' reading, rationed: {left} {met}");
     let (left, met, fine) = read(Some((10.0, 1.0)));
     assert!(left >= 4.0 && met == 1.0 && fine == 0.0, "ten days a book: five days read, half left: {left} {met} {fine}");
     let (_, met, fine) = read(Some((10.0, 1.5)));
     assert!(met == 1.0 && (fine - 0.5).abs() < 1e-9, "of quality 1.5: half a plain day more: {met} {fine}");
+}
+
+/// A town short of a comfort rations it (John: "Towns ration happiness goods, and trade to cover the difference"): a day
+/// and a half of it, under the three it rations below, is spread over three days, half a day's met each, not a day's in
+/// full and then none.
+#[test]
+fn a_town_short_of_a_comfort_rations_it() {
+    let mut s = town(4.0, 4.0, 4.0, 1.5, 50.0);
+    s.advance(DAY);
+    let p = s.town(0).people;
+    assert!((p.comfort_met[0] - 0.5).abs() < 0.15, "half a day's: {}", p.comfort_met[0]);
+    s.advance(2 * DAY);
+    let p = s.town(0).people;
+    assert!(p.comfort_met[0] > 0.1, "and some the next day too: {}", p.comfort_met[0]);
 }

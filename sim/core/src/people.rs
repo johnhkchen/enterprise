@@ -241,19 +241,30 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             let due = people.villagers * d.ration * days;
             // (Of reading, what its shelves read for it, for good.)
             let shelved = if Some(kind) == reading { due * passive } else { 0.0 };
-            let mut owed = people.comfort_owed[kind] + due - shelved;
             let mut goods: Vec<usize> = (0..content.goods.len()).filter(|&i| content.goods[i].comfort == Some(kind)).collect();
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
+            // Short of it, the town rations it (John: "Towns ration happiness goods, and trade to cover the difference"):
+            // what it holds (and has in hand of a piece begun) under `comfort_ration_days` of rations it spreads over
+            // that many days, its people going part without each day rather than in full till it's gone and then with
+            // none (seed 1717's towns with no Librarian read in full the days after a wagon's books, nothing the rest).
+            let need = (due - shelved).max(0.0);
+            let held: f64 = goods.iter().map(|&i| stock.0[i].max(0.0) * content.comfort_worth(i)).sum::<f64>()
+                - people.comfort_owed[kind].min(0.0);
+            let span = d.comfort_ration_days.max(1e-9);
+            let served = if days > 0.0 && held < need / days * span { need.min(held * (days / span).min(1.0)) } else { need };
+            let rationed = need - served;
+            let floor = 0.0;
+            let mut owed = people.comfort_owed[kind] + served;
             let mut used = 0.0;
             let mut finer = 0.0;
             let mut cover = 0.0;
             for i in goods {
-                if owed <= 0.0 {
+                if owed <= floor {
                     break;
                 }
                 // (What a piece covers of the rations, `comfort_worth`, and what it costs, its worth.)
                 let (value, covers) = (content.goods[i].value.max(1e-9), content.comfort_worth(i));
-                let n = stock.0[i].min((owed / covers).ceil());
+                let n = stock.0[i].min(((owed - floor) / covers).ceil());
                 stock.0[i] -= n;
                 ledger.used[i] += n;
                 owed -= n * covers;
@@ -271,7 +282,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             // rations are used: a book of 1.5 read over ten days lifts each of them by half.
             people.fine_banked[kind] += finer;
             people.fine_cover[kind] += cover;
-            let met = (due - owed.max(0.0)).max(0.0);
+            let met = (due - owed.max(0.0) - rationed).max(0.0);
             let share = if people.fine_cover[kind] > 0.0 { (met / people.fine_cover[kind]).min(1.0) } else { 0.0 };
             let lift = people.fine_banked[kind] * share;
             people.fine_banked[kind] -= lift;
@@ -281,7 +292,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             let pays = Fixed::ceil(used).min(people.purse.at_least_zero());
             post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,
                 Reason::Comforts, now, day);
-            people.comfort_met[kind] = if due > 0.0 { (1.0 - owed.max(0.0) / due).clamp(0.0, 1.0) } else { 0.0 };
+            people.comfort_met[kind] = if due > 0.0 { (1.0 - (owed.max(0.0) + rationed) / due).clamp(0.0, 1.0) } else { 0.0 };
             people.comfort_owed[kind] = owed.min(0.0);
         }
         // Meals: each villager `meal_points` a day from the bag of what the town holds, the tastiest likeliest (not as the

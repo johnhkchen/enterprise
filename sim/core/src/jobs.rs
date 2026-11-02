@@ -386,6 +386,19 @@ fn for_contracts(content: &Content, place: &Place) -> Option<TradeId> {
     place.lockers.needed.iter().copied().find(|&t| job_trade(content, t).is_some() && place.roster.count(t) == 0)
 }
 
+/// The maker of a comfort the town lacks (met under half) and holds a batch's makings of, where it has no hand of it
+/// and can draw one: the first such in the conversions' order.
+pub fn for_comfort(content: &Content, stock: &Stock, met: &[f64], roster: &Roster) -> Option<TradeId> {
+    content.conversions.iter().find_map(|c| {
+        let kind = content.goods.get(c.output).and_then(|g| g.comfort)?;
+        if met.get(kind).copied().unwrap_or(1.0) >= 0.5 || crate::workshop::can_do(c, roster)
+            || !c.inputs.iter().all(|&(g, n)| stock.0.get(g).copied().unwrap_or(0.0) >= n) {
+            return None;
+        }
+        c.trades.iter().copied().find(|&t| job_trade(content, t).is_some())
+    })
+}
+
 /// The trade that takes what the town holds most of, worth `glut_emeralds` or more, where it has no hand of it: trained
 /// to it, not drawn (John: "train a villager who specifically takes an abundant resource"; not as the mod). In the
 /// trades' order where two hold as much.
@@ -476,7 +489,17 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     // kept: seed 1717's Refuge Pointe, its idle all Nitwits and no beds for a child, waited on timber 25 days).
     let timber = content.trade(crate::roster::LUMBERJACK)
         .filter(|&l| place.timber_wait > 0.0 && place.roster.count(l) == 0);
-    let hand = idle.or_else(|| slack(content, place)).or_else(|| timber.and_then(|_| {
+    // And a comfort it lacks and holds the makings of, with no hand of its maker: from its idle or slack first, else, once
+    // in `comfort_retrain_days`, retrained as for timber (John: "Export the creations instead of rapidly retraining.
+    // Allow a long cooldown retraining"; seed 1717's Refuge Pointe held 1,000 paper and leather 37 days, no hand free).
+    let comfort = for_comfort(content, place.stock, place.met, place.roster);
+    let cooled = place.roster.comfort_retrained.is_none_or(|d| {
+        now.saturating_sub(d) as f64 >= content.dials.comfort_retrain_days * content.day_ticks as f64
+    });
+    let free_hand = idle.or_else(|| slack(content, place));
+    let retrain_for_comfort = free_hand.is_none() && timber.is_none() && comfort.is_some() && cooled;
+    let first = timber.or(comfort.filter(|_| retrain_for_comfort || free_hand.is_some()));
+    let hand = free_hand.or_else(|| first.and_then(|_| {
         place.roster.hands.iter().enumerate()
             .filter(|&(i, h)| Some(i) != place.roster.merchant && !h.is_baby() && !h.away
                 && content.trades.get(h.trade).is_some_and(|t| !t.idle() && !t.merchant && !KEPT.contains(&t.name.as_str())))
@@ -489,7 +512,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {
         return None;
     }
-    let trade = timber.or_else(|| for_contracts(content, place)).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
+    let trade = first.or_else(|| for_contracts(content, place)).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
         let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
         for &(t, m) in &place.far {
@@ -551,6 +574,9 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         o.on = true;
     }
     locker.slack = -2 * content.dials.slack_days as i32;
+    if retrain_for_comfort && Some(trade) == comfort {
+        place.roster.comfort_retrained = Some(now);
+    }
     Some(Hired { hand, trade, retrained: retraining })
 }
 

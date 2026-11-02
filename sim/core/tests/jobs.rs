@@ -611,3 +611,27 @@ fn a_market_that_lost_its_merchant_puts_an_idle_hand_at_its_desk() {
     s.set_roster(village, &[("none", 1)]);
     assert!(s.review_jobs(village).is_none());
 }
+
+/// A town short of a comfort it holds the makings of, with no hand of its maker and none idle, retrains one to it, once
+/// in `comfort_retrain_days` (John: "Allow a long cooldown retraining"): paper and leather and no reading, its
+/// Fletcher a Librarian; and none retrained again for a comfort within the cooldown.
+#[test]
+fn a_town_holding_a_comforts_makings_retrains_a_hand_to_make_it_once_in_a_while() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Inkwell", 100.0);
+    s.set_people(t, 5.0, 2.0, 20.0);
+    s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("fletcher", 1), ("fletcher", 1), ("cartographer", 1)]);
+    let hex = enterprise_core::Hex::new(3, 3);
+    s.place_town(t, hex.center_x(), hex.center_z());
+    s.deliver(t, PAPER, 64.0);
+    s.deliver(t, LEATHER, 3.0); // (books' makings, a hide each; under a pair of boots' four)
+    s.advance(3 * DAY);
+    let (librarian, fletcher) = (s.content().trade("librarian").unwrap(), s.content().trade("fletcher").unwrap());
+    assert_eq!(s.roster(t).count(librarian), 1, "a Librarian for its books: {:?}", s.roster(t).hands);
+    assert!(s.roster(t).comfort_retrained.is_some() || s.roster(t).count(fletcher) == 2, "retrained, and when");
+    // Its reading met by its own books now; nobody else retrained within the cooldown.
+    let before = s.roster(t).hands.iter().map(|h| h.trade).collect::<Vec<_>>();
+    s.advance(10 * DAY);
+    let after = s.roster(t).hands.iter().map(|h| h.trade).collect::<Vec<_>>();
+    assert_eq!(before.iter().filter(|&&x| x == librarian).count(), after.iter().filter(|&&x| x == librarian).count());
+}

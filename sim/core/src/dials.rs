@@ -156,6 +156,11 @@ dials! {
     ration: f64 = 0.1,
     comfort_days: f64 = 6.0,
     comfort_keep_days: f64 = 4.0,
+    /// A town holding less than so many days of a comfort's rations spreads what it has over that many (`people.rs`).
+    comfort_ration_days: f64 = 3.0,
+    /// A town short of a comfort it holds the makings of, with no hand of its maker and none free, retrains one to it
+    /// at most once in so many days (`jobs::for_comfort`; John: "Allow a long cooldown retraining").
+    comfort_retrain_days: f64 = 20.0,
     /// Mood moves halfway to where it's heading in this many days; every so many villagers cost a point of it;
     /// each villager without a bed half a point; unpaid wages, up to two points.
     mood_half_life_days: f64 = 3.0,
