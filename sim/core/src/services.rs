@@ -265,7 +265,7 @@ pub fn recipes(content: &Content) -> Vec<Recipe> {
             fee_each, want, min_level, kit })
     };
     let mut all: Vec<Recipe> = MOD_RECIPES.iter().filter_map(recipe).collect();
-    // Each fired with coal, fired with charcoal too, after them all (a Lumberjack's: `workshop::MOD_CONVERSIONS`).
+    // Each fired with coal, fired with charcoal too, after them all (a Lumberjack's: `workshop::WOODWORK`).
     if let (Some(coal), Some(charcoal)) = (content.good("coal"), content.good("charcoal")) {
         let twins: Vec<Recipe> = all.iter().filter(|r| r.inputs.iter().any(|&(g, _)| g == coal)).filter_map(|r| {
             let name = CHARCOAL_TWINS.iter().find(|(coal_name, _)| *coal_name == r.name)?.1;

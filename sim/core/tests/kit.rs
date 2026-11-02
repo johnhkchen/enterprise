@@ -498,7 +498,7 @@ fn logs(s: &Society, t: usize) -> f64 {
     stock(s, t, "oak_log") + stock(s, t, "spruce_log")
 }
 
-/// The kit's goods and charcoal: a Lumberjack's workshop burns logs to it (`workshop::MOD_CONVERSIONS`).
+/// The kit's goods and charcoal: a Lumberjack's workshop burns logs to it (`workshop::WOODWORK`).
 fn wood_content() -> Content {
     Content::new(NAMES.iter().chain(&["charcoal"]).map(|n| Good::new(n, 0.1, 64)).collect(), DAY)
 }
@@ -609,6 +609,28 @@ fn a_lumberjack_joins_logs_into_chests_for_a_town_short_of_furnishings_and_one_i
     let marbles = enterprise_core::jobs::comfort_marbles(c, &met, 500.0, &enterprise_core::roster::Roster::default());
     let lumberjack = c.trade("lumberjack").unwrap();
     assert!(marbles.iter().any(|&(t, m)| t == lumberjack && m > 0.0), "furnishings lacking: {marbles:?}");
+}
+
+/// A Lumberjack works any wood into a home's furniture (John: "give lumberjacks/carpenters the ability to make
+/// furnishing happiness goods"): jungle logs, the wood its town may like, into chests, barrels, crafting tables and,
+/// round a leather, item frames.
+#[test]
+fn a_lumberjack_makes_furniture_of_any_wood_for_a_town_short_of_furnishings() {
+    let mut goods: Vec<Good> = NAMES.iter().chain(&["jungle_log"]).map(|n| Good::new(n, 0.1, 64)).collect();
+    for (name, worth) in [("chest", 0.5), ("barrel", 0.5), ("crafting_table", 0.25), ("item_frame", 1.0 / 3.0)] {
+        goods.push(Good::new(name, worth, 64).comfort(3));
+    }
+    let mut s = Society::new(Content::new(goods, DAY));
+    let t = town(&mut s, &[("lumberjack", 1), ("none", 1)]);
+    s.set_people(t, 8.0, 8.0, 2.0);
+    // (Beyond the 48 logs a home and a hall take, kept from the workshop.)
+    s.deliver(t, good(s.content(), "jungle_log"), 80.0);
+    s.deliver(t, good(s.content(), "leather"), 4.0);
+    s.advance(2 * DAY);
+    let made: Vec<(&str, f64)> = ["chest", "barrel", "crafting_table", "item_frame"].iter().map(|&n| (n, stock(&s, t, n))).collect();
+    let kinds = made.iter().filter(|&&(_, n)| n >= 1.0).count();
+    assert!(kinds >= 2, "furniture of jungle wood: {made:?}");
+    assert!(stock(&s, t, "jungle_log") < 80.0 - 1e-9, "of its logs");
 }
 
 #[test]

@@ -39,6 +39,9 @@ with John the same day:
    many as it keeps empty and as many again where a neighbour bids for them (`rules/lockers.rs`); a town with no
    Lumberjack bids for them at up to twice their worth (`crate_ceiling`, `rules/market.rs`); short of crates, goods
    ride loose.
+6. **Furniture** (built; John: "give lumberjacks/carpenters the ability to make furnishing happiness goods"): of any
+   wood, a chest, a barrel, a crafting table and an item frame (`workshop::WOODWORK`), furnishings all; its villager
+   sells chests, barrels and item frames to a town short of them.
 
 ## Timber (John: "gate building creation behind lumberjacks")
 

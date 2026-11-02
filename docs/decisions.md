@@ -1376,6 +1376,13 @@ mod's), but no road ever chose it. Then: build them first.
   the day's budget too (a full keep of them is a few emeralds, and what it ships earns its wages). Seed 1717's 30 days:
   none packed loose; Pyrewood bought its crates of its neighbour's wagons on days 18, 27 and 28; the first five towns
   as before (to a villager), the settlers' villages as their parties went.
+- **A Lumberjack makes a home's furniture, of any wood (John, 2026-11-02: "give lumberjacks/carpenters the ability to
+  make furnishing happiness goods").** Its workshop (`workshop::WOODWORK`, the mod's `Workshop` the same) works each of
+  the pack's logs into furnishings: a chest and a barrel of two logs, a crafting table of one, and an item frame of a
+  log's sticks round a leather (worth 2, 2, 4 and 3 to the emerald; all in `comforts/furnishings`); its charcoal is of
+  any wood too (a town liking jungle or acacia made neither before). Its villager sells chests, barrels and item frames
+  for a town short of furnishings to buy, as a Leatherworker's armour. Seed 1717's 30 days, the first five towns:
+  furnishings met in all five (Refuge Pointe's none before), villagers 69 to 60.
 - **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
   any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
   the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still

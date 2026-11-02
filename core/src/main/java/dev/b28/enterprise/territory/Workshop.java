@@ -32,21 +32,41 @@ public final class Workshop {
         }
     }
 
-    public static final List<Conversion> CONVERSIONS = List.of(
-            new Conversion(Set.of("minecraft:librarian", "minecraft:cartographer"), Items.SUGAR_CANE, 1, Items.PAPER, 1),
-            new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 3, Items.BREAD, 1),
-            new Conversion(Set.of("minecraft:shepherd"), Items.WHITE_WOOL, 2, Items.WHITE_CARPET, 3),
-            new Conversion(Set.of("minecraft:leatherworker"), Items.LEATHER, 4, Items.LEATHER_BOOTS, 1),
-            new Conversion(Set.of("minecraft:fisherman"), Items.COD, 1, Items.COOKED_COD, 1),
-            new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 2, Items.SUGAR_CANE, 1, Items.COOKIE, 4),
-            new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1),
-            // A Lumberjack burns its logs to charcoal, a third of them to fire the rest (the core's `FUEL_PAR` says how
-            // much a town keeps).
-            new Conversion(Set.of(Lumberjack.ID), Items.OAK_LOG, 3, Items.CHARCOAL, 2),
-            new Conversion(Set.of(Lumberjack.ID), Items.SPRUCE_LOG, 3, Items.CHARCOAL, 2),
-            // And joins two logs' planks into a chest, a home's furniture (a furnishing).
-            new Conversion(Set.of(Lumberjack.ID), Items.OAK_LOG, 2, Items.CHEST, 1),
-            new Conversion(Set.of(Lumberjack.ID), Items.SPRUCE_LOG, 2, Items.CHEST, 1));
+    /** The woods a Lumberjack works, the logs the mod prices (the core's `works::LOGS` the host has). */
+    static final List<Item> LOGS = List.of(Items.OAK_LOG, Items.SPRUCE_LOG, Items.JUNGLE_LOG, Items.ACACIA_LOG);
+
+    public static final List<Conversion> CONVERSIONS = conversions();
+
+    private static List<Conversion> conversions() {
+        List<Conversion> all = new java.util.ArrayList<>(List.of(
+                new Conversion(Set.of("minecraft:librarian", "minecraft:cartographer"), Items.SUGAR_CANE, 1, Items.PAPER, 1),
+                new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 3, Items.BREAD, 1),
+                new Conversion(Set.of("minecraft:shepherd"), Items.WHITE_WOOL, 2, Items.WHITE_CARPET, 3),
+                new Conversion(Set.of("minecraft:leatherworker"), Items.LEATHER, 4, Items.LEATHER_BOOTS, 1),
+                new Conversion(Set.of("minecraft:fisherman"), Items.COD, 1, Items.COOKED_COD, 1),
+                new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 2, Items.SUGAR_CANE, 1, Items.COOKIE, 4),
+                new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1)));
+        // A Lumberjack's work, of any wood (the core's `workshop::WOODWORK`, in its order): it burns logs to charcoal, a
+        // third of them to fire the rest (the core's `FUEL_PAR` says how much a town keeps), and works their planks into
+        // a home's furniture, the furnishings: a chest and a barrel of two logs, a crafting table of one, an item frame
+        // of one log's sticks round a leather.
+        for (Item log : LOGS) {
+            all.add(new Conversion(Set.of(Lumberjack.ID), log, 3, Items.CHARCOAL, 2));
+        }
+        for (Item log : LOGS) {
+            all.add(new Conversion(Set.of(Lumberjack.ID), log, 2, Items.CHEST, 1));
+        }
+        for (Item log : LOGS) {
+            all.add(new Conversion(Set.of(Lumberjack.ID), log, 2, Items.BARREL, 1));
+        }
+        for (Item log : LOGS) {
+            all.add(new Conversion(Set.of(Lumberjack.ID), log, 1, Items.CRAFTING_TABLE, 1));
+        }
+        for (Item log : LOGS) {
+            all.add(new Conversion(Set.of(Lumberjack.ID), log, 1, Items.LEATHER, 1, Items.ITEM_FRAME, 1));
+        }
+        return List.copyOf(all);
+    }
 
     private Workshop() {}
 

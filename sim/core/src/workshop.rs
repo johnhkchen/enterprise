@@ -44,9 +44,9 @@ pub struct Conversion {
 /// The mod's seven conversions (`Workshop.CONVERSIONS`, in its order), then those the game has no recipe for that its
 /// pack adds (`VillagerCrafts.EXTRAS`: a Librarian joins three books and two logs into a bookshelf; a Butcher cooks beef and
 /// mutton over a campfire, no coal, as the game's campfire does): trade names, inputs, output, how many it makes. The
-/// game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
+/// game's own recipes come with the mod's pack (`VillagerCrafts`), not here. A Lumberjack's are [`WOODWORK`].
 #[allow(clippy::type_complexity)]
-pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 14] = [
+pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 10] = [
     (&["librarian", "cartographer"], &[("sugar_cane", 1.0)], "paper", 1.0),
     (&["farmer"], &[("wheat", 3.0)], "bread", 1.0),
     (&["shepherd"], &[("white_wool", 2.0)], "white_carpet", 3.0),
@@ -57,13 +57,21 @@ pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 14] = [
     (&["librarian"], &[("book", 3.0), ("oak_log", 2.0)], "bookshelf", 1.0),
     (&["butcher"], &[("beef", 1.0)], "cooked_beef", 1.0),
     (&["butcher"], &[("mutton", 1.0)], "cooked_mutton", 1.0),
-    // A Lumberjack burns its logs to charcoal, a third of them to fire the rest (the game's furnace: a log smelts a
-    // charcoal and fuels one and a half), for the town's smiths and smokehouse where it has no coal.
-    (&["lumberjack"], &[("oak_log", 3.0)], "charcoal", 2.0),
-    (&["lumberjack"], &[("spruce_log", 3.0)], "charcoal", 2.0),
-    // And joins two logs' planks into a chest, a home's furniture (a furnishing: John, "Furnishings").
-    (&["lumberjack"], &[("oak_log", 2.0)], "chest", 1.0),
-    (&["lumberjack"], &[("spruce_log", 2.0)], "chest", 1.0),
+];
+
+/// A Lumberjack's work, of any wood (`works::LOGS`, each the host has: the wood its town likes may be any): logs it
+/// takes, another input, what it makes and how many (`Workshop.WOODWORK`). It burns logs to charcoal, a third of them to
+/// fire the rest (the game's furnace: a log smelts a charcoal and fuels one and a half), for the town's smiths and
+/// smokehouse where it has no coal; and works their planks into a home's furniture, the furnishings (John: "give
+/// lumberjacks/carpenters the ability to make furnishing happiness goods"): a chest and a barrel of two logs, a
+/// crafting table of one, and an item frame of one log's sticks round a leather.
+#[allow(clippy::type_complexity)]
+pub const WOODWORK: [(f64, Option<(&str, f64)>, &str, f64); 5] = [
+    (3.0, None, "charcoal", 2.0),
+    (2.0, None, "chest", 1.0),
+    (2.0, None, "barrel", 1.0),
+    (1.0, None, "crafting_table", 1.0),
+    (1.0, Some(("leather", 1.0)), "item_frame", 1.0),
 ];
 
 /// The fuel a town keeps for its smelting and smoking, coal and charcoal together, before its Lumberjacks burn more.
@@ -72,7 +80,15 @@ pub const FUEL_PAR: f64 = 16.0;
 /// The mod's conversions, matched by name to the host's goods and trades; one the host lacks a good or trade for is
 /// skipped.
 pub fn mod_conversions(content: &Content) -> Vec<Conversion> {
-    MOD_CONVERSIONS.iter().filter_map(|&(trades, inputs, output, out)| conversion(content, trades, inputs, output, out)).collect()
+    let mut all: Vec<Conversion> = MOD_CONVERSIONS.iter()
+        .filter_map(|&(trades, inputs, output, out)| conversion(content, trades, inputs, output, out)).collect();
+    for &(logs, other, output, out) in &WOODWORK {
+        for log in crate::works::LOGS {
+            let inputs: Vec<(&str, f64)> = std::iter::once((log, logs)).chain(other).collect();
+            all.extend(conversion(content, &[crate::roster::LUMBERJACK], &inputs, output, out));
+        }
+    }
+    all
 }
 
 /// A conversion by names; `None` if a good or every trade is missing from the host's content.

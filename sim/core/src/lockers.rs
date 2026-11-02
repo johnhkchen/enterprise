@@ -874,6 +874,9 @@ const SELLS: &[Sells] = &[
     ("lumberjack", 1, "crate", 1, 6, 16, 1, 0.05),
     ("lumberjack", 1, "oak_log", 1, 6, 16, 1, 0.05), ("lumberjack", 2, "charcoal", 1, 4, 16, 5, 0.05),
     ("lumberjack", 3, "spruce_log", 1, 6, 16, 10, 0.05),
+    // And its furniture, for a town short of furnishings to buy of it (as a Leatherworker's armour).
+    ("lumberjack", 2, "chest", 1, 2, 12, 5, 0.05), ("lumberjack", 3, "barrel", 1, 2, 12, 10, 0.05),
+    ("lumberjack", 4, "item_frame", 1, 3, 12, 15, 0.05),
 ];
 
 /// The mod's trades get vanilla's offers for the goods the host has, by name with or without its namespace
