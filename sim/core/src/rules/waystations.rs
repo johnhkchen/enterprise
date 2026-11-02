@@ -5,9 +5,9 @@
 //!   holding it, starts putting it up.
 //! - **Serve:** a wagon home again paid each stop it passed within a hex of, there and back, that isn't its own
 //!   town's or its far end's: the rest, and its crew's meals where the stop grows food. Paid to the stop's town,
-//!   banked to the stop.
+//!   banked to the stop; its town pledges as much again to the roads by it.
 //! - **Mend:** once a day a stop lays a surface on the most worn trail hex of a road by it, within its reach, that its
-//!   level can better: graded, then paved; out of what it banked first, its town's spare money besides.
+//!   level can better: graded, then paved; out of its town's pledge, paid from its treasury while it has the spare.
 
 use bevy_ecs::prelude::*;
 
@@ -95,6 +95,7 @@ pub fn serve(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut wa
                     paid, Reason::Other("waystation".into()), now, day);
             }
             s.banked += paid;
+            s.roads += paid;
             s.taken += paid;
             s.food -= meals;
             s.meals += meals;
@@ -139,15 +140,15 @@ pub fn mend(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut way
         let cost = Fixed::ceil(if next >= crate::map::PAVED { PAVE_COST } else { GRADE_COST });
         let Some(&owner) = towns.0.get(s.owner) else { continue };
         let Ok((mut money, trades, farm)) = q.get_mut(owner) else { continue };
-        // Its town's money beyond its reserve and what opening a road asks, besides what the stop banked.
+        // Its town's pledge, paid while its money beyond its reserve and what opening a road asks covers it: the stop's
+        // takings stay banked for its next level.
         let spare = money.0 - super::farms::build_reserve(&content, trades, farm) - Fixed::ceil(content.dials.commission_spare);
-        let from_bank = s.banked.min(cost).at_least_zero();
-        if cost - from_bank > spare.at_least_zero() || money.0 < cost {
+        if s.roads < cost || spare < cost {
             continue;
         }
         post(&mut ledger, &mut book, Side::treasury(s.owner, &mut money.0), Side::outside(), cost,
             Reason::Other("road works".into()), now, day as u64);
-        s.banked -= from_bank;
+        s.roads -= cost;
         s.laid += 1;
         map.surface.insert(hex, next);
         let at = path.0.iter().position(|&h| h == hex).unwrap_or(0);

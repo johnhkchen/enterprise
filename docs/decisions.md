@@ -1386,6 +1386,16 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **A town matches its stop's toll take for the road works by it (John, 2026-11-03: "Fix road works with towns
+  matching toll take as part of their own taxation system").** Seed 1717's 180 days built 20 stops and none rose past
+  a stop: the road works spent what each banked first (34 hexes graded for 72 emeralds, 10.2 taken in all). Now every
+  emerald a stop takes stays banked for its next level, and its town pledges one of its own to the roads by it
+  (`Station::roads`); a stop's road works spend only that pledge, paid out of the treasury while its money beyond its
+  reserve and `commission_spare` covers the hex (`rules/waystations.rs` `mend`). Road works now follow the traffic
+  that pays for them rather than a town's spare money, which late in a run is plenty: the run's 54,595 emeralds all
+  came into the world from outside (`enterprise-sim --money SAVE`), most from the villagers' own trades buying the
+  warehouses' goods (`lockers: sold`, 650 to 870 a day from day 120) and the villagers' earnings (`hand_wage`), against
+  some 130 a day spent out of it; 64% of it sits in the households' purses.
 - **A stop's road works grade and pave the trails by it, and a town with none to reach puts its stop on its busiest
   road (John, 2026-11-02: "invest the income in road improvements that over time allow for longer, quicker travel. It
   should work hand in hand with the desire path and path slope system to create trade roads over time that branch into

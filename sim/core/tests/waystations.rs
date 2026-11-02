@@ -1,5 +1,6 @@
 //! Waystations' keep (`waystations.rs`): a passing wagon pays a stop for water and a rest, and its crew's meals where
-//! it grows food; a stop rises a level out of what it banked, its keepers putting it up in a few days.
+//! it grows food; a stop rises a level out of what it banked, its keepers putting it up in a few days; its town matches what it
+//! takes for the road works by it.
 
 use enterprise_core::waystations::{fee, food_kept, rise_cost, rise_days, GRADE_COST};
 use enterprise_core::works::What;
@@ -47,6 +48,8 @@ fn a_wagon_passing_a_stop_pays_for_water_and_a_rest() {
     assert!((st.taken.to_f64() - st.passes as f64 * 2.0 * fee(1)).abs() < 1e-6, "a stop's fee each way: {st:?}");
     assert_eq!(st.meals, 0.0, "a stop grows no food");
     let works = st.laid as f64 * GRADE_COST;
+    assert!((st.roads.to_f64() + works - st.taken.to_f64()).abs() < 1e-6, "Inkwell matched each emerald taken for its roads: {st:?}");
+    assert!((st.banked.to_f64() - st.taken.to_f64()).abs() < 1e-6, "its takings kept for its next level: {st:?}");
     assert!((s.town(inn).money.to_f64() - money - st.taken.to_f64() + works).abs() < 1e-6,
         "paid to Inkwell's treasury, banked to its stop, its road works out of both: {st:?}");
     s.conserved(&before).unwrap();
@@ -70,7 +73,9 @@ fn a_stop_rises_a_level_out_of_its_takings_and_sells_meals() {
 
 #[test]
 fn a_stop_grades_the_trail_its_wagons_wore_and_a_waystation_paves_it_quicker() {
-    let (mut s, inn, stop) = road();
+    let (mut s, _, stop) = road();
+    s.advance(1_200);
+    s.pledge_to_roads(stop, 40.0); // what Inkwell matched of its takings
     s.advance(12 * DAY);
     let worn: Vec<Hex> = s.route_path(0).unwrap().into_iter().filter(|&h| s.map().trail(h)).collect();
     assert!(!worn.is_empty(), "the hub's wagons wore a trail");

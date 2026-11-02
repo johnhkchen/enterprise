@@ -12,6 +12,10 @@
 //!
 //! A level is paid out of what the stop banked ([`rise_cost`]), and its keepers put it up in [`rise_days`]: a town's own
 //! works go on meanwhile. Its own town's wagons rest free.
+//!
+//! Its road works are the town's (John, 2026-11-03: "towns matching toll take as part of their own taxation system"):
+//! every emerald a stop takes, its town pledges one of its own to the roads by it (`Station::roads`), paid out of its
+//! treasury as the works are done, while it has the spare. The takings stay banked for the stop's next level.
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -95,6 +99,9 @@ pub struct Station {
     pub mended: u64,
     #[serde(default)]
     pub laid: u32,
+    /// What its town pledged to the roads by it, an emerald for each its stop took, not yet spent on road works.
+    #[serde(default)]
+    pub roads: Fixed,
 }
 
 /// Every town's stops, in the order they were built.
@@ -120,6 +127,13 @@ impl crate::society::Society {
     pub fn bank_at_waystation(&mut self, hex: Hex, emeralds: f64) {
         if let Some(s) = self.world.resource_mut::<Waystations>().stations.iter_mut().find(|s| s.hex == hex) {
             s.banked += Fixed::floor(emeralds);
+        }
+    }
+
+    /// Pledges emeralds its town already holds to the roads by the stop on `hex` (a test's): toward its road works.
+    pub fn pledge_to_roads(&mut self, hex: Hex, emeralds: f64) {
+        if let Some(s) = self.world.resource_mut::<Waystations>().stations.iter_mut().find(|s| s.hex == hex) {
+            s.roads += Fixed::floor(emeralds);
         }
     }
 }

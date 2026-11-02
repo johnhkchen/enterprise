@@ -97,6 +97,43 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--money") {
+        // A world's saved society's money: what the treasuries, the households and the wagons hold, and what came in
+        // from outside (or went out) by reason on the days its books keep.
+        let Some(file) = args.get(1) else {
+            eprintln!("enterprise-sim --money SAVE");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(file).unwrap_or_else(|e| panic!("{file}: {e}"));
+        let save: enterprise_core::wire::SaveFile = postcard::from_bytes(&bytes).expect("a save");
+        let mut s = enterprise_core::Society::load(&save.blob).expect("a society");
+        use enterprise_core::cash_book::Account;
+        let totals = s.totals();
+        let (mut treasuries, mut households, mut wagons) = (0.0, 0.0, 0.0);
+        for (account, v) in &totals.balances {
+            match account {
+                Account::Treasury(_) => treasuries += v.to_f64(),
+                Account::Households(_) => households += v.to_f64(),
+                Account::Wagon(_) => wagons += v.to_f64(),
+                _ => {}
+            }
+        }
+        println!("money {:.0}: treasuries {treasuries:.0}, households {households:.0}, wagons {wagons:.0}", totals.money.to_f64());
+        let book = s.world.resource::<enterprise_core::cash_book::CashBook>();
+        println!("outside, net since the world began: {:.0} (+ out of the world, - into it)", book.net(Account::Outside).to_f64());
+        let mut months: std::collections::BTreeMap<u64, (f64, f64)> = Default::default();
+        for (day, _, v) in book.entries(Account::Outside, 0, u64::MAX) {
+            let m = months.entry(day.saturating_sub(1) / 30 * 30 + 1).or_default();
+            if v.to_f64() < 0.0 { m.0 -= v.to_f64() } else { m.1 += v.to_f64() }
+        }
+        for (from, (came, went)) in months {
+            println!("from day {from}: {came:.0} came into the world, {went:.0} went out");
+        }
+        for (why, v) in book.totals(Account::Outside, 0, u64::MAX).into_iter().take(25) {
+            println!("{:>10.0}\t{}", v.to_f64(), why.label(s.content()));
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--settlers") {
         // Why a saved society's towns send settlers or don't: each market's villagers, food, spare hands and money,
         // whether it's raising a party, and whether one leaves if its review ran now (on a copy: nothing is saved).
