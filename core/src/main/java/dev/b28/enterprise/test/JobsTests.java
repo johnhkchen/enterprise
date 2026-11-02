@@ -109,9 +109,9 @@ public final class JobsTests {
     public static void theComfortFilesGoToTheCore(GameTestHelper helper) {
         var files = dev.b28.enterprise.territory.ComfortFiles.all();
         var book = files.stream().filter(c -> c.item() == net.minecraft.world.item.Items.BOOK).findFirst();
-        helper.assertTrue(book.isPresent() && book.get().days() == 10 && book.get().quality() == 1, "the book's file: " + files);
+        helper.assertTrue(book.isPresent() && book.get().days() == 20 && book.get().quality() == 1, "the book's file: " + files);
         var pack = dev.b28.enterprise.binding.ModPack.of().comfortGoods();
-        helper.assertTrue(pack.stream().anyMatch(c -> c.good().equals("minecraft:book") && c.days() == 10)
+        helper.assertTrue(pack.stream().anyMatch(c -> c.good().equals("minecraft:book") && c.days() == 20)
                 && pack.stream().anyMatch(c -> c.good().equals("minecraft:writable_book") && c.days() == 5),
                 "the pack takes them to the core: " + pack);
         helper.succeed();
