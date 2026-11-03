@@ -14,9 +14,11 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// What each town holds beyond its keep of a good, and what it set aside for its forward sales, goes off its share a
-/// day, out of the world. (Not a realm's or a market across the sea: their makings are the world's edge.)
+/// day, out of the world. (Not a realm's or a market across the sea: their makings are the world's edge. Nor what a hub
+/// holds on consignment.)
 pub fn spoil(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, book: Res<Book>,
-        pallets: Res<crate::pallet::Pallets>, mut storage: ResMut<Storage>, mut ledger: ResMut<Ledger>,
+        pallets: Res<crate::pallet::Pallets>, forwarder: Res<crate::post::Forwarder>, mut storage: ResMut<Storage>,
+        mut ledger: ResMut<Ledger>,
         mut q: Query<(&Town, &mut Stock, Option<&crate::works::Works>),
             (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
@@ -36,7 +38,11 @@ pub fn spoil(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, book: 
         };
         stored.reckoned = Some(now);
         let days = ((now - last) as f64 / day as f64).min(crate::territory::MAX_DAYS);
-        let aside = crate::cargo::set_aside_all(&book, &pallets, town.id, n, now, content.day_ticks);
+        let mut aside = crate::cargo::set_aside_all(&book, &pallets, town.id, n, now, content.day_ticks);
+        // (Nor what a hub keeps on consignment: its renters pay for its keeping.)
+        for (g, a) in aside.iter_mut().enumerate() {
+            *a = a.max(0.0) + forwarder.on_consignment(town.id, g);
+        }
         for g in 0..n.min(stock.0.len()) {
             let rate = spoil_rate(d, keeping(&content, g), stores);
             let beyond = stock.0[g] - d.spoil_keep - aside[g].max(0.0);

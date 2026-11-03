@@ -65,3 +65,40 @@ fn a_storehouse_holds_its_kind_out_of_the_warehouse_up_to_its_slots() {
     assert_eq!(other, none, "the armory and granary hold no wool");
 }
 
+
+#[test]
+fn a_lot_on_consignment_pays_the_hub_rent_for_its_stacks_unsold() {
+    use enterprise_core::post::Forwarder;
+    use enterprise_core::Fixed;
+    let c = content();
+    let mut f = Forwarder::default();
+    // Ten stacks of iron on consignment at hub 0 for town 1, ten days.
+    f.lot(0, 1, 3, 640.0, Fixed::ZERO, 0);
+    f.sold(0, 3, 640.0, Fixed::round(100.0));
+    let mut spare = Fixed::round(1000.0);
+    // (Sold on its first day: no rent.)
+    let out = f.remits(&c, 0, 0, &mut spare);
+    assert_eq!(out, vec![(1, Fixed::round(90.0))], "less the commission only");
+    // Unsold ten days, then sold: ten stacks a day at the fee.
+    let mut f = Forwarder::default();
+    f.lot(0, 1, 3, 640.0, Fixed::ZERO, 0);
+    let _ = f.remits(&c, 0, 10 * DAY, &mut spare);
+    f.sold(0, 3, 640.0, Fixed::round(100.0));
+    let out = f.remits(&c, 0, 10 * DAY + 1, &mut spare);
+    let rent = 10.0 * 10.0 * c.dials.storage_fee;
+    assert_eq!(out, vec![(1, Fixed::round(90.0 - rent))], "less a stack-day's fee for each");
+    assert_eq!(f.rents, Fixed::round(rent));
+}
+
+#[test]
+fn a_hub_takes_on_consignment_only_what_its_rented_warehouse_holds() {
+    use enterprise_core::post::Forwarder;
+    let mut c = content();
+    c.dials.rent_slots = 4;
+    let mut f = Forwarder::default();
+    let mut cargo = vec![0.0; c.goods.len()];
+    cargo[3] = 64.0 * 10.0;
+    let taken = f.consign_unsold(&c, 0, 1, &mut cargo, 0, |_| 1e9);
+    assert_eq!(taken, vec![(3, 256.0)], "four stacks of the ten");
+    assert_eq!(cargo[3], 384.0, "the rest rides home");
+}

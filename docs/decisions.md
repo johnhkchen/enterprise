@@ -1461,6 +1461,15 @@ mod's), but no road ever chose it. Then: build them first.
   its forward sales (`taxes::held_beyond`): a warehouse of 2,000 wheat beyond its 64 owes 0.2 emeralds a day. It's owed
   beside the land tax and collected with it, the land's first (`Taxes::paid`), booked "inventory tax", and goes to the
   king's highways. Durable goods pay it as perishable ones do: what keeps costs to keep.
+- **A hub rents out its warehouse to the towns whose goods it keeps on consignment (John, 2026-11-03: "Rented
+  warehouse at hubs", "Storage fees to the owner").** The third holding cost, and the way out of the other two: a hub's
+  forwarder already took towns' goods on consignment and sold them with its own (`post.rs`). Now each lot pays the hub
+  `storage_fee` (0.01) a day for each stack of it unsold, off its proceeds before they're remitted, after the commission
+  and the fare (`Lot::rent`; what's left owing on a lot the forwarder bought out at its floor is forgiven); a hub takes
+  at most `rent_slots` (54) stacks on consignment from wagons at once (`Forwarder::rented_stacks`); and what it holds
+  on consignment neither goes off nor pays the inventory tax there: its renters pay for its keeping. A stack of food
+  beyond what a town wants loses about 2% a day at home to spoilage and 0.2% to the tax; kept at a hub near its buyers
+  it costs its rent, about 0.3% of a stack of wheat. `enterprise-sim --money` sums the rent paid.
 - **Road pricing, the first: a stop tolls by weight and distance (John, 2026-11-03: "tolls based on wagon weight x
   distance traveled at/between way stations"; "Replace the flat fee").** A wagon of another town home again pays each
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out

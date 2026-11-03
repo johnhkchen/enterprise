@@ -39,7 +39,8 @@ fn capital(crown: &crate::realms::Crown, towns: &Towns) -> Option<usize> {
 
 pub fn assess(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, crown: Res<crate::realms::Crown>,
         territory: Res<crate::territory::Territory>, map: Res<crate::map::Map>, mut taxes: ResMut<Taxes>,
-        book: Res<crate::contracts::Book>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
+        book: Res<crate::contracts::Book>, pallets: Res<crate::pallet::Pallets>, forwarder: Res<crate::post::Forwarder>,
+        routes: Query<&Route>,
         places: Query<(&Town, &Stock)>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let Some(capital) = capital(&crown, &towns) else { return };
@@ -56,7 +57,10 @@ pub fn assess(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, crown
     realm.dedup();
     for t in realm {
         let Ok((place, stock)) = places.get(towns.0[t]) else { continue };
-        let aside = crate::cargo::set_aside_all(&book, &pallets, t, content.goods.len(), now, content.day_ticks);
+        let mut aside = crate::cargo::set_aside_all(&book, &pallets, t, content.goods.len(), now, content.day_ticks);
+        for (g, a) in aside.iter_mut().enumerate() {
+            *a = a.max(0.0) + forwarder.on_consignment(t, g); // (others' goods a hub keeps on consignment)
+        }
         let held = held_beyond(&content, &stock.0, &aside);
         if held > 0.0 {
             *taxes.goods_owed.entry(t).or_default() += held * content.dials.inventory_tax * days;

@@ -305,7 +305,8 @@ pub struct Booking {
 }
 
 /// Goods on consignment at a hub (`Forwarder.Lot`): the town's, of a good, how many, how many sold and for what (in
-/// emeralds, not yet remitted), the collection's fare still to come off, and since when.
+/// emeralds, not yet remitted), the collection's fare still to come off, and since when; and the rent it owes the hub
+/// for the stacks it kept there unsold (`storage_fee` a stack a day), and when it last paid.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Lot {
     pub hub: TownId,
@@ -316,6 +317,10 @@ pub struct Lot {
     pub proceeds: crate::fixed::Fixed,
     pub fare: crate::fixed::Fixed,
     pub since: u64,
+    #[serde(default)]
+    pub rent: crate::fixed::Fixed,
+    #[serde(default)]
+    pub rented: Option<u64>,
 }
 
 /// The forwarders at every hub (`Forwarder`): towns' bookings, lots on consignment, the collections due (hub, town),
@@ -328,6 +333,9 @@ pub struct Forwarder {
     pub remitted: crate::fixed::Fixed,
     pub commission: crate::fixed::Fixed,
     pub consigned: f64,
+    /// The rent its hubs kept off their lots, all told.
+    #[serde(default)]
+    pub rents: crate::fixed::Fixed,
 }
 
 /// A collection a hub's forwarder decided on: the town, and the worth of its goods for sale (the call's).
@@ -388,7 +396,14 @@ impl Forwarder {
 
     /// A lot of the town's goods on consignment at the hub, its collection's fare to come off its proceeds.
     pub fn lot(&mut self, hub: TownId, town: TownId, good: GoodId, count: f64, fare: crate::fixed::Fixed, now: u64) {
-        self.lots.push(Lot { hub, town, good, count, sold: 0.0, proceeds: crate::fixed::Fixed::ZERO, fare, since: now });
+        self.lots.push(Lot { hub, town, good, count, sold: 0.0, proceeds: crate::fixed::Fixed::ZERO, fare, since: now,
+            rent: crate::fixed::Fixed::ZERO, rented: Some(now) });
+    }
+
+    /// The stacks on consignment at the hub unsold: what its rented warehouse holds.
+    pub fn rented_stacks(&self, content: &Content, hub: TownId) -> u32 {
+        self.lots.iter().filter(|l| l.hub == hub)
+            .map(|l| crate::cargo::stacks_of(content, l.good, (l.count - l.sold).max(0.0))).sum()
     }
 
     /// Of a good, what's on consignment at the hub and not yet sold.
@@ -425,17 +440,20 @@ impl Forwarder {
     pub fn consign_unsold(&mut self, content: &Content, hub: TownId, town: TownId, cargo: &mut [f64], now: u64,
             room: impl Fn(GoodId) -> f64) -> Vec<(GoodId, f64)> {
         let mut taken = Vec::new();
+        // As far as its rented warehouse has stacks free.
+        let mut free = content.dials.rent_slots.saturating_sub(self.rented_stacks(content, hub)) as f64;
         for (g, n) in cargo.iter_mut().enumerate() {
             if *n <= 0.0 || content.goods[g].value <= 0.0 {
                 continue;
             }
-            let can = (room(g) - self.on_consignment(hub, g)).max(0.0);
             let stack = content.goods[g].stack.max(1) as f64;
+            let can = (room(g) - self.on_consignment(hub, g)).max(0.0).min(free * stack);
             let take = if *n <= can { *n } else { ((can / stack).floor() * stack).min(*n) };
             if take <= 0.0 {
                 continue;
             }
             *n -= take;
+            free -= (take / stack).ceil();
             taken.push((g, take));
         }
         for &(g, count) in &taken {
@@ -468,8 +486,14 @@ impl Forwarder {
                 lot.sold = lot.count;
                 done = true;
             }
+            // Its rent for the days since it last paid, a stack unsold a day.
+            let since = lot.rented.unwrap_or(lot.since);
+            let days = now.saturating_sub(since) as f64 / content.day_ticks.max(1) as f64;
+            let stacks = crate::cargo::stacks_of(content, lot.good, (lot.count - lot.sold).max(0.0)) as f64;
+            lot.rent += crate::fixed::Fixed::round(stacks * d.storage_fee * days);
+            lot.rented = Some(now);
             let take = lot.proceeds.mul_floor(d.consign_commission);
-            let net = lot.proceeds - take - lot.fare;
+            let net = lot.proceeds - take - lot.fare - lot.rent;
             if net < crate::fixed::Fixed::ONE && !done {
                 keep.push(lot); // less than an emerald yet: it waits for more to sell
                 continue;
@@ -484,8 +508,14 @@ impl Forwarder {
                 self.remitted += net;
             }
             self.commission += take;
+            // The rent paid, as far as its proceeds went beyond the commission and the fare; what's left of it on a lot
+            // done is forgiven (the hub has what was left at its floor).
+            let paid = (lot.proceeds - take - lot.fare).at_least_zero().min(lot.rent);
+            self.rents += paid;
+            let forgiven = if done { lot.rent - paid } else { crate::fixed::Fixed::ZERO };
+            lot.rent = crate::fixed::Fixed::ZERO;
             // what the fare left owing, from the next of its sales
-            lot.fare = if net.is_negative() { -net } else { crate::fixed::Fixed::ZERO };
+            lot.fare = if net.is_negative() { (-net - forgiven).at_least_zero() } else { crate::fixed::Fixed::ZERO };
             lot.proceeds = crate::fixed::Fixed::ZERO;
             if !(done && !lot.fare.is_positive()) {
                 keep.push(lot);

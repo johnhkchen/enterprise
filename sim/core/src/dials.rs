@@ -554,6 +554,11 @@ dials! {
     /// what's left itself (`CONSIGN_COMMISSION`, `CONSIGN_DAYS`).
     consign_commission: f64 = 0.1,
     consign_days: f64 = 20.0,
+    /// A hub's rented warehouse (John, 2026-11-03: "Rented warehouse at hubs", "Storage fees to the owner"): what a lot
+    /// on consignment there pays it a day for each stack unsold, off its proceeds, and the stacks it takes on
+    /// consignment from wagons at most.
+    storage_fee: f64 = 0.01,
+    rent_slots: u32 = 54,
     // war-army (`army.rs`: `army/Army.java`, `market/Sovereign.java` `SOLDIER_PAY`, `territory/Territory.java` `mourn`)
     /// A campaign day's chance of a soldier falling, before its kit (`Army.DEATH_BASE`).
     death_base: f64 = 0.02,
