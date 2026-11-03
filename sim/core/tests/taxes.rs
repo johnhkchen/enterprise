@@ -69,6 +69,26 @@ fn a_towns_wagon_carries_its_land_tax_to_the_capital() {
 }
 
 #[test]
+fn a_town_holding_more_than_it_wants_pays_inventory_tax_and_one_holding_less_none() {
+    // John: "Inventory tax". The farm holds 2,000 wheat beyond the 64 it wants, 100 emeralds' worth; its wagon pays at
+    // the capital.
+    let (mut s, farm, mill) = farm_and_mill();
+    s.name_capital(mill, 0);
+    s.deliver(farm, 0, 2064.0);
+    s.advance(20 * DAY);
+    let (owed, paid) = s.inventory_tax(farm);
+    assert!(paid.to_f64() > 0.0, "its wagon paid it: owing {owed}, paid {paid}");
+    let book = s.cash_book(mill, 30);
+    assert!(book.iter().any(|(_, w, n)| w == "inventory tax" && n.to_f64() > 0.0), "into the capital's treasury: {book:?}");
+    // The farm holding only its own harvest pays a good deal less.
+    let (mut s, farm, mill) = farm_and_mill();
+    s.name_capital(mill, 0);
+    s.advance(20 * DAY);
+    let plain = s.inventory_tax(farm);
+    assert!((plain.0 + plain.1).to_f64() * 2.0 < (owed + paid).to_f64(), "{plain:?} against {:?}", (owed, paid));
+}
+
+#[test]
 fn a_town_off_the_capitals_roads_owes_nothing() {
     let (mut s, farm, mill) = farm_and_mill();
     let far = s.add_town("Faraway", 50.0);

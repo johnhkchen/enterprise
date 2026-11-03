@@ -1,7 +1,8 @@
 //! Taxes' steps (`taxes.rs`):
 //!
 //! - **Assess** (Review): once a day, each town with a road to or from the capital owes the crown the rent of the hexes
-//!   it holds for the days since the last assessment.
+//!   it holds for the days since the last assessment, and its inventory tax on what it holds beyond what it wants
+//!   (`taxes::held_beyond`).
 //! - **Collect** (at the far end, after the bonds): the capital's wagon takes what the town here owes out of its
 //!   treasury; a town's wagon at the capital pays what its town owes out of its purse. What's collected goes to the
 //!   king's highways.
@@ -18,7 +19,8 @@ use crate::bonds::Bonds;
 use crate::cash_book::{post, CashBook, Side};
 use crate::content::Content;
 use crate::state::*;
-use crate::taxes::{congestion_reason, customs_reason, harbour_reason, land_rent, land_tax_reason, Taxes};
+use crate::taxes::{congestion_reason, customs_reason, harbour_reason, held_beyond, inventory_tax_reason, land_rent,
+    land_tax_reason, Taxes};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
@@ -37,7 +39,8 @@ fn capital(crown: &crate::realms::Crown, towns: &Towns) -> Option<usize> {
 
 pub fn assess(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, crown: Res<crate::realms::Crown>,
         territory: Res<crate::territory::Territory>, map: Res<crate::map::Map>, mut taxes: ResMut<Taxes>,
-        routes: Query<&Route>, places: Query<&Town>) {
+        book: Res<crate::contracts::Book>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
+        places: Query<(&Town, &Stock)>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let Some(capital) = capital(&crown, &towns) else { return };
     let last = *taxes.assessed.get_or_insert(now);
@@ -52,9 +55,14 @@ pub fn assess(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, crown
     realm.sort();
     realm.dedup();
     for t in realm {
+        let Ok((place, stock)) = places.get(towns.0[t]) else { continue };
+        let aside = crate::cargo::set_aside_all(&book, &pallets, t, content.goods.len(), now, content.day_ticks);
+        let held = held_beyond(&content, &stock.0, &aside);
+        if held > 0.0 {
+            *taxes.goods_owed.entry(t).or_default() += held * content.dials.inventory_tax * days;
+        }
         let Some(holding) = territory.holding(t) else { continue };
-        let home = places.get(towns.0[t]).ok().and_then(|p| p.hex);
-        let rent: f64 = holding.hexes.iter().map(|&h| land_rent(&content, &map, h, Some(h) == home)).sum();
+        let rent: f64 = holding.hexes.iter().map(|&h| land_rent(&content, &map, h, Some(h) == place.hex)).sum();
         *taxes.land_owed.entry(t).or_default() += rent * days;
     }
 }
@@ -76,17 +84,21 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, crow
         let paid = if route.from_id == capital {
             // The capital's wagon collects from the town here.
             let pay = taxes.owed(route.to_id).min(here.0.at_least_zero());
+            let (land, goods) = taxes.paid(route.to_id, pay);
             post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut here.0), Side::wagon(route.seq, &mut wagon.purse),
-                pay, land_tax_reason(), now, day);
-            taxes.paid(route.to_id, pay);
+                land, land_tax_reason(), now, day);
+            post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut here.0), Side::wagon(route.seq, &mut wagon.purse),
+                goods, inventory_tax_reason(), now, day);
             pay
         } else {
             // The town's wagon pays at the capital, out of the purse, keeping its road food home.
             let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
             let pay = taxes.owed(route.from_id).min((wagon.purse - keep).at_least_zero());
+            let (land, goods) = taxes.paid(route.from_id, pay);
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(capital, &mut here.0),
-                pay, land_tax_reason(), now, day);
-            taxes.paid(route.from_id, pay);
+                land, land_tax_reason(), now, day);
+            post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(capital, &mut here.0),
+                goods, inventory_tax_reason(), now, day);
             pay
         };
         bonds.highways += paid;

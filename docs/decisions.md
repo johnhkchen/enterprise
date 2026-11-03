@@ -1455,6 +1455,12 @@ mod's), but no road ever chose it. Then: build them first.
   Lumberjack's marbles; the training desk and a hub's fill still count the whole warehouse. The host has no kit for
   either yet (`hall:armory`, `hall:storehouse`: the dwarves', goblins', night elves', orcs' and tauren's harbour
   warehouses could serve the storehouse): built, they stand in the core unlaid until the asset studio gives them one.
+- **The crown levies an inventory tax on what a town holds beyond what it wants (John, 2026-11-03: "Inventory
+  tax").** The second holding cost. Each day the crown assesses each town on its roads, as the land tax, at
+  `inventory_tax` (0.002) of the worth of what it holds beyond `spoil_keep` (64) of each good and what it set aside for
+  its forward sales (`taxes::held_beyond`): a warehouse of 2,000 wheat beyond its 64 owes 0.2 emeralds a day. It's owed
+  beside the land tax and collected with it, the land's first (`Taxes::paid`), booked "inventory tax", and goes to the
+  king's highways. Durable goods pay it as perishable ones do: what keeps costs to keep.
 - **Road pricing, the first: a stop tolls by weight and distance (John, 2026-11-03: "tolls based on wagon weight x
   distance traveled at/between way stations"; "Replace the flat fee").** A wagon of another town home again pays each
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out

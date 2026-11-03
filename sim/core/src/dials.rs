@@ -704,6 +704,9 @@ dials! {
     income_tax: f64 = 0.1,
     /// The crown's land value tax a day on a hex of dry land its best crop suits fully (`taxes::land_rent`).
     land_tax: f64 = 0.05,
+    /// The crown's inventory tax a day on the worth of what a town holds beyond what it wants (`spoil_keep` of a good,
+    /// and what it set aside for its forward sales), collected with its land tax (`taxes.rs`).
+    inventory_tax: f64 = 0.002,
     /// A town's VAT on what its households buy, a share of the price besides (`taxes::vat`).
     vat: f64 = 0.05,
     /// What a ship of another town pays a port for each stack it lands there (`taxes.rs`).

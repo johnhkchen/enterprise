@@ -87,6 +87,19 @@ pub fn land_tax_reason() -> Reason {
     Reason::Other("land tax".into())
 }
 
+pub fn inventory_tax_reason() -> Reason {
+    Reason::Other("inventory tax".into())
+}
+
+/// The worth of what a town holds beyond what it wants: `spoil_keep` of each good, and what it set aside for its forward
+/// sales (John, 2026-11-03: "Inventory tax").
+pub fn held_beyond(content: &crate::content::Content, stock: &[f64], aside: &[f64]) -> f64 {
+    stock.iter().enumerate()
+        .map(|(g, &n)| (n - content.dials.spoil_keep - aside.get(g).copied().unwrap_or(0.0).max(0.0)).max(0.0)
+            * content.goods[g].value)
+        .sum()
+}
+
 /// The crown's land value tax: what each town owes on the hexes it holds, assessed each day while it's on the
 /// capital's roads, and what it has paid.
 #[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -96,19 +109,32 @@ pub struct Taxes {
     pub peoples: std::collections::BTreeMap<usize, String>,
     pub land_owed: std::collections::BTreeMap<usize, f64>,
     pub land_paid: std::collections::BTreeMap<usize, Fixed>,
+    /// Each town's inventory tax owed and paid (`held_beyond`).
+    #[serde(default)]
+    pub goods_owed: std::collections::BTreeMap<usize, f64>,
+    #[serde(default)]
+    pub goods_paid: std::collections::BTreeMap<usize, Fixed>,
     /// When the land was last assessed.
     pub assessed: Option<u64>,
 }
 
 impl Taxes {
-    /// What a town owes of its land tax, in whole thousandths.
+    /// What a town owes of its land and inventory taxes, in whole thousandths.
     pub fn owed(&self, town: usize) -> Fixed {
-        Fixed::floor(self.land_owed.get(&town).copied().unwrap_or(0.0))
+        Fixed::floor(self.land_owed.get(&town).copied().unwrap_or(0.0) + self.goods_owed.get(&town).copied().unwrap_or(0.0))
     }
 
-    pub fn paid(&mut self, town: usize, amount: Fixed) {
-        *self.land_owed.entry(town).or_default() -= amount.to_f64();
-        *self.land_paid.entry(town).or_default() += amount;
+    /// `amount` paid of what a town owes: its land tax first, then its inventory tax. Returns the two parts.
+    pub fn paid(&mut self, town: usize, amount: Fixed) -> (Fixed, Fixed) {
+        let land = amount.min(Fixed::floor(self.land_owed.get(&town).copied().unwrap_or(0.0)).at_least_zero());
+        let goods = amount - land;
+        *self.land_owed.entry(town).or_default() -= land.to_f64();
+        *self.land_paid.entry(town).or_default() += land;
+        if goods > Fixed::ZERO {
+            *self.goods_owed.entry(town).or_default() -= goods.to_f64();
+            *self.goods_paid.entry(town).or_default() += goods;
+        }
+        (land, goods)
     }
 }
 
@@ -121,6 +147,12 @@ impl crate::society::Society {
     /// What each town owes of its land tax, and has paid.
     pub fn land_tax(&self, town: usize) -> (Fixed, Fixed) {
         let t = self.world.resource::<Taxes>();
-        (t.owed(town), t.land_paid.get(&town).copied().unwrap_or_default())
+        (Fixed::floor(t.land_owed.get(&town).copied().unwrap_or(0.0)), t.land_paid.get(&town).copied().unwrap_or_default())
+    }
+
+    /// What each town owes of its inventory tax, and has paid.
+    pub fn inventory_tax(&self, town: usize) -> (Fixed, Fixed) {
+        let t = self.world.resource::<Taxes>();
+        (Fixed::floor(t.goods_owed.get(&town).copied().unwrap_or(0.0)), t.goods_paid.get(&town).copied().unwrap_or_default())
     }
 }
