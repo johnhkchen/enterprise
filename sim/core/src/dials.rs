@@ -699,4 +699,6 @@ dials! {
     // Taxes (`taxes.rs`; John: "Next let's talk taxation").
     /// The share of every wage and earning a town withholds at the source for its treasury.
     income_tax: f64 = 0.1,
+    /// The crown's land value tax a day on a hex of dry land its best crop suits fully (`taxes::land_rent`).
+    land_tax: f64 = 0.05,
 }

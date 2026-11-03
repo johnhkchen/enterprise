@@ -47,6 +47,7 @@ pub mod services;
 pub mod squad;
 pub mod sourcing;
 pub mod stranded;
+pub mod taxes;
 pub mod territory;
 pub mod touch;
 pub mod training;

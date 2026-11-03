@@ -1386,6 +1386,15 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Taxes, the second: the crown's land value tax pays for its highways (John, 2026-11-03: "Land value tax: the
+  least distorting tax there is, held back only by assessment difficulty"; "Towns and crown split").** The core sees
+  every hex, so the assessor is perfect: a hex's rent a day is `land_tax` (0.05) for dry land its best crop suits
+  fully, less for its water and a poorer fit, twice that for a town's home hex (`taxes::land_rent`). Each day a town
+  with a road to or from the capital owes the rent of every hex it holds, whatever it does with them; the capital's
+  wagon collects it out of the treasury where it calls, and a town's wagon to the capital carries it in its purse
+  (`rules/taxes.rs`, after the bonds at the far end). What's collected goes to the king's highways (`Bonds::highways`).
+  A town off the capital's roads owes nothing: no carrier, no tax. Next: a town in arrears letting its poorest hex go,
+  ground for new hamlets.
 - **Taxes, the first: a town withholds income tax at the source (John, 2026-11-03: "Next let's talk taxation";
   withheld payroll and income tax, land value tax, VAT; "Towns and crown split"; Pigouvian "Skip it for now").** The
   core's households are one purse a town: a tax moves money between that purse and a treasury, not between rich and
