@@ -2,7 +2,7 @@
 //! it grows food; a stop rises a level out of what it banked, its keepers putting it up in a few days; its town matches what it
 //! takes for the road works by it.
 
-use enterprise_core::waystations::{fee, food_kept, rise_cost, rise_days, GRADE_COST};
+use enterprise_core::waystations::{food_kept, road_reach, rise_cost, rise_days, toll_per_stack_hex, GRADE_COST};
 use enterprise_core::works::What;
 use enterprise_core::{Content, Good, Hex, Society};
 
@@ -45,7 +45,11 @@ fn a_wagon_passing_a_stop_pays_for_water_and_a_rest() {
     let st = s.waystations().into_iter().find(|w| w.hex == stop).expect("on the books");
     assert_eq!(st.level, 1);
     assert!(st.passes > 0, "the hub's wagons stopped: {st:?}; {} trips, whys {:?}", s.route(0).trips, s.whys(0).iter().map(|w| w.line.clone()).collect::<Vec<_>>());
-    assert!((st.taken.to_f64() - st.passes as f64 * 2.0 * fee(1)).abs() < 1e-6, "a stop's fee each way: {st:?}");
+    // By weight and distance: at least a stack over a hex a pass, at most every stack it could carry each way over the
+    // stretch the stop keeps (5 hexes of a straight road), rounded down to the thousandth.
+    let (least, kept) = (toll_per_stack_hex(1), (2 * road_reach(1) + 1) as f64);
+    assert!(st.taken.to_f64() >= st.passes as f64 * (least - 0.001), "a stop's toll, each pass: {st:?}");
+    assert!(st.taken.to_f64() <= st.passes as f64 * least * kept * 2.0 * 27.0, "no more than its stacks over its stretch: {st:?}");
     assert_eq!(st.meals, 0.0, "a stop grows no food");
     let works = st.laid as f64 * GRADE_COST;
     assert!((st.roads.to_f64() + works - st.taken.to_f64()).abs() < 1e-6, "Inkwell matched each emerald taken for its roads: {st:?}");

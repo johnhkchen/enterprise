@@ -4,7 +4,8 @@
 //!   counted; a level its keepers finished stands; and one that banked its next level's cost, its town's treasury
 //!   holding it, starts putting it up.
 //! - **Serve:** a wagon home again paid each stop it passed within a hex of, there and back, that isn't its own
-//!   town's or its far end's: the rest, and its crew's meals where the stop grows food. Paid to the stop's town,
+//!   town's or its far end's: its toll by the stacks it carried each way and the hexes of the stop's stretch it crossed,
+//!   and its crew's meals where the stop grows food. Paid to the stop's town,
 //!   banked to the stop; its town pledges as much again to the roads by it.
 //! - **Mend:** once a day a stop lays a surface on the most worn trail hex of a road by it, within its reach, that its
 //!   level can better: graded, then paved; out of its town's pledge, paid from its treasury while it has the spare.
@@ -65,8 +66,9 @@ pub fn keep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut way
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn serve(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut ways: ResMut<Waystations>,
-        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut money: Query<&mut Money>,
+        pallets: Res<crate::pallet::Pallets>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut money: Query<&mut Money>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
     if ways.stations.is_empty() {
         return;
@@ -79,14 +81,17 @@ pub fn serve(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut wa
         if state.arrived != Some(Leg::Home) || route.carrier == crate::map::Carrier::Ship {
             continue;
         }
+        // The stacks it carried out and home.
         let Some(wagon) = state.wagon.as_mut() else { continue };
+        let carried = (wagon.stacks_out + crate::cargo::stacks(&content, &pallets, route.seq, wagon)) as f64;
         let mouths = crate::road::mouths(Some(wagon));
         for s in ways.stations.iter_mut() {
             if s.owner == route.from_id || s.owner == route.to_id || !path.0.iter().any(|h| h.distance(s.hex) <= 1) {
                 continue;
             }
             let meals = if food_a_day(s.level) > 0.0 { (2.0 * mouths).min(s.food.floor()) } else { 0.0 };
-            let due = 2.0 * fee(s.level) + meals * content.dials.purse_per_food_point * MEAL_MARKUP;
+            let kept = path.0.iter().filter(|h| h.distance(s.hex) <= road_reach(s.level)).count() as f64;
+            let due = toll_per_stack_hex(s.level) * carried * kept + meals * content.dials.purse_per_food_point * MEAL_MARKUP;
             let paid = Fixed::floor(due).min(wagon.purse.at_least_zero());
             let Some(&e) = towns.0.get(s.owner) else { continue };
             let Ok(mut m) = money.get_mut(e) else { continue };

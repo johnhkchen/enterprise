@@ -290,6 +290,10 @@ pub struct Wagon {
     /// Itineraries (`freight.rs` `Itinerary`, `itinerary-drops`): this leg's calls in order, the ticks between, and the
     /// call it's bound for; each manifest line drops at one of them (`Line.drop`).
     pub itinerary: crate::freight::Itinerary,
+    /// The stacks it set out with (`Output::WagonLeft`'s): what a stop's toll weighs it by on the way out
+    /// (`waystations.rs`).
+    #[serde(default)]
+    pub stacks_out: u32,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

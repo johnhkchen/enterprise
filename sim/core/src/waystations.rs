@@ -4,11 +4,11 @@
 //! from then on it keeps itself, its takings banked in its town's treasury (`Station::banked`), and grows a level when
 //! they pay for it:
 //!
-//! - **1, a stop:** a trough and a roof. A wagon of another town passing within a hex of it pays [`fee`] each way, for
-//!   water and a rest.
+//! - **1, a stop:** a trough and a roof. A wagon of another town passing within a hex of it pays its toll each way, by
+//!   the stacks it carries and the hexes of the stop's stretch it crosses ([`toll_per_stack_hex`]).
 //! - **2, a waystation** (the people's kit): a kitchen garden besides, its food grown [`food_a_day`] and kept to
 //!   [`food_kept`], sold to a passing wagon's crew a meal a mouth each way at bread's worth and [`MEAL_MARKUP`].
-//! - **3, a caravan inn** (the people's inn or caravanserai): more food, a dearer rest.
+//! - **3, a caravan inn** (the people's inn or caravanserai): more food, a dearer toll.
 //!
 //! A level is paid out of what the stop banked ([`rise_cost`]), and its keepers put it up in [`rise_days`]: a town's own
 //! works go on meanwhile. Its own town's wagons rest free.
@@ -26,9 +26,12 @@ use crate::hex::Hex;
 /// The top level: a caravan inn.
 pub const TOP: u8 = 3;
 
-/// Emeralds a passing wagon pays a stop of this level, each way, for water and a rest.
-pub fn fee(level: u8) -> f64 {
-    [0.0, 0.1, 0.2, 0.3][level.min(TOP) as usize]
+/// Emeralds a passing wagon pays a stop of this level for each stack it carries over each hex of the stretch the stop
+/// keeps (within its [`road_reach`] of it, along the wagon's path), each way (John, 2026-11-03: "tolls based on wagon
+/// weight x distance traveled at/between way stations"): heavy loads over long kept roads pay most; an empty wagon
+/// rests free.
+pub fn toll_per_stack_hex(level: u8) -> f64 {
+    [0.0, 0.004, 0.006, 0.008][level.min(TOP) as usize]
 }
 
 /// Food points a stop of this level grows a day, and keeps at most.
