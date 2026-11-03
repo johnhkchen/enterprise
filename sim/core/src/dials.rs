@@ -312,6 +312,17 @@ dials! {
     /// are, villagers fall short of their comforts, for the players' industry to fill (John: "Doesn't make sense if
     /// villagers by default produced such abundance that they never go without").
     plots_per_farmer_level: u32 = 40,
+    // property (`property.rs`)
+    /// Days estate land lies untended, a field's worth, before a Farmer household with room homesteads it.
+    homestead_days: f64 = 20.0,
+    /// Fields a household holds a grown Farmer of it, at most, as it takes them: claims capped by its labour.
+    fields_per_farmer: f64 = 1.0,
+    /// The share of what a let field earns its tenant pays its owner.
+    lease_share: f64 = 0.5,
+    /// Days a household leaves its field to others or idle before it sells it, to a Farmer household that can pay.
+    idle_sale_days: f64 = 30.0,
+    /// A field's price between households: this many days of what it earns.
+    land_price_days: f64 = 30.0,
     /// What a piece of the finer tier (dyed and enchanted, bought of a town's own villagers: a Leatherworker's armour)
     /// is worth in comfort, plain ones being 1: a day met with it lifts the mood up to this many plain days' (at most
     /// two), and the households pay its worth times it (John: "we'd want the happiness boost to make buying equipment

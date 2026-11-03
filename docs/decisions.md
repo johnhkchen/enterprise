@@ -2469,3 +2469,36 @@ groups not people. Step 1 (records) was mostly here already: every villager is a
   a reputation), none founded; a firm's treasury joins the ledger when firms are founded. The parties are the crown, a
   town, a household and a firm (`charters::Party`). `enterprise-sim --money` counts them and the households' purses; the
   trace's `households` table has each household's members, earners and purse by day.
+
+## Society: property (2026-11-03)
+
+Step 2 of "How to Add Society Systems to the Sim" (John: "Step 2"): "Property turns one profession into three social
+positions. A farmer can own land, rent it, or work it for wages." The farm already had the shape of it: a town's farm
+is its estate, its Farmers on wages for a share of the harvest, and the households' purse bought fields of their own
+(freeholds, `LAND_EMERALDS`), on which the Farmers keep at least three quarters (`farms::FREEHOLD_SHARE`). Those
+freeholds were everyone's. Now each is one household's field (`property.rs`, `rules/property.rs`, daily):
+
+- **Bought:** the farm buys a field for the Farmer household with room for one that holds most (`property::
+  richest_farmer`: fewer fields than `fields_per_farmer` (1) a grown Farmer of it, claims capped by labour), and only
+  when that household's own share pays for it; what it paid out of the households' purse is its own at the next share-out
+  (`Homes::charges`, `households::shares`).
+- **Homesteaded:** estate land left untended, a field's worth of plots for `homestead_days` (20), is taken by the Farmer
+  household with room that holds least: the plots become its freehold. Any other that could have taken it is left with
+  a dispute (`Contest::Homestead`).
+- **Worked or let:** a household works as many of its fields as it has grown Farmers and lets the rest to a Farmer
+  household with hands to spare, for `lease_share` (0.5) of what the field earns (`Lease`).
+- **Inherited:** a household left empty passes its fields to its kin, the household its first hand moved out of
+  (`Household::kin`); with no kin left, the town takes them back into its estate, and a tenant working one is left with
+  a dispute (`Contest::Inheritance`).
+- **Sold:** a field its household hasn't worked itself for `idle_sale_days` (30) is sold to a Farmer household with room
+  that can pay `land_price_days` (30) of what it earns (about 45 emeralds for a field of wheat), its tenant first.
+- **What a field earns moves the shares, not money.** Its share of the Farmers' wages the town paid (its plots of those
+  tended) moves from all the households, who shared the purse's gains by their earners, to the household working it,
+  and of that its rent to its owner (`households::gather`, `pay`). The ledger doesn't see it: the shares still add up to
+  the one purse.
+- **Disputes are left open,** a backlog for the leaders of step 5. Each household stands as an owner, a tenant, a
+  landlord, a labourer (a Farmer's household working no field) or none of these (`property::Standing`): the trace's
+  `households` table has it and its fields, its `disputes` table the disputes; `enterprise-sim --money` counts them.
+- **Seed 1717's year, its journal replayed on these rules** (23 of 11,023 requests refused: the game answered the old
+  core): by day 360, 205 owners' households (their purses 316 emeralds on average), 101 labourers' (140), 5 landlords'
+  (412) and 5 tenants' (265); 220 fields; 170 homestead disputes, about four a town.

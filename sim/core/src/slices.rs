@@ -149,4 +149,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::storage::register(schedule);
     crate::rules::households::register(schedule);
     crate::rules::registers::register(schedule);
+    crate::rules::property::register(schedule);
 }

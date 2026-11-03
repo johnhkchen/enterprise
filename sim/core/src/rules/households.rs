@@ -3,7 +3,7 @@
 use bevy_ecs::prelude::*;
 
 use crate::content::Content;
-use crate::households::{allot, earners, homes, Household, Households};
+use crate::households::{allot, earners, homes, shares, Household, Households};
 use crate::roster::Roster;
 use crate::rules::Step;
 use crate::state::*;
@@ -15,7 +15,8 @@ fn grown(roster: &Roster, id: crate::roster::HandId) -> bool {
 
 pub fn register(schedule: &mut Schedule) {
     // (after spoilage and before the jobs' reviews, and so the rest of the reviews: pinned as it was first run)
-    schedule.add_systems(reckon.in_set(Step::Review).after(super::storage::spoil).before(super::jobs::relocate)
+    schedule.add_systems(reckon.in_set(Step::Review).after(super::storage::spoil).after(super::farms::review)
+        .before(super::jobs::relocate)
         .before(super::jobs::review));
 }
 
@@ -36,14 +37,19 @@ pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
         let list = &mut homes_of.list;
         // Their shares as they stand, before any leaves: what the purse gained, its earners earned.
         let weights: Vec<usize> = list.iter().map(|h| earners(roster, h)).collect();
-        let purses = allot(list, &weights, people.purse);
+        let purses = shares(list, &homes_of.charges, &weights, people.purse);
+        homes_of.charges.clear();
         for (h, p) in list.iter_mut().zip(purses) {
             h.purse = p;
         }
         for h in list.iter_mut() {
             h.members.retain(|id| roster.hands.iter().any(|x| x.id == *id));
         }
-        // (What an empty household held is the rest's at the share-out below: the purse is the same, they hold less.)
+        // (What an empty household held is the rest's at the share-out below: the purse is the same, they hold less.
+        // What else it held is its kin's, `rules/property.rs`.)
+        for h in list.iter().filter(|h| h.members.is_empty()) {
+            homes_of.gone.push((h.id, h.kin));
+        }
         list.retain(|h| !h.members.is_empty());
         let housed: std::collections::BTreeSet<_> = list.iter().flat_map(|h| h.members.iter().copied()).collect();
         let room = homes(people.beds);
@@ -52,7 +58,7 @@ pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
             match fewest {
                 Some(i) if hand.baby_until.is_some() || list.len() >= room => list[i].members.push(hand.id),
                 _ => {
-                    list.push(Household { id: households.next, members: vec![hand.id], purse: Default::default(), since: now });
+                    list.push(Household { id: households.next, members: vec![hand.id], since: now, ..Default::default() });
                     households.next += 1;
                 }
             }
@@ -65,7 +71,8 @@ pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
                 .filter_map(|i| list[i].members.iter().skip(1).rposition(|id| grown(roster, *id)).map(|at| (i, at + 1)))
                 .max_by_key(|&(i, _)| (list[i].members.len(), std::cmp::Reverse(i))) else { break };
             let id = list[i].members.remove(at);
-            list.push(Household { id: households.next, members: vec![id], purse: Default::default(), since: now });
+            let kin = Some(list[i].id);
+            list.push(Household { id: households.next, members: vec![id], purse: Default::default(), since: now, kin });
             households.next += 1;
         }
         // And the purse shared again: what the gone held to their kin, a town's first households' from the start.

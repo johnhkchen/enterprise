@@ -37,6 +37,9 @@ pub struct Household {
     pub purse: Fixed,
     /// When it formed.
     pub since: u64,
+    /// The household its first hand moved out of: its kin, who inherit what it holds.
+    #[serde(default)]
+    pub kin: Option<HouseholdId>,
 }
 
 /// A town's households, and the day they were last reckoned.
@@ -44,6 +47,17 @@ pub struct Household {
 pub struct Homes {
     pub list: Vec<Household>,
     pub reckoned: Option<u64>,
+    /// Households gone since the register last followed them, and their kin (`rules/property.rs` hands on what they
+    /// held).
+    #[serde(default)]
+    pub gone: Vec<(HouseholdId, Option<HouseholdId>)>,
+    /// What households paid out of the households' purse for themselves since they were last reckoned (a field:
+    /// `rules/farms.rs`): theirs alone at the next share-out ([`shares`]).
+    #[serde(default)]
+    pub charges: Vec<(HouseholdId, Fixed)>,
+    /// Fields bought since, for whom: (buyer, crop, plots), for the register (`rules/property.rs`).
+    #[serde(default)]
+    pub bought: Vec<(HouseholdId, crate::content::GoodId, u32)>,
 }
 
 /// Every town's households, and the next household's id.
@@ -56,6 +70,44 @@ pub struct Households {
 /// The homes a town of `beds` has: never none.
 pub fn homes(beds: f64) -> usize {
     ((beds / HOME_BEDS).floor() as usize).max(1)
+}
+
+/// Moves `amount` (at most what the others hold) into household `to`'s share from the others', by what each holds.
+/// Returns what moved.
+pub fn gather(list: &mut [Household], to: usize, amount: Fixed) -> Fixed {
+    let others: Fixed = list.iter().enumerate().filter(|&(i, _)| i != to).map(|(_, h)| h.purse.at_least_zero()).sum();
+    let amount = amount.min(others);
+    if !amount.is_positive() {
+        return Fixed::ZERO;
+    }
+    let mut taken = 0;
+    for (i, h) in list.iter_mut().enumerate() {
+        if i != to && h.purse.is_positive() {
+            let share = (amount.millis() as i128 * h.purse.millis() as i128 / others.millis() as i128) as i64;
+            h.purse -= Fixed::from_millis(share);
+            taken += share;
+        }
+    }
+    // (Fewer thousandths left than those holding any, each of which still holds one.)
+    let mut left = amount.millis() - taken;
+    for (i, h) in list.iter_mut().enumerate() {
+        if left > 0 && i != to && h.purse.is_positive() {
+            h.purse -= Fixed::from_millis(1);
+            left -= 1;
+        }
+    }
+    list[to].purse += amount;
+    amount
+}
+
+/// Moves `amount` (at most what it holds) from household `from`'s share to `to`'s. Returns what moved.
+pub fn pay(list: &mut [Household], from: usize, to: usize, amount: Fixed) -> Fixed {
+    let amount = amount.min(list[from].purse.at_least_zero());
+    if from != to && amount.is_positive() {
+        list[from].purse -= amount;
+        list[to].purse += amount;
+    }
+    amount
 }
 
 /// The hands of a household that earn: those grown.
@@ -121,13 +173,25 @@ pub fn allot(list: &[Household], weights: &[usize], total: Fixed) -> Vec<Fixed> 
     purses
 }
 
+/// Each household's purse once `total` is split among them ([`allot`]), what each paid for itself since (`charges`)
+/// out of its own share first, as far as it holds.
+pub fn shares(list: &[Household], charges: &[(HouseholdId, Fixed)], weights: &[usize], total: Fixed) -> Vec<Fixed> {
+    let mut list = list.to_vec();
+    for (id, c) in charges {
+        if let Some(h) = list.iter_mut().find(|h| h.id == *id) {
+            h.purse -= (*c).min(h.purse.at_least_zero());
+        }
+    }
+    allot(&list, weights, total)
+}
+
 impl crate::society::Society {
     /// A town's households, each with its share of the households' purse as of now.
     pub fn households(&self, town: TownId) -> Vec<Household> {
         let Some(homes) = self.world.resource::<Households>().towns.get(&town) else { return Vec::new() };
         let roster = self.roster(town);
         let weights: Vec<usize> = homes.list.iter().map(|h| earners(&roster, h)).collect();
-        let purses = allot(&homes.list, &weights, self.town(town).people.purse);
+        let purses = shares(&homes.list, &homes.charges, &weights, self.town(town).people.purse);
         homes.list.iter().zip(purses).map(|(h, purse)| Household { purse, ..h.clone() }).collect()
     }
 }

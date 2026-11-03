@@ -254,7 +254,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
             Option<&crate::lockers::Lockers>, Option<&mut crate::herds::Herds>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
-        far: Query<(&Roster, &crate::lockers::Lockers)>, market: Res<crate::market::Market>, map: Res<crate::map::Map>) {
+        far: Query<(&Roster, &crate::lockers::Lockers)>, market: Res<crate::market::Market>, map: Res<crate::map::Map>,
+        mut households: ResMut<crate::households::Households>, register: Res<crate::property::Register>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     // What the villagers at the managed lockers of each town's routes' far ends would buy a day (in the routes'
@@ -399,9 +400,20 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
                     Reason::Other("a pasture".into()), now, day);
             }
         }
-        // A household with the price of a field in purse and credit buys one of its own, where there are hands for it.
+        // A household with the price of a field in purse and credit buys one of its own, where there are hands for it:
+        // a Farmer's household, its share of the households' purse as they were last reckoned (`property.rs`), a
+        // town without households (no roster) its purse.
         let land = Fixed::ceil(LAND_EMERALDS);
-        if people.purse + farm.credit >= land && farm.spare_plots >= FIELD_SIZE * FIELD_SIZE / 3
+        let buyer = match (households.towns.get(&t), roster) {
+            (Some(h), Some(roster)) if !h.list.is_empty() => crate::property::richest_farmer(&content, roster, &register, t, &h.list),
+            _ => None,
+        };
+        let purse = match buyer {
+            Some((_, p)) => p.min(people.purse),
+            None if households.towns.get(&t).is_some_and(|h| !h.list.is_empty()) => Fixed::ZERO,
+            None => people.purse,
+        };
+        if purse + farm.credit >= land && farm.spare_plots >= FIELD_SIZE * FIELD_SIZE / 3
             && room_for_a_field(farm) {
             let crop = choose(&content, &Wants { needs: BTreeMap::new(), ..wants.clone() }, &planted(farm), food,
                 farm.focus.food_only()).or_else(|| content.good("wheat"));
@@ -414,6 +426,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
                 let plots = field_plots(&content, crop);
                 farm.freeholds += plots;
                 farm.fields_planted += 1;
+                // The buyer's: its field, and what it paid out of the households' purse its own (`property.rs`).
+                if let (Some((h, _)), Some(homes)) = (buyer, households.towns.get_mut(&t)) {
+                    homes.charges.push((h, paid));
+                    homes.bought.push((h, crop, plots));
+                }
                 *farm.plots.entry(crop).or_insert(0) += plots;
             }
         }

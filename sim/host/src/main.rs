@@ -151,6 +151,15 @@ fn main() {
         println!("households: {} (purses: least {:.1}, median {:.1}, most {:.1}); {} claims; {} charters; {} mandates in force; {} firms",
             purses.len(), at(0.0), at(0.5), at(1.0), s.land_register().claims.len(), c.charters.len(),
             c.mandates.iter().filter(|m| m.until.is_none()).count(), s.firms().len());
+        let mut by: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+        for t in 0..s.town_count() {
+            for (_, st) in s.standings(t) {
+                *by.entry(st.name()).or_default() += 1;
+            }
+        }
+        let r = s.land_register();
+        println!("the land: {} fields ({} let); households {}; {} disputes open", r.fields.len(), r.leases.len(),
+            by.iter().map(|(k, n)| format!("{n} {k}")).collect::<Vec<_>>().join(", "), r.disputes.len());
         let (highways, laid) = s.highways();
         println!("king's highways: {:.1} to spend, {laid} hexes laid", highways.to_f64());
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();

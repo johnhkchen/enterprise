@@ -89,7 +89,7 @@ create table farms (day integer, town integer, crop text, plots integer, per_day
 create table works (day integer, town integer, what text, progress real, done integer, mood real);
 create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real, land text);
 create table stock (day integer, town integer, good text, count real);
-create table households (day integer, town integer, household integer, members integer, earners integer, purse real);
+create table households (day integer, town integer, household integer, members integer, earners integer, purse real, standing text, fields integer);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -104,6 +104,7 @@ create table whys (day integer, town integer, name text, line text, times intege
 create table cash (town integer, name text, day integer, what text, amount real);
 create table paths (route integer, step integer, q integer, r integer);
 create table trails (q integer, r integer, width integer, wear real);
+create table disputes (id integer, town integer, target text, claimants text, why text, day integer);
 ";
 
 /// Replays `requests` into `conn`, writing the tables above (`no_rivers`: as [`trace_file`]'s).
@@ -276,9 +277,12 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             }
         }
         let roster = s.roster(t);
-        for h in s.households(t) {
-            tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6)", params![day, t, h.id, h.members.len(),
-                enterprise_core::households::earners(&roster, &h), h.purse.to_f64()]).map_err(sql)?;
+        let (standings, register) = (s.standings(t), s.land_register());
+        for (h, (_, st)) in s.households(t).into_iter().zip(standings) {
+            let fields = register.held_by(enterprise_core::charters::Party::Household(h.id))
+                .filter(|(k, _)| matches!(k, enterprise_core::property::Target::Field(_))).count();
+            tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, h.id, h.members.len(),
+                enterprise_core::households::earners(&roster, &h), h.purse.to_f64(), st.name(), fields]).map_err(sql)?;
         }
     }
     let mut q = s.world.query::<(&Route, &RouteState)>();
@@ -413,6 +417,10 @@ fn finals(tx: &rusqlite::Transaction, society: &mut Option<Society>, (abi, schem
             for (step, hex) in s.route_path(route).unwrap_or_default().into_iter().enumerate() {
                 tx.execute("insert into paths values (?1, ?2, ?3, ?4)", params![route, step, hex.q, hex.r]).map_err(sql)?;
             }
+        }
+        for d in &s.land_register().disputes {
+            tx.execute("insert into disputes values (?1, ?2, ?3, ?4, ?5, ?6)", params![d.id, d.town, format!("{:?}", d.target),
+                format!("{:?}", d.claimants), format!("{:?}", d.why), d.since / s.content().day_ticks.max(1)]).map_err(sql)?;
         }
         let (map, now, day) = (s.map(), s.now(), s.content().day_ticks);
         for &hex in &map.trails {

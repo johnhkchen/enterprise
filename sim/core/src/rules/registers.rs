@@ -72,7 +72,9 @@ pub fn register_claims(clock: Res<Clock>, content: Res<Content>, towns: Res<Town
         }
     }
     let register = &mut *register;
-    register.claims.retain(|target, c| held.get(target).is_some_and(|(owner, _)| *owner == c.owner));
+    // (A field's claim is property's: `rules/property.rs`.)
+    register.claims.retain(|target, c| matches!(target, Target::Field(_))
+        || held.get(target).is_some_and(|(owner, _)| *owner == c.owner));
     for (target, (owner, how)) in held {
         if !register.claims.contains_key(&target) {
             register.claims.insert(target, Claim { id: register.next, owner, how, since: now });
