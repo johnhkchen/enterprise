@@ -89,6 +89,7 @@ create table farms (day integer, town integer, crop text, plots integer, per_day
 create table works (day integer, town integer, what text, progress real, done integer, mood real);
 create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real, land text);
 create table stock (day integer, town integer, good text, count real);
+create table households (day integer, town integer, household integer, members integer, earners integer, purse real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -273,6 +274,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             if n.abs() >= 1e-9 {
                 tx.execute("insert into stock values (?1, ?2, ?3, ?4)", params![day, t, goods[g], n]).map_err(sql)?;
             }
+        }
+        let roster = s.roster(t);
+        for h in s.households(t) {
+            tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6)", params![day, t, h.id, h.members.len(),
+                enterprise_core::households::earners(&roster, &h), h.purse.to_f64()]).map_err(sql)?;
         }
     }
     let mut q = s.world.query::<(&Route, &RouteState)>();

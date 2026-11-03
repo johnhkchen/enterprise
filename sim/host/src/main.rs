@@ -144,6 +144,13 @@ fn main() {
         let spoiled: f64 = s.world.resource::<enterprise_core::storage::Storage>().towns.values().map(|t| t.spoiled).sum();
         let rents = s.world.resource::<enterprise_core::post::Forwarder>().rents;
         println!("storage: {spoiled:.0} emeralds' worth spoiled; {rents} paid the hubs in rent");
+        let mut purses: Vec<f64> = (0..s.town_count()).flat_map(|t| s.households(t)).map(|h| h.purse.to_f64()).collect();
+        purses.sort_by(f64::total_cmp);
+        let at = |q: f64| purses.get(((purses.len() as f64 - 1.0) * q).round() as usize).copied().unwrap_or(0.0);
+        let c = s.charters();
+        println!("households: {} (purses: least {:.1}, median {:.1}, most {:.1}); {} claims; {} charters; {} mandates in force; {} firms",
+            purses.len(), at(0.0), at(0.5), at(1.0), s.land_register().claims.len(), c.charters.len(),
+            c.mandates.iter().filter(|m| m.until.is_none()).count(), s.firms().len());
         let (highways, laid) = s.highways();
         println!("king's highways: {:.1} to spend, {laid} hexes laid", highways.to_f64());
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();

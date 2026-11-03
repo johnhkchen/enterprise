@@ -68,6 +68,10 @@ crate::saved! {
         taxes: crate::taxes::Taxes = crate::taxes::Taxes::default(),
         security: crate::security::Security = crate::security::Security::default(),
         storage: crate::storage::Storage = crate::storage::Storage::default(),
+        households: crate::households::Households = crate::households::Households::default(),
+        land_register: crate::property::Register = crate::property::Register::default(),
+        firms: crate::firms::Firms = crate::firms::Firms::default(),
+        charters: crate::charters::Charters = crate::charters::Charters::default(),
     }
     town {
         town: Town,
@@ -143,4 +147,6 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::taxes::register(schedule);
     crate::rules::security::register(schedule);
     crate::rules::storage::register(schedule);
+    crate::rules::households::register(schedule);
+    crate::rules::registers::register(schedule);
 }

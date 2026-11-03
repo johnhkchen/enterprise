@@ -61,4 +61,5 @@ slices! {
     pallet_host,
     shop_host,
     crown_host,
+    households,
 }

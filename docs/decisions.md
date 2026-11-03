@@ -2435,3 +2435,37 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   or wire message (the freight hubs', metal exchange's and requisitions' vendors, renaming a market). **Lost:** the
   `bank` and `tenders` commands and the Merchant's cold-storage repacking. Anything else a tree finds it would drop goes
   on this list with why, for John to see. The core-mode gate falls only by tests named retired or lost.
+
+## Society: households and the registers (2026-11-03)
+
+John's "How to Add Society Systems to the Sim" (uploaded 2026-11-03) is the plan for a new set of rules on top of the
+trade economy: records and households, property, firms, charters and mandates, civic pressure and leaders, pop groups
+and notables, opinions and factions, a council, central places. Its ground rules hold here: data before behaviour,
+one visible change a recipe, four primitives (property, firms, charters, mandates) the later systems are made of,
+groups not people. Step 1 (records) was mostly here already: every villager is a hand with an id in the core
+(`roster.rs`), the host's census its record and the entity its view (`census.rs`, `Hands::tags`).
+
+- **A town's treasury is its commons (John: "Town commons").** It stays as it is: the town's public purse, held under
+  its charter from the crown, paying wages, the watch, its halls and taxes. Its Merchant runs its trade for it by
+  mandate. Firms, when they come, are purses of their own beside it, and no trade code changes for them.
+- **Households form by shared home (John: "By shared home").** Each hand of a town's roster lives in one household, a
+  household to a home of two beds (`households::HOME_BEDS`, what a home built adds): a hand new to the roster takes a
+  home of its own while the town has one empty, else, and always a child, joins the household of fewest; a household
+  left empty is gone (`rules/households.rs` `reckon`, daily). At two beds a home, 1,000 villagers make about 500
+  households, not the plan's 200 to 250: the core's homes are cottages. Homes as the game builds them (a villager's bed,
+  the census's `Resident.home`) aren't sent to the core yet.
+- **Their purses split the households' purse.** The rules still pay wages into one purse a town and comforts and homes
+  out of it (`People::purse`); each household's purse is its share of it, and the shares add up to it to the thousandth
+  (`households::allot`): what the purse gained since they were last reckoned goes to the households by their grown
+  hands, what it lost comes out of them by what they hold, and an empty household's share passes to the rest, its kin.
+  Nothing reads a household's purse yet: the households' choices come with firms.
+- **The four primitives, as records nothing reads yet (John: "Households + all four as data").** The land register
+  (`property.rs`): each hex a town holds is its claim (at its founding, grown into, or taken from another town), each
+  hall built the town's, each household's home the household's; one claim a thing, struck out when lost, followed daily
+  (`rules/registers.rs`). Charters and mandates (`charters.rs`): the crown charters each town to hold a market and to
+  govern itself, its leaders chosen by custom, revocable by the crown; the town's Merchant is its agent for its trade,
+  by appointment, and a new Merchant ends the old mandate and takes a new one (ended mandates are kept, the town's
+  history of its offices). Firms (`firms.rs`): the record (owners and shares, a treasury, employees on wages, a recipe,
+  a reputation), none founded; a firm's treasury joins the ledger when firms are founded. The parties are the crown, a
+  town, a household and a firm (`charters::Party`). `enterprise-sim --money` counts them and the households' purses; the
+  trace's `households` table has each household's members, earners and purse by day.

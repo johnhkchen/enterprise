@@ -45,6 +45,8 @@ pub mod roster;
 pub mod settlers;
 pub mod security;
 pub mod storage;
+pub mod households;
+pub mod registers;
 pub mod services;
 pub mod squad;
 pub mod sourcing;
