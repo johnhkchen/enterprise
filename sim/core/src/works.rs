@@ -87,11 +87,15 @@ pub enum Kind {
     Watchtower,
     StoneDocks,
     Caravanserai,
+    /// Storehouses (`storage.rs`): weapons and armour, and wool and cloth, held out of the warehouse.
+    Armory,
+    Storehouse,
 }
 
 /// Every kind, in the order a town builds them.
-pub const KINDS: [Kind; 10] = [Kind::Square, Kind::Granary, Kind::RootCellar, Kind::CountingHouse, Kind::Temple,
-    Kind::Library, Kind::Smithy, Kind::Watchtower, Kind::StoneDocks, Kind::Caravanserai];
+pub const KINDS: [Kind; 12] = [Kind::Square, Kind::Granary, Kind::RootCellar, Kind::Storehouse, Kind::Armory,
+    Kind::CountingHouse, Kind::Temple, Kind::Library, Kind::Smithy, Kind::Watchtower, Kind::StoneDocks,
+    Kind::Caravanserai];
 
 impl Kind {
     /// Its name (`Kind.id`).
@@ -107,6 +111,8 @@ impl Kind {
             Kind::Watchtower => "watchtower",
             Kind::StoneDocks => "stone_docks",
             Kind::Caravanserai => "caravanserai",
+            Kind::Armory => "armory",
+            Kind::Storehouse => "storehouse",
         }
     }
 
@@ -114,7 +120,8 @@ impl Kind {
     pub fn size(self) -> u32 {
         match self {
             Kind::Square | Kind::Caravanserai => 9,
-            Kind::Granary | Kind::CountingHouse | Kind::Temple | Kind::Library | Kind::Smithy => 7,
+            Kind::Granary | Kind::CountingHouse | Kind::Temple | Kind::Library | Kind::Smithy | Kind::Armory
+                | Kind::Storehouse => 7,
             Kind::RootCellar => 5,
             Kind::Watchtower | Kind::StoneDocks => 3,
         }
@@ -132,7 +139,7 @@ impl Kind {
     /// The Mason's level it needs (`Kind.masonLevel`).
     pub fn mason_level(self) -> u8 {
         match self {
-            Kind::Square | Kind::Granary | Kind::RootCellar => 2,
+            Kind::Square | Kind::Granary | Kind::RootCellar | Kind::Armory | Kind::Storehouse => 2,
             Kind::StoneDocks => 4,
             Kind::Caravanserai => 5,
             _ => 3,
@@ -151,6 +158,8 @@ impl Kind {
             Kind::Watchtower => &["fletcher"],
             Kind::StoneDocks => &["fisherman"],
             Kind::Caravanserai => &["merchant"],
+            Kind::Armory => &["weaponsmith", "armorer", "fletcher"],
+            Kind::Storehouse => &["shepherd", "leatherworker", "merchant"],
         }
     }
 
@@ -158,7 +167,7 @@ impl Kind {
     pub fn partner_level(self) -> u8 {
         match self {
             Kind::Square => 0,
-            Kind::Granary | Kind::RootCellar => 2,
+            Kind::Granary | Kind::RootCellar | Kind::Armory | Kind::Storehouse => 2,
             _ => 3,
         }
     }
@@ -167,7 +176,7 @@ impl Kind {
     pub fn emeralds(self) -> f64 {
         match self {
             Kind::Square | Kind::RootCellar | Kind::Watchtower => 8.0,
-            Kind::Granary | Kind::Smithy | Kind::StoneDocks => 12.0,
+            Kind::Granary | Kind::Smithy | Kind::StoneDocks | Kind::Armory | Kind::Storehouse => 12.0,
             Kind::CountingHouse | Kind::Temple | Kind::Library => 16.0,
             Kind::Caravanserai => 24.0,
         }

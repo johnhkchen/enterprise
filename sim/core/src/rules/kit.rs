@@ -114,6 +114,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         let holding = territory.holdings.get(&town.id);
         let wanted_far = |g: usize| far_wants.get(&town.id).is_some_and(|w| w.contains(&g));
         let smithy = works.is_some_and(|w| w.built(Kind::Smithy));
+        let stores = crate::storage::Stores::of(works);
         kits.fit(&content, stock);
         // Hands working the land without a tool are given one, an axe first (`ColdStore.equipHands`).
         let idle = roster.idle(&content);
@@ -165,7 +166,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                     }
                     let Some(g) = content.good(name) else { continue };
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                    if room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
+                    if room(&content, trades, stock, crates, stores, g, owed, wanted_far(g)) {
                         owe(&content, kits, name, per_day * weight * (1.0 + d.tool_bonus * with_tools) * days);
                     }
                 }
@@ -182,7 +183,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             for &(name, per_day) in game(land) {
                 let Some(g) = content.good(name) else { continue };
                 let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                if room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
+                if room(&content, trades, stock, crates, stores, g, owed, wanted_far(g)) {
                     owe(&content, kits, name, per_day * hunters * days);
                 }
             }
@@ -197,7 +198,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             let docks = if w.built(Kind::StoneDocks) { 2.0 } else { 1.0 };
             let catch = (fishers * content.dials.cod_per_fisher_level).min(grounds * crate::works::COD_PER_WATER_HEX) * docks;
             let owed = content.good("cod").and_then(|g| kits.pending.get(&g)).copied().unwrap_or(0.0);
-            if catch > 0.0 && content.good("cod").is_some_and(|g| room(&content, trades, stock, crates, g, owed, wanted_far(g))) {
+            if catch > 0.0 && content.good("cod").is_some_and(|g| room(&content, trades, stock, crates, stores, g, owed, wanted_far(g))) {
                 owe(&content, kits, "cod", catch * days);
             }
         }
@@ -234,7 +235,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                     }
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
                     let short = crate::works::logs(&content, stock) + owed < builds;
-                    if *lot > now || !short && !room(&content, trades, stock, crates, g, owed, wanted_far(g) || timber) {
+                    if *lot > now || !short && !room(&content, trades, stock, crates, stores, g, owed, wanted_far(g) || timber) {
                         continue;
                     }
                     *lot = now + grow;
@@ -267,7 +268,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         let goods: Vec<usize> = kits.pending.keys().copied().collect();
         for g in goods {
             let mut owed = kits.pending[&g];
-            ledger.made[g] += bring_in(&content, stock, crates, g, &mut owed);
+            ledger.made[g] += bring_in(&content, stock, crates, stores, g, &mut owed);
             kits.pending.insert(g, owed);
         }
         kits.pending.retain(|_, owed| *owed > 0.0);

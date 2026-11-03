@@ -66,12 +66,13 @@ pub const USE_WOOD: [&str; 6] = ["librarian", "mason", "armorer", "toolsmith", "
 /// sufficiently high such that they show up early to settlements"), in full while it has no Lumberjack. None without
 /// a Lumberjack trade or land.
 pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>,
-        map: &crate::map::Map, roster: &Roster, stock: &Stock, waiting: f64) -> Option<(TradeId, f64)> {
+        map: &crate::map::Map, roster: &Roster, stock: &Stock, waiting: f64, stores: crate::storage::Stores)
+        -> Option<(TradeId, f64)> {
     let lumberjack = content.trade(crate::roster::LUMBERJACK)?;
     let uses = waiting > 0.0
         || USE_WOOD.iter().filter_map(|t| content.trade(t)).any(|t| crate::kit::at_home(roster, Some(t)).next().is_some());
     let logs: f64 = crate::works::LOGS.iter().filter_map(|l| content.good(l)).map(|g| stock.0[g]).sum();
-    let slots = crate::kit::free_slots(content, &stock.0, 0) > content.dials.free_slots as i64 + crate::kit::SPARE_SLOTS;
+    let slots = crate::kit::free_slots(content, &stock.0, 0, stores) > content.dials.free_slots as i64 + crate::kit::SPARE_SLOTS;
     // (A full warehouse draws none, unless a building waits on its timber: that's felled whatever the room.)
     if !uses || logs >= crate::kit::KEEP || !slots && waiting <= 0.0 {
         return None;
@@ -715,7 +716,8 @@ impl crate::society::Society {
         }
         if let Some((t, m)) = woodland_marbles(content, self.world.resource::<crate::territory::Territory>().holding(town),
                 e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock,
-                people.timber_wait + e.get::<crate::works::Works>().map_or(0.0, |w| w.timber_wait)) {
+                people.timber_wait + e.get::<crate::works::Works>().map_or(0.0, |w| w.timber_wait),
+                crate::storage::Stores::of(e.get::<crate::works::Works>())) {
             put(&mut bag, t, m);
         }
         let held = self.world.resource::<crate::territory::Territory>().holding(town);

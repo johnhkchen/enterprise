@@ -1442,6 +1442,19 @@ mod's), but no road ever chose it. Then: build them first.
   market's across the sea: their makings are the world's edge. And a Shepherd shears while the town holds less than
   `shear_keep` (256) wool: herds put their wool straight into stock, room or not, and seed 1717's Refuge Pointe ended
   its year with 1,514 (`herds::tend_for`). `enterprise-sim --money` sums what spoiled.
+- **Storehouses hold a kind of goods out of the warehouse (John, 2026-11-03: "I'd say we're ready for armories,
+  granaries, and new types of warehouses"; "Armory", "Granary (all food)", "Wool and cloth store").** Two new halls and
+  the granary widened, each holding `storage::STORE_SLOTS` (27) stacks of its kind out of the 54-slot warehouse: the
+  armory weapons and armour (each a stack of one: seed 1717's watch kit took a slot a chestplate), the granary every
+  food, the storehouse (`works::Kind::Storehouse`, `storehouse`) wool, carpets, banners, leather, hides, string and
+  feathers. Food goes off at half the rate in a town with a granary, wool and leather in one with a storehouse. A town
+  wants one once its kind takes `STORE_WANTED` (8) stacks of its warehouse (the granary also for its farm's crops, as
+  before): its Mason of level 2 builds it, 12 emeralds, with a partner at home of level 2 (the armory a Weaponsmith,
+  Armorer or Fletcher; the storehouse a Shepherd, Leatherworker or Merchant). The warehouse's free slots count only
+  what its storehouses don't hold (`storage::relief`, `kit::free_slots`), for its hands' gathering, its felling and the
+  Lumberjack's marbles; the training desk and a hub's fill still count the whole warehouse. The host has no kit for
+  either yet (`hall:armory`, `hall:storehouse`: the dwarves', goblins', night elves', orcs' and tauren's harbour
+  warehouses could serve the storehouse): built, they stand in the core unlaid until the asset studio gives them one.
 - **Road pricing, the first: a stop tolls by weight and distance (John, 2026-11-03: "tolls based on wagon weight x
   distance traveled at/between way stations"; "Replace the flat fee").** A wagon of another town home again pays each
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out

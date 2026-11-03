@@ -179,7 +179,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         }
         // Its woods unfelled while its trades want wood, a Lumberjack's.
         if let Some(marbles) = crate::jobs::woodland_marbles(&content, territory.holding(town.id), town.hex, &map, &roster, stock,
-                people.timber_wait + works.map_or(0.0, |w| w.timber_wait)) {
+                people.timber_wait + works.map_or(0.0, |w| w.timber_wait), crate::storage::Stores::of(works)) {
             far.push(marbles);
         }
         // Its watch short of its kit, a smith's or a Fletcher's (`security.rs`).

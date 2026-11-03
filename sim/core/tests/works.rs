@@ -297,10 +297,16 @@ fn a_granary_finished_sets_up_the_farms_store() {
 /// A town of `villagers` with every comfort for `days`, content (its mood heads for several points), money, holding
 /// `hexes` hexes, with `roster`.
 fn content_town(money: f64, hexes: usize, roster: &[(&str, u8)]) -> Society {
+    content_town_with(money, hexes, roster, &[])
+}
+
+/// [`content_town`], its content these goods more (after its comforts' goods, its logs and its bread).
+fn content_town_with(money: f64, hexes: usize, roster: &[(&str, u8)], more: &[Good]) -> Society {
     let mut goods: Vec<Good> = Content::COMFORTS.iter().enumerate()
         .map(|(k, name)| Good::new(&format!("{name}_good"), 0.05, 64).comfort(k)).collect();
     goods.push(Good::new("oak_log", 0.125, 64));
     goods.push(Good::new("bread", 0.2, 64).food(5.0));
+    goods.extend(more.iter().cloned());
     let mut s = Society::new(Content::new(goods, DAY));
     s.content_mut().dials.budget_share = 1.0;
     s.content_mut().dials.standing_orders = false;
@@ -539,8 +545,8 @@ fn a_town_starts_the_bridge_that_repays_its_wages() {
 #[test]
 fn every_kind_is_in_the_order_a_town_builds_them() {
     let ids: Vec<&str> = KINDS.iter().map(|k| k.id()).collect();
-    assert_eq!(ids, ["square", "granary", "root_cellar", "counting_house", "temple", "library", "smithy", "watchtower",
-        "stone_docks", "caravanserai"]);
+    assert_eq!(ids, ["square", "granary", "root_cellar", "storehouse", "armory", "counting_house", "temple", "library",
+        "smithy", "watchtower", "stone_docks", "caravanserai"]);
     assert_eq!(Kind::Temple.mason_level(), 3);
     assert_eq!(Kind::Caravanserai.mason_level(), 5);
     assert_eq!(Kind::StoneDocks.mason_level(), 4);
@@ -677,4 +683,23 @@ fn a_content_town_short_of_its_next_halls_money_offers_a_bond_for_it() {
     assert_eq!(bond.purpose, enterprise_core::bonds::Purpose::Hall(Kind::Square), "{bond:?}");
     assert!(bond.principal.to_f64() > 0.0 && bond.principal.to_f64() <= 11.0, "what it lacks of the cost: {bond:?}");
     assert!(!s.works(0).has_started(Kind::Square), "and waits on it: nobody's wagon calls to buy it");
+}
+
+#[test]
+fn a_town_crowded_with_cloth_builds_a_storehouse_and_none_for_arms_it_hasnt() {
+    // Seed 1717's Refuge Pointe held 1,514 wool, 24 of its warehouse's 54 slots (John: "Wool and cloth store"): here
+    // carpets, which no trade buys up.
+    // Its Merchant its partner (a Shepherd's trades would buy the wool up).
+    let mut roster = CONTENT_ROSTER.to_vec();
+    roster[0] = ("merchant", 2);
+    roster.push(("mason", 2));
+    let mut s = content_town_with(1000.0, 4, &roster, &[Good::new("white_carpet", 0.05, 64)]);
+    s.content_mut().dials.wall_start_emeralds = 1e9; // (no wall)
+    s.content_mut().dials.spoil_fibre = 0.0;
+    let carpet = s.content().good("white_carpet").unwrap();
+    s.deliver(0, carpet, 64.0 * 20.0);
+    s.advance(40 * DAY);
+    let works = s.works(0);
+    assert!(works.built(Kind::Storehouse), "{:?}", works.projects);
+    assert!(!works.has_started(Kind::Armory), "no arms to hold");
 }

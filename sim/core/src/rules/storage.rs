@@ -17,12 +17,14 @@ pub fn register(schedule: &mut Schedule) {
 /// day, out of the world. (Not a realm's or a market across the sea: their makings are the world's edge.)
 pub fn spoil(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, book: Res<Book>,
         pallets: Res<crate::pallet::Pallets>, mut storage: ResMut<Storage>, mut ledger: ResMut<Ledger>,
-        mut q: Query<(&Town, &mut Stock), (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
+        mut q: Query<(&Town, &mut Stock, Option<&crate::works::Works>),
+            (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let d = &content.dials;
     let n = content.goods.len();
     for &e in &towns.0 {
-        let Ok((town, mut stock)) = q.get_mut(e) else { continue };
+        let Ok((town, mut stock, works)) = q.get_mut(e) else { continue };
+        let stores = crate::storage::Stores::of(works);
         let stored = storage.towns.entry(town.id).or_default();
         let last = match stored.reckoned {
             Some(k) if now >= k + day => k,
@@ -36,7 +38,7 @@ pub fn spoil(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, book: 
         let days = ((now - last) as f64 / day as f64).min(crate::territory::MAX_DAYS);
         let aside = crate::cargo::set_aside_all(&book, &pallets, town.id, n, now, content.day_ticks);
         for g in 0..n.min(stock.0.len()) {
-            let rate = spoil_rate(d, keeping(&content, g));
+            let rate = spoil_rate(d, keeping(&content, g), stores);
             let beyond = stock.0[g] - d.spoil_keep - aside[g].max(0.0);
             if rate <= 0.0 || beyond <= 0.0 {
                 continue;

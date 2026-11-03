@@ -90,9 +90,18 @@ pub fn culture(towns: Res<Towns>, mut territory: ResMut<Territory>, mut q: Query
 
 /// Is the hall one the town wants (`BuildServices.wanted`): a store where its crop piles up, a counting house where the
 /// papers do, any other whenever its partners are there.
-fn wanted(content: &Content, farm: Option<&Farm>, paperwork: &Paperwork, now: u64, kind: Kind) -> bool {
+fn wanted(content: &Content, farm: Option<&Farm>, paperwork: &Paperwork, stock: &[f64], now: u64, kind: Kind) -> bool {
     if kind == Kind::CountingHouse {
         return paperwork.per_day(now, content.day_ticks) >= content.dials.counting_house_documents;
+    }
+    // A storehouse once its kind of goods takes `STORE_WANTED` stacks of the warehouse (the granary too, for its farm's
+    // crops: `storage.rs`).
+    let crowded = |i: usize| crate::storage::kind_stacks(content, stock)[i] >= crate::storage::STORE_WANTED;
+    match kind {
+        Kind::Armory => return crowded(1),
+        Kind::Storehouse => return crowded(2),
+        Kind::Granary if crowded(0) => return true,
+        _ => {}
     }
     match kind.store() {
         Some(store) => farm.is_some_and(|f| f.stores_wanted.contains(&store)),
@@ -115,13 +124,13 @@ pub fn imports_per_day(content: &Content, book: &CashBook, town: usize, now: u64
 /// The halls a town could build now: not started, its partners at home, wanted (and a pier for stone docks).
 #[allow(clippy::too_many_arguments)]
 fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
-        now: u64, kind: Kind) -> bool {
+        stock: &[f64], now: u64, kind: Kind) -> bool {
     if works.has_started(kind) {
         return false;
     }
     let skills = skills(content, roster);
     let merchant = crate::bargain::merchant_level(roster);
-    kind.partnered(&skills, merchant) && (kind != Kind::StoneDocks || works.dock) && wanted(content, farm, paperwork, now, kind)
+    kind.partnered(&skills, merchant) && (kind != Kind::StoneDocks || works.dock) && wanted(content, farm, paperwork, stock, now, kind)
 }
 
 /// Each town reviews what to build, once a day: its own Mason's next hall; at its toll reviews a bridge, a wall, or
@@ -164,7 +173,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         // What its halls would cost, for the Mason's marbles in the job draw (`BuildServices.work`).
         let mut work_wanted = 0.0;
         for kind in KINDS {
-            if !buildable(&content, &works, roster, farm, paperwork, now, kind) {
+            if !buildable(&content, &works, roster, farm, paperwork, &stock.0, now, kind) {
                 continue;
             }
             let c = cost(&content, &stock.0, kind);
@@ -357,7 +366,7 @@ fn next_hall(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
         stock: &[f64], mood: f64, spare: f64, now: u64, skill: u8, funded: impl Fn(Kind) -> bool)
         -> (Option<Kind>, Option<(Kind, f64)>) {
     for kind in KINDS {
-        if works.has_started(kind) || skill < kind.mason_level() || !buildable(content, works, roster, farm, paperwork, now, kind) {
+        if works.has_started(kind) || skill < kind.mason_level() || !buildable(content, works, roster, farm, paperwork, stock, now, kind) {
             continue;
         }
         if mood < MOOD_TO_START {

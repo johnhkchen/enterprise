@@ -3,6 +3,7 @@
 //! a Fletcher hunting with a bow, spare bows arming the guards. Goods are the mod's, by name.
 
 use enterprise_core::kit::{self, Crew, Kits, Wear};
+use enterprise_core::storage::Stores;
 use enterprise_core::map::Land;
 use enterprise_core::{Content, Good, Hex, Society};
 
@@ -261,22 +262,22 @@ fn hands_stop_gathering_at_sixteen_of_a_good_the_town_does_not_use_and_sixty_fou
         capacity: vec![0.0; c.goods.len()], ..Default::default() };
     let mut held = vec![0.0; c.goods.len()];
     held[sticks] = 15.0;
-    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "15 of 16: room");
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 1.0, false), "15 and 1 owed: none");
+    assert!(kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 0.0, false), "15 of 16: room");
+    assert!(!kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 1.0, false), "15 and 1 owed: none");
     held[sticks] = 16.0;
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "16: enough");
-    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, true), "16, and the towns down its roads buy them: room for 64");
+    assert!(!kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 0.0, false), "16: enough");
+    assert!(kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 0.0, true), "16, and the towns down its roads buy them: room for 64");
     trades.capacity[sticks] = 5.0; // its lockers take sticks
     held[sticks] = 63.0;
-    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "63 of the 64 it keeps of what it uses");
+    assert!(kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 0.0, false), "63 of the 64 it keeps of what it uses");
     held[sticks] = 64.0;
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "64: enough");
+    assert!(!kit::room(&c, &trades, &held, 0, Stores::default(), sticks, 0.0, false), "64: enough");
     // The warehouse keeps its 5 free slots and 4 more for the goods it trades (54 slots in all).
     held[sticks] = 0.0;
     trades.capacity[sticks] = 0.0;
-    assert!(kit::room(&c, &trades, &held, 44, sticks, 0.0, false), "10 slots free: room");
-    assert!(!kit::room(&c, &trades, &held, 45, sticks, 0.0, false), "9 free: none to spare");
-    assert_eq!(kit::free_slots(&c, &held, 45), 9);
+    assert!(kit::room(&c, &trades, &held, 44, Stores::default(), sticks, 0.0, false), "10 slots free: room");
+    assert!(!kit::room(&c, &trades, &held, 45, Stores::default(), sticks, 0.0, false), "9 free: none to spare");
+    assert_eq!(kit::free_slots(&c, &held, 45, Stores::default()), 9);
 }
 
 #[test]
@@ -664,7 +665,7 @@ fn a_home_waiting_on_timber_has_it_felled_however_full_the_warehouse() {
     s.pay(t, 100.0);
     let slots = s.content().dials.warehouse_slots as f64;
     s.deliver(t, good(s.content(), "gravel"), 64.0 * slots);
-    assert!(kit::free_slots(s.content(), &s.town(t).stock, 0) <= 0, "full");
+    assert!(kit::free_slots(s.content(), &s.town(t).stock, 0, Stores::default()) <= 0, "full");
     s.advance(8 * DAY);
     assert!(s.town(t).people.beds >= 4.0, "a home of the logs felled for it: {:?}", s.town(t).people.beds);
 }
@@ -673,10 +674,10 @@ fn a_home_waiting_on_timber_has_it_felled_however_full_the_warehouse() {
 fn less_than_an_item_takes_no_warehouse_slot() {
     let s = Society::new(content());
     let mut stock = vec![0.0; s.content().goods.len()];
-    let free = kit::free_slots(s.content(), &stock, 0);
+    let free = kit::free_slots(s.content(), &stock, 0, Stores::default());
     stock[good(s.content(), "stick")] = 0.4;
     stock[good(s.content(), "oak_log")] = 64.5;
-    assert_eq!(kit::free_slots(s.content(), &stock, 0), free - 1, "dust takes none, 64 logs and a half one");
+    assert_eq!(kit::free_slots(s.content(), &stock, 0, Stores::default()), free - 1, "dust takes none, 64 logs and a half one");
 }
 
 #[test]

@@ -40,6 +40,7 @@ use crate::map::Land;
 use crate::roster::Roster;
 use crate::services::{Wearer, BEST, KITS};
 use crate::state::Trades;
+use crate::storage::Stores;
 use crate::territory::{Holding, Territory};
 
 /// A Nitwit gathers this much more than another hand (`Labour.NITWIT_FACTOR`).
@@ -407,8 +408,9 @@ pub fn crew(content: &Content, territory: &Territory, town: usize, roster: Optio
 /// Is there room to bring in more of a good: below what the town keeps of it (with what's owed), and slots to spare
 /// (`Labour.room`)? A good is wanted when it's food, a comfort, its lockers can take it, or (`far`) the towns down its
 /// roads buy it: its hands keep it for them as for itself.
-pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, good: GoodId, owed: f64, far: bool) -> bool {
-    if free_slots(content, stock, crates) <= content.dials.free_slots as i64 + SPARE_SLOTS {
+pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, stores: Stores, good: GoodId, owed: f64,
+        far: bool) -> bool {
+    if free_slots(content, stock, crates, stores) <= content.dials.free_slots as i64 + SPARE_SLOTS {
         return false;
     }
     let g = &content.goods[good];
@@ -416,28 +418,30 @@ pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, good
     stock[good] + owed < if wanted { KEEP_WANTED } else { KEEP }
 }
 
-/// Free warehouse slots: what the stock's stacks and the crates leave (`MerchantStock.freeSlots`).
-pub fn free_slots(content: &Content, stock: &[f64], crates: u32) -> i64 {
+/// Free warehouse slots: what the stock's stacks and the crates leave (`MerchantStock.freeSlots`), less what its
+/// storehouses hold out of it (`storage::relief`).
+pub fn free_slots(content: &Content, stock: &[f64], crates: u32, stores: Stores) -> i64 {
     let used: i64 = stock.iter().enumerate().map(|(g, n)| crate::cargo::warehouse_stacks(content, g, *n) as i64).sum::<i64>()
-        + crates as i64;
+        + crates as i64 - crate::storage::relief(content, stock, stores) as i64;
     content.dials.warehouse_slots as i64 - used
 }
 
 /// Brings in the whole items of a good that are owed, a stack at a time while the warehouse has room for the stack
 /// (`MerchantStock.hasRoomFor`: it keeps the free slots for locker results and coins); the rest stays owed. Returns
 /// how many came in.
-pub fn bring_in(content: &Content, stock: &mut [f64], crates: u32, good: GoodId, owed: &mut f64) -> f64 {
+pub fn bring_in(content: &Content, stock: &mut [f64], crates: u32, stores: Stores, good: GoodId, owed: &mut f64) -> f64 {
     let mut left = whole(*owed);
     let mut put_all = 0.0;
     let stack = content.goods[good].stack.max(1) as f64;
     while left > 0.0 {
         let put = left.min(stack);
-        let more = crate::cargo::warehouse_stacks(content, good, stock[good] + put) as i64
-            - crate::cargo::warehouse_stacks(content, good, stock[good]) as i64;
-        if (free_slots(content, stock, crates) - content.dials.free_slots as i64).max(0) < more {
+        let (was, before) = (stock[good], free_slots(content, stock, crates, stores));
+        stock[good] += put;
+        let after = free_slots(content, stock, crates, stores);
+        if after < before && after < content.dials.free_slots as i64 {
+            stock[good] = was;
             break;
         }
-        stock[good] += put;
         left -= put;
         put_all += put;
     }
