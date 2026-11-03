@@ -90,3 +90,44 @@ fn an_unarmed_watch_draws_a_weaponsmith_an_armorer_and_a_fletcher() {
         assert!(hired || bag.iter().any(|(n, m)| n == trade && *m > 0.0), "{trade} for its watch's kit: {bag:?}");
     }
 }
+
+/// A farm selling wheat to a mill six hexes east over the map, a wagon every day.
+fn road() -> (Society, usize, usize, usize) {
+    let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64)], DAY));
+    s.content_mut().dials.standing_orders = false;
+    let farm = s.add_town("Wheatfield", 100.0);
+    let mill = s.add_town("Hayford", 200.0);
+    let (a, b) = (enterprise_core::Hex::new(0, 0), enterprise_core::Hex::new(6, 0));
+    s.place_town(farm, a.center_x(), a.center_z());
+    s.place_town(mill, b.center_x(), b.center_z());
+    s.set_trade(farm, 0, 128.0, 0.0);
+    s.set_trade(mill, 0, 0.0, 64.0);
+    s.deliver(farm, 0, 1280.0);
+    let r = s.add_road(farm, mill, 1.0).expect("a road");
+    (s, farm, mill, r)
+}
+
+#[test]
+fn bandits_rob_a_wagon_on_a_lonely_road_and_not_on_a_guarded_one() {
+    let (mut s, farm, _, r) = road();
+    s.content_mut().dials.bandit_chance = 1.0;
+    let before = s.totals();
+    s.advance(10 * DAY);
+    assert!(s.route(r).trips >= 1);
+    let w = s.watch(farm);
+    let lonely = w.robbed;
+    assert!(lonely >= 4, "robbed on its lonely road: {w:?}");
+    s.conserved(&before).unwrap();
+    // Every hex of its road held by the farm, which keeps a watch: no road is lonely.
+    let (mut s, farm, _, r) = road();
+    s.content_mut().dials.bandit_chance = 1.0;
+    s.set_people(farm, 20.0, 20.0, 20.0);
+    s.pay(farm, 1000.0);
+    for h in s.route_path(r).unwrap() {
+        s.claim_hex(farm, h);
+    }
+    s.advance(10 * DAY);
+    assert!(s.watch(farm).watchmen > 0);
+    // (Its first trip went before its watch was kept.)
+    assert!(s.watch(farm).robbed <= 1, "its own guarded land: {:?}, {lonely} on the lonely road", s.watch(farm));
+}

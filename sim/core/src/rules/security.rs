@@ -1,6 +1,6 @@
 //! Security's steps (`security.rs`): once a day each town reckons its defence and protection, sets and pays its watch,
 //! and suffers what its protection doesn't keep off: a raid if it's rich, theft, an attack in the night. What's taken
-//! leaves the world.
+//! leaves the world. A wagon home again by land meets the bandits of the lonely road it crossed.
 
 use bevy_ecs::prelude::*;
 
@@ -12,8 +12,9 @@ use crate::security::*;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
-    schedule.add_systems(keep.in_set(Step::Review).after(super::taxes::assess).after(super::works::review)
-        .before(super::jobs::relocate).before(super::jobs::review));
+    schedule.add_systems((keep.in_set(Step::Review).after(super::taxes::assess).after(super::works::review)
+        .before(super::jobs::relocate).before(super::jobs::review),
+        bandits.in_set(Step::Services).after(super::taxes::congestion)));
 }
 
 /// A share of every good in the warehouse taken out of the world; what it was worth.
@@ -123,5 +124,61 @@ pub fn keep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, territo
             watch.nights += 1;
             frighten(&content, &mut people, now, d.night_mood, d.fear_days / 2.0);
         }
+    }
+}
+
+/// A wagon home again by land, robbed on the lonely hexes of its road: each beyond a hex of either end, held by no town
+/// that keeps a watch or posts, with no stop within 2 hexes, a chance of `bandit_chance` there and back, less its escort (its home's watch, by how
+/// well armed: half at best). Robbers take `bandit_take` of its purse and its load, out of the world.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn bandits(clock: Res<Clock>, content: Res<Content>, territory: Res<crate::territory::Territory>,
+        ways: Res<crate::waystations::Waystations>, mut security: ResMut<Security>, mut ledger: ResMut<Ledger>,
+        mut book: ResMut<CashBook>, seed: Res<Rng>, mut dice: ResMut<Dice>,
+        mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    let d = &content.dials;
+    if d.bandit_chance <= 0.0 {
+        return;
+    }
+    let guarded = |town: usize, sec: &Security| sec.watchmen(town) > 0
+        || territory.holding(town).is_some_and(|h| !h.posts.is_empty());
+    for entity in super::in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
+        let (_, route, mut state, path) = routes.get_mut(entity).unwrap();
+        let Some(path) = path else { continue };
+        if state.arrived != Some(Leg::Home) || route.carrier == crate::map::Carrier::Ship {
+            continue;
+        }
+        let route = *route;
+        let (start, goal) = (path.0.first().copied(), path.0.last().copied());
+        let doorstep = |h: crate::hex::Hex| [start, goal].into_iter().flatten().any(|e| e.distance(h) <= 1);
+        let lonely = path.0.iter().filter(|&&h| {
+            !doorstep(h) && !territory.owner(h).is_some_and(|o| guarded(o, &security))
+                && !ways.stations.iter().any(|s| s.hex.distance(h) <= 2)
+        }).count() as f64;
+        if lonely == 0.0 {
+            continue;
+        }
+        let escort = 0.5 * (security.watchmen(route.from_id) as f64).min(1.0)
+            * territory.holding(route.from_id).map_or(0.0, |h| h.armed);
+        let chance = (2.0 * lonely * d.bandit_chance * (1.0 - escort)).min(1.0);
+        if (dice.of(route.from_id, &seed).below(1_000_000) as f64) >= chance * 1e6 {
+            continue;
+        }
+        let Some(wagon) = state.wagon.as_mut() else { continue };
+        let coin = Fixed::floor(wagon.purse.at_least_zero().to_f64() * d.bandit_take);
+        post(&mut ledger, &mut book, Side::wagon(route.seq, &mut wagon.purse), Side::outside(), coin,
+            Reason::Other("robbed".into()), now, day);
+        let mut worth = 0.0;
+        for (g, n) in wagon.cargo.iter_mut().enumerate() {
+            if *n > 0.0 {
+                let taken = (*n * d.bandit_take).floor();
+                *n -= taken;
+                ledger.used[g] += taken;
+                worth += taken * content.goods[g].value;
+            }
+        }
+        let w = security.towns.entry(route.from_id).or_default();
+        w.robbed += 1;
+        w.robbed_of += coin + Fixed::floor(worth);
     }
 }

@@ -13,6 +13,9 @@
 //! - **Raids** on a rich town: a chance up to `raid_chance` a day as its wealth (treasury and warehouse at worth) nears
 //!   `raid_wealth`; a raid takes `raid_take` of its treasury and goods and frightens it (`raid_mood` for `fear_days`).
 //! - **Theft** from within: `theft_rate` of its warehouse and its households' purses a day.
+//! - **Bandits on the roads:** a wagon home again by land was robbed with a chance of `bandit_chance` for each lonely
+//!   hex it crossed, there and back (beyond its ends' doorsteps, held by no town that keeps a watch or posts, no stop within 2 hexes), less its
+//!   escort (its home's watch, by how well armed: half at best); robbers take `bandit_take` of its purse and its load.
 //! - **Monsters at night:** a chance of `night_chance` a day, less its walls and the light of its lanterns (one for
 //!   four villagers), frightens it (`night_mood`).
 //!
@@ -51,6 +54,11 @@ pub struct Watch {
     pub stolen: Fixed,
     pub raids: u32,
     pub nights: u32,
+    /// Its wagons robbed on the roads, and what they lost.
+    #[serde(default)]
+    pub robbed: u32,
+    #[serde(default)]
+    pub robbed_of: Fixed,
 }
 
 /// Every town's watch.

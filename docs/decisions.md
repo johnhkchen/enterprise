@@ -1401,7 +1401,14 @@ mod's), but no road ever chose it. Then: build them first.
   at up to `raid_chance` (0.05) a day as its wealth nears `raid_wealth` (2,000), a raid taking `raid_take` (0.25) of
   its treasury and goods and frightening it (`raid_mood` 1 for 10 days, `People::fear`); the night attacks an unwalled
   town at `night_chance` (0.03) less its lanterns' light (one for four villagers), `night_mood` 0.5. A town raided
-  lately walls itself in whatever its mood (the Masons). Next: bandits on the roads; garrisons to hold land.
+  lately walls itself in whatever its mood (the Masons). Bandits on the roads: a wagon home again by land was robbed
+  with a chance of `bandit_chance` (0.004) for each lonely hex it crossed, there and back: beyond a hex of either end,
+  held by no town that keeps a watch or posts, no stop within 2 hexes; less its escort (its home's watch, by how well
+  armed, half at best). Robbers take `bandit_take` (0.3) of its purse and its load, out of the world ("robbed",
+  `rules/security.rs` `bandits`). (Its sweep found a herd beyond its pastures, seed 250's town 11: 96 sheep at their
+  room when cows came, the cows breeding into their share while the sheep dwindled slowly, 105 in pastures for 96.
+  Now pastures overfull crowd the kinds over their share out at once, each by its part of the excess: `herds.rs`.)
+  Next: garrisons to hold land.
 - **A town draws Lumberjacks for the wood it uses, not for the logs their own trades buy back (John, 2026-11-03:
   "Let's dig into lumberjack hiring. They might just be really good at generating emeralds?"; "Go").** Seed 1717's year
   ended with 363 of 845 villagers Lumberjacks, the poorest earners in the economy (0.38 emeralds a day each against a

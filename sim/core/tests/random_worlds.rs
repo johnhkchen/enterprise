@@ -106,3 +106,4 @@ fn the_same_seed_gives_the_same_world() {
         assert_eq!(a.mint_rate().to_bits(), b.mint_rate().to_bits(), "seed {seed}: the same mint rate");
     }
 }
+

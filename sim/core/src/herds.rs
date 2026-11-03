@@ -318,6 +318,17 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
         }
         herds.count[k] = count.max(0.0);
     }
+    // Pastures overfull (a kind brought in late breeding into its share while the others are over theirs): the kinds
+    // over their share are crowded out of it at once, each by its part of the excess (seed 250's town 11: 96 sheep at
+    // its room, cows bred to 40 beside them as the sheep dwindled slowly, 105 in pastures for 96).
+    let over = herds.count.iter().sum::<f64>() - capacity;
+    let beyond: f64 = herds.count.iter().map(|&c| (c - share).max(0.0)).sum();
+    if over > 1e-9 && beyond > 1e-9 {
+        let cut = (over / beyond).min(1.0);
+        for c in herds.count.iter_mut() {
+            *c -= (*c - share).max(0.0) * cut;
+        }
+    }
     produce
 }
 

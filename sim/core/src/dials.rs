@@ -734,4 +734,8 @@ dials! {
     night_mood: f64 = 0.5,
     fear_days: f64 = 10.0,
     fear_most: f64 = 2.0,
+    /// A wagon's chance of being robbed for each lonely hex it crosses there and back, and the share of its purse and
+    /// load robbers take (`security.rs`).
+    bandit_chance: f64 = 0.004,
+    bandit_take: f64 = 0.3,
 }
