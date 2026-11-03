@@ -678,3 +678,24 @@ fn a_nitwit_takes_up_the_axe_as_any_idle_hand_would() {
     assert_eq!((s.roster(t).count(trade("lumberjack")), s.roster(t).count(trade("nitwit"))), (1, 0),
         "a Lumberjack, and its Nitwits all at work: {:?}", s.roster(t).hands.iter().map(|h| h.trade).collect::<Vec<_>>());
 }
+
+#[test]
+fn a_town_draws_lumberjacks_for_the_wood_its_trades_use_and_no_more() {
+    // A Mason and a Butcher take 4 logs a day; one Novice Lumberjack fells 8: none drawn beyond it, however few logs
+    // its warehouse holds (its own trades buy its logs back for emeralds).
+    let mut s = Society::new(wood_content());
+    let t = town(&mut s, &[("mason", 1), ("butcher", 1), ("lumberjack", 1), ("none", 1)]);
+    for q in 2..6 {
+        s.set_land(Hex::new(q, 3), Land::Woods);
+    }
+    assert!(!s.job_bag(t).iter().any(|(trade, _)| trade == "lumberjack"), "one fells what they use: {:?}", s.job_bag(t));
+    // Six wood users take 12 a day: a second is drawn.
+    let mut s = Society::new(wood_content());
+    let t = town(&mut s, &[("mason", 1), ("mason", 1), ("butcher", 1), ("butcher", 1), ("librarian", 1), ("librarian", 1),
+        ("lumberjack", 1), ("none", 1)]);
+    for q in 2..6 {
+        s.set_land(Hex::new(q, 3), Land::Woods);
+    }
+    assert!(s.job_bag(t).iter().any(|(trade, m)| trade == "lumberjack" && *m > 0.0), "six users want more: {:?}", s.job_bag(t));
+}
+

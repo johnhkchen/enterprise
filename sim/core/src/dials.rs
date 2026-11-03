@@ -178,6 +178,9 @@ dials! {
     /// Lumberjack's marbles in the job draw (`jobs::woodland_marbles`).
     home_logs: f64 = 16.0,
     hall_logs: f64 = 32.0,
+    /// Logs a day a hand of a trade that burns or builds with wood takes (`jobs::USE_WOOD`): its town draws Lumberjacks
+    /// to fell that much, and no more (`jobs::woodland_marbles`).
+    wood_per_user_day: f64 = 2.0,
     /// A child once a bed is free and mood is at least `birth_mood`, after `birth_days`, for `birth_cost` and
     /// `birth_food` food points.
     birth_mood: f64 = 1.0,

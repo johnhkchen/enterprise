@@ -58,7 +58,8 @@ pub const TRADES: [(&str, &[&str]); 14] = [
 pub const USE_WOOD: [&str; 6] = ["librarian", "mason", "armorer", "toolsmith", "weaponsmith", "butcher"];
 
 /// A town's woods unfelled, a Lumberjack's marbles (as unfished grounds are a Fisherman's): four days of what a Novice
-/// would fell of the logs the woodlots its land holds would give a day beyond its Lumberjacks at home, while a trade
+/// would fell of the logs its town uses a day (`wood_per_user_day` a hand of a trade that uses wood, and a Novice's
+/// felling while a home or a hall waits on timber), as far as its woodlots give them, beyond its Lumberjacks at home, while a trade
 /// of its uses wood ([`USE_WOOD`]), it holds fewer than `crate::kit::KEEP` logs and its warehouse has room for more
 /// (`crate::kit::room`'s slots: a town whose warehouse is full drew Lumberjack after Lumberjack, each a stall's fee,
 /// who felled nothing). And what waits on timber (`waiting`: a home's or a hall's worth, John: "make lumber demand
@@ -78,9 +79,17 @@ pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Ho
     let (lots, _) = crate::kit::woodland(map, holding, home);
     let could = lots as f64 / d.woodlot_grow_days.max(1e-9) * d.logs_per_lot;
     let felled = crate::kit::levels(roster, Some(lumberjack)) * d.lots_felled_per_level_day * d.logs_per_lot;
+    // Only the wood its town burns and builds with: `wood_per_user_day` for each hand of a trade that uses it, and a
+    // Novice's day's felling more while a home or a hall waits on timber. Not the logs its Lumberjacks' own trades buy
+    // back for emeralds, which kept every town short of logs and drew Lumberjack after Lumberjack (seed 1717's year:
+    // 363 of 845 villagers, earning 0.38 emeralds a day each; John: "Go").
+    let novice = d.lots_felled_per_level_day * d.logs_per_lot;
+    let users = USE_WOOD.iter().filter_map(|t| content.trade(t)).map(|t| crate::kit::at_home(roster, Some(t)).count())
+        .sum::<usize>() as f64;
+    let need = users * d.wood_per_user_day + if waiting > 0.0 { novice } else { 0.0 };
     // (Whatever the wood they like: logs are all worth alike.)
     let log = crate::works::LOGS.iter().find_map(|l| content.good(l))?;
-    let unfelled = (could - felled).max(0.0).min(d.lots_felled_per_level_day * d.logs_per_lot);
+    let unfelled = (could.min(need) - felled).max(0.0).min(novice);
     let wait = if roster.count(lumberjack) == 0 { waiting } else { 0.0 };
     (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0 + wait))
 }

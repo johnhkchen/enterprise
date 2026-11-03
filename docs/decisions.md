@@ -1386,6 +1386,15 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **A town draws Lumberjacks for the wood it uses, not for the logs their own trades buy back (John, 2026-11-03:
+  "Let's dig into lumberjack hiring. They might just be really good at generating emeralds?"; "Go").** Seed 1717's year
+  ended with 363 of 845 villagers Lumberjacks, the poorest earners in the economy (0.38 emeralds a day each against a
+  Butcher's 17 and a Leatherworker's 8.3). A town drew one while its woods stood unfelled and it held under 16 logs,
+  and the Lumberjacks' own trades (20 logs for an emerald, switched on as a player would) bought every log back, so
+  no town ever held 16 and each new villager took up the axe (Lakeshire: 24 of 43). Now its woods' marbles count only
+  what its town burns and builds with: `wood_per_user_day` (2) logs a day for each hand of a trade that uses wood
+  (`jobs::USE_WOOD`), and a Novice's day's felling more while a home or a hall waits on timber, as far as its woodlots
+  give them, beyond what its Lumberjacks fell (`jobs::woodland_marbles`): a Novice's 8 a day covers four wood users.
 - **Road pricing, the first: a stop tolls by weight and distance (John, 2026-11-03: "tolls based on wagon weight x
   distance traveled at/between way stations"; "Replace the flat fee").** A wagon of another town home again pays each
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out
