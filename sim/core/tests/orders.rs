@@ -46,6 +46,7 @@ fn close(a: f64, b: f64) -> bool {
 #[test]
 fn a_master_merchant_fills_a_players_order() {
     let mut s = desk(5, 0.0);
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     s.deliver(DESK, PAPER, 64.0);
     let before = s.totals();
     let order = s.order(DESK, PAPER, 16.0, 16.0, 40.0);
@@ -106,6 +107,7 @@ fn it_buys_from_a_players_stall_for_its_orders() {
 #[test]
 fn its_own_shop_sells_the_surplus() {
     let mut s = desk(5, 0.0);
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     s.deliver(DESK, STICK, 64.0);
     let before = s.totals();
     let shop = s.own_shop(DESK);

@@ -696,4 +696,7 @@ dials! {
     /// A royal bond's size, and the most the crown has out at once (its king's highways' money).
     royal_bond: f64 = 20.0,
     royal_bonds_most: u32 = 4,
+    // Taxes (`taxes.rs`; John: "Next let's talk taxation").
+    /// The share of every wage and earning a town withholds at the source for its treasury.
+    income_tax: f64 = 0.1,
 }

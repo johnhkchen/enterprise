@@ -173,6 +173,7 @@ pub fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>,
             let paid = emeralds.min(money.0.at_least_zero());
             post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
                 Reason::Wages, now, day);
+            crate::taxes::withhold(&content, &mut ledger, &mut book, t, &mut money.0, &mut people.purse, paid, now, day);
             let room = (Fixed::floor(CREDIT_DAYS * value_per_day(&content, &farm.per_day) * LABOR_SHARE) - farm.credit)
                 .at_least_zero();
             let credited = (emeralds - paid).min(room);

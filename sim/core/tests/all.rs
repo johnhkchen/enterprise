@@ -71,4 +71,5 @@ mod wire;
 mod works;
 mod waystations;
 mod bonds;
+mod taxes;
 mod workshop;

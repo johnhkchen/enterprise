@@ -134,6 +134,7 @@ fn farmers_earn_half_what_they_grow() {
 #[test]
 fn paid_farmers_deliver_the_whole_harvest() {
     let mut s = farm(10.0);
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     touch_every(&mut s, 10);
     let perday = per_day(&s, WHEAT);
     let owed = (s.farm(0).unwrap().wage_per_day * 10.0).floor();
@@ -368,6 +369,7 @@ fn content_farmers_grow_more() {
 #[test]
 fn farmers_with_hands_to_spare_get_a_field_of_what_sells() {
     let mut s = Society::new(content());
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     let t = s.add_town("Meadowworth", 50.0);
     s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
     s.set_people(t, 2.0, 2.0, 2.0);
@@ -467,6 +469,7 @@ fn a_household_buys_a_field_of_its_own_and_owners_take_more() {
 #[test]
 fn unpaid_farmers_sour_the_mood() {
     let mut s = Society::new(content());
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     // No baking: bread from the wheat would feed the town, and its unwanted wheat would lie fallow.
     s.content_mut().conversions.clear();
     s.content_mut().dials.min_labor_share = farms::MIN_LABOR_SHARE; // the mod's floor: owed whether or not it sells

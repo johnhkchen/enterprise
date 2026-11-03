@@ -69,6 +69,7 @@ fn a_town_without_a_mine_brings_up_no_ore() {
 #[test]
 fn a_toolsmith_digs_a_mine_for_six_emeralds_beyond_the_reserve() {
     let mut s = Society::new(content());
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     let poor = hill_town(&mut s, &[("toolsmith", 2)]);
     s.pay(poor, 5.0);
     let rich = hill_town(&mut s, &[("toolsmith", 2)]);
@@ -181,6 +182,7 @@ fn enchanted_kit_is_worth_more() {
 #[test]
 fn a_master_toolsmith_sinks_the_mine_deep() {
     let mut s = Society::new(content());
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     let t = hill_town(&mut s, &[("toolsmith", 5), ("mason", 3)]);
     s.set_mine(t, false);
     s.pay(t, 30.0);

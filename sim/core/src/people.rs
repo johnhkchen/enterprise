@@ -223,6 +223,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         let paid = due.min(money.0.at_least_zero());
         post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
             Reason::Wages, now, day);
+        crate::taxes::withhold(&content, &mut ledger, &mut book, t, &mut money.0, &mut people.purse, paid, now, day);
         people.paid_share = if due.is_positive() { paid.ratio(due) } else { 1.0 };
         // And what the grown villagers earn by their work (the dial `hand_wage`): new money, into their purses, which
         // they spend on the town's comforts (John: "Villagers earn wages").
@@ -231,6 +232,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         let earned = Fixed::floor(d.hand_wage * grown * days);
         post(&mut ledger, &mut book, Side::outside(), Side::households(t, &mut people.purse), earned, Reason::Earned,
             now, day);
+        crate::taxes::withhold(&content, &mut ledger, &mut book, t, &mut money.0, &mut people.purse, earned, now, day);
         // And of the Farmers' wages at their last settlement (`farms.rs`).
         if let Some(farm) = farm {
             people.paid_share = people.paid_share.min(farm.paid_share);

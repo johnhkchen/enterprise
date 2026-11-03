@@ -176,6 +176,7 @@ fn a_town_never_restocked_owes_nothing() {
 fn a_towns_lockers_trade_on_their_own_two_restocks_a_day() {
     // Left to the look: the clock starts at the first look, then two restocks a whole day, trading every other.
     let mut s = market(Some(1), 0, true, 27.0 * 64.0);
+    s.content_mut().dials.income_tax = 0.0; // (no income tax: pins the treasury's money as the mod's)
     s.advance(3 * DAY + 1200);
     assert_eq!(s.lockers(0).unwrap().restocked_until, Some(3 * DAY + 1200));
     // 16 trades a day, 48 emeralds in 3 days; the households' wages a half share of it (a town that makes nothing pays

@@ -1386,6 +1386,15 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Taxes, the first: a town withholds income tax at the source (John, 2026-11-03: "Next let's talk taxation";
+  withheld payroll and income tax, land value tax, VAT; "Towns and crown split"; Pigouvian "Skip it for now").** The
+  core's households are one purse a town: a tax moves money between that purse and a treasury, not between rich and
+  poor, and no villager chooses its hours, so payroll tax distorts nothing here; what it does is bring idle money (two
+  thirds of seed 1717's sat in the purses) back where works and bonds are paid from. Of every wage a treasury pays its
+  households (the town's labour share, the Farmers' wages) and of what its villagers earn by their work
+  (`hand_wage`), `income_tax` (0.1) goes back to the treasury in the same look ("income tax", `taxes.rs` `withhold`).
+  Tests pinning a treasury to the mod's set it to 0, as they do `hand_wage`. Next: a land value tax on the hexes towns
+  hold, the crown's, carried by its wagons; then VAT, the towns'.
 - **Towns lend to each other by bonds, and the crown's royal bonds build its highways (John, 2026-11-03: "Towns
   invest by buying municipal bonds/royal treasuries"; "Any town works"; "Crown builds roads").** Seed 1717's stops
   stayed stops (the busiest took 6 of the 12 a waystation costs in 180 days) while two thirds of the world's money sat

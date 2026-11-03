@@ -62,6 +62,7 @@ pub mod territory;
 pub mod works;
 pub mod waystations;
 pub mod bonds;
+pub mod taxes;
 pub mod sweep;
 pub mod training;
 pub mod workshop;
