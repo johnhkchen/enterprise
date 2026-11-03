@@ -88,7 +88,8 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         seed: Res<Rng>, mut dice: ResMut<Dice>, mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
         security: Res<crate::security::Security>,
         far: Query<(&Roster, &crate::lockers::Lockers)>,
-        mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>)>) {
+        mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>,
+            Option<&crate::state::People>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
     // What the towns down each town's roads (either way) buy at their managed lockers: kept for them.
@@ -101,7 +102,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         }
     }
     for &e in &order.0 {
-        let Ok((town, mut kits, mut stock, trades, roster, works, shipments)) = towns.get_mut(e) else { continue };
+        let Ok((town, mut kits, mut stock, trades, roster, works, shipments, people)) = towns.get_mut(e) else { continue };
         if now < kits.last + day {
             continue;
         }
@@ -220,6 +221,11 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             }
             // (Its homes and halls take timber: logs are wanted, kept to `KEEP_WANTED`.)
             let timber = crate::works::takes_timber(&content);
+            // A home or a hall waiting on its timber has it felled and laid by, warehouse full or not: the timber goes
+            // to the building (seed 1717's year: towns of 30 with a Master Lumberjack, their warehouses full, felled
+            // nothing for 60 days while their homes waited, and grew no more).
+            let waiting = people.map_or(0.0, |p| p.timber_wait) + works.map_or(0.0, |w| w.timber_wait) > 0.0;
+            let builds = if waiting { d.home_logs + d.hall_logs } else { 0.0 };
             if let Some(g) = kits.wood {
                 kits.felling += fellers * d.lots_felled_per_level_day * days;
                 for lot in kits.woodlots.iter_mut() {
@@ -227,7 +233,8 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                         break;
                     }
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                    if *lot > now || !room(&content, trades, stock, crates, g, owed, wanted_far(g) || timber) {
+                    let short = crate::works::logs(&content, stock) + owed < builds;
+                    if *lot > now || !short && !room(&content, trades, stock, crates, g, owed, wanted_far(g) || timber) {
                         continue;
                     }
                     *lot = now + grow;
@@ -236,6 +243,14 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                 }
                 // (What it couldn't fell, nothing grown or no room, isn't carried: a day's felling is the day's.)
                 kits.felling = kits.felling.min(1.0 - 1e-9).max(0.0);
+                // The building's timber laid by, whole logs, room or not.
+                let lay = crate::kit::whole(kits.pending.get(&g).copied().unwrap_or(0.0)
+                    .min(builds - crate::works::logs(&content, stock)).max(0.0));
+                if lay > 0.0 {
+                    stock[g] += lay;
+                    ledger.made[g] += lay;
+                    *kits.pending.get_mut(&g).unwrap() -= lay;
+                }
             }
         }
         // Its kit wears out.

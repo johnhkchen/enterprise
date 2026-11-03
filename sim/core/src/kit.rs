@@ -196,7 +196,7 @@ pub fn liked_wood(content: &Content, roll: &mut crate::state::Rng) -> Option<Goo
 }
 
 /// Whole units in `x`, forgiving the dust floats leave.
-fn whole(x: f64) -> f64 {
+pub(crate) fn whole(x: f64) -> f64 {
     (x + 1e-9).floor().max(0.0)
 }
 
@@ -418,7 +418,7 @@ pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, good
 
 /// Free warehouse slots: what the stock's stacks and the crates leave (`MerchantStock.freeSlots`).
 pub fn free_slots(content: &Content, stock: &[f64], crates: u32) -> i64 {
-    let used: i64 = stock.iter().enumerate().map(|(g, n)| crate::cargo::stacks_of(content, g, *n) as i64).sum::<i64>()
+    let used: i64 = stock.iter().enumerate().map(|(g, n)| crate::cargo::warehouse_stacks(content, g, *n) as i64).sum::<i64>()
         + crates as i64;
     content.dials.warehouse_slots as i64 - used
 }
@@ -432,8 +432,8 @@ pub fn bring_in(content: &Content, stock: &mut [f64], crates: u32, good: GoodId,
     let stack = content.goods[good].stack.max(1) as f64;
     while left > 0.0 {
         let put = left.min(stack);
-        let more = crate::cargo::stacks_of(content, good, stock[good] + put) as i64
-            - crate::cargo::stacks_of(content, good, stock[good]) as i64;
+        let more = crate::cargo::warehouse_stacks(content, good, stock[good] + put) as i64
+            - crate::cargo::warehouse_stacks(content, good, stock[good]) as i64;
         if (free_slots(content, stock, crates) - content.dials.free_slots as i64).max(0) < more {
             break;
         }

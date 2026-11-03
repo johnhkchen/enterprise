@@ -47,7 +47,7 @@ use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 use crate::bills::{Bills, Held};
-use crate::cargo::{stacks_of, Paperwork, Shipments, Shipper};
+use crate::cargo::{warehouse_stacks, Paperwork, Shipments, Shipper};
 use crate::cash_book::CashBook;
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm, State, GRACE_DAYS, MIN_TRUST};
@@ -212,14 +212,16 @@ pub fn pupil(roster: &Roster, trade: TradeId, target: u8) -> Option<usize> {
 
 /// Free warehouse slots: what the stock's stacks and the crates leave (`MerchantStock.freeSlots`; a crate takes a slot).
 fn free_slots(content: &Content, stock: &Stock, crates: u32) -> i64 {
-    let used: i64 = stock.0.iter().enumerate().map(|(g, n)| stacks_of(content, g, *n) as i64).sum::<i64>() + crates as i64;
+    let used: i64 = stock.0.iter().enumerate().map(|(g, n)| warehouse_stacks(content, g, *n) as i64)
+        .sum::<i64>() + crates as i64;
     content.dials.warehouse_slots as i64 - used
 }
 
 /// Room for `extra` of a good without dipping into the `free_slots` kept free; merging into its stacks is fine
 /// (`MerchantStock.hasRoomFor`).
 fn room(content: &Content, stock: &Stock, crates: u32, good: GoodId, extra: f64) -> bool {
-    let more = stacks_of(content, good, stock.0[good] + extra) as i64 - stacks_of(content, good, stock.0[good]) as i64;
+    let more = warehouse_stacks(content, good, stock.0[good] + extra) as i64
+        - warehouse_stacks(content, good, stock.0[good]) as i64;
     (free_slots(content, stock, crates) - content.dials.free_slots as i64).max(0) >= more
 }
 

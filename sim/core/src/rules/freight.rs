@@ -739,7 +739,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
 /// How full the hub's warehouse is, 0 to 1 (`Discounts.fill`): its stock's stacks and the crates in its forwarder's
 /// custody against its slots.
 pub(crate) fn fill(content: &Content, stock: &Stock, pallets: &Pallets, hub: TownId) -> f64 {
-    let used: u32 = stock.0.iter().enumerate().map(|(g, n)| crate::cargo::stacks_of(content, g, *n)).sum::<u32>()
+    let used: u32 = stock.0.iter().enumerate().map(|(g, n)| crate::cargo::warehouse_stacks(content, g, *n)).sum::<u32>()
         + crate::freight::custody_crates(pallets, hub);
     let slots = content.dials.warehouse_slots;
     if slots == 0 { 1.0 } else { (used as f64 / slots as f64).clamp(0.0, 1.0) }

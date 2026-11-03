@@ -72,7 +72,8 @@ pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Ho
         || USE_WOOD.iter().filter_map(|t| content.trade(t)).any(|t| crate::kit::at_home(roster, Some(t)).next().is_some());
     let logs: f64 = crate::works::LOGS.iter().filter_map(|l| content.good(l)).map(|g| stock.0[g]).sum();
     let slots = crate::kit::free_slots(content, &stock.0, 0) > content.dials.free_slots as i64 + crate::kit::SPARE_SLOTS;
-    if !uses || logs >= crate::kit::KEEP || !slots {
+    // (A full warehouse draws none, unless a building waits on its timber: that's felled whatever the room.)
+    if !uses || logs >= crate::kit::KEEP || !slots && waiting <= 0.0 {
         return None;
     }
     let d = &content.dials;

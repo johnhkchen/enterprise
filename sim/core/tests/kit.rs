@@ -654,6 +654,32 @@ fn a_home_waits_on_its_timber_and_draws_a_lumberjack_for_it() {
 }
 
 #[test]
+fn a_home_waiting_on_timber_has_it_felled_however_full_the_warehouse() {
+    // Seed 1717's year: towns of 30 with a Master Lumberjack, their warehouses full, felled nothing while their homes
+    // waited. Its warehouse full of gravel nobody takes, its homeless wait on 16 logs.
+    let mut s = Society::new(Content::new(NAMES.iter().chain(&["gravel"]).map(|n| Good::new(n, 0.1, 64)).collect(), DAY));
+    let t = town(&mut s, &[("merchant", 1), ("lumberjack", 1), ("none", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    s.set_people(t, 4.0, 2.0, 20.0);
+    s.pay(t, 100.0);
+    let slots = s.content().dials.warehouse_slots as f64;
+    s.deliver(t, good(s.content(), "gravel"), 64.0 * slots);
+    assert!(kit::free_slots(s.content(), &s.town(t).stock, 0) <= 0, "full");
+    s.advance(8 * DAY);
+    assert!(s.town(t).people.beds >= 4.0, "a home of the logs felled for it: {:?}", s.town(t).people.beds);
+}
+
+#[test]
+fn less_than_an_item_takes_no_warehouse_slot() {
+    let s = Society::new(content());
+    let mut stock = vec![0.0; s.content().goods.len()];
+    let free = kit::free_slots(s.content(), &stock, 0);
+    stock[good(s.content(), "stick")] = 0.4;
+    stock[good(s.content(), "oak_log")] = 64.5;
+    assert_eq!(kit::free_slots(s.content(), &stock, 0), free - 1, "dust takes none, 64 logs and a half one");
+}
+
+#[test]
 fn a_town_with_no_one_idle_retrains_a_hand_for_the_timber_its_home_waits_on() {
     // Its idle hands Nitwits, no bed free for a child: its Cartographer, least trained, takes up the axe.
     let mut s = Society::new(content());

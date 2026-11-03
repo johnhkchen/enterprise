@@ -77,6 +77,13 @@ pub fn stacks_of(content: &Content, good: GoodId, count: f64) -> u32 {
     if count <= 0.0 { 0 } else { (count / content.goods[good].stack.max(1) as f64).ceil() as u32 }
 }
 
+/// Slots a good takes in a warehouse: its whole items' stacks. What's less than an item (the dust a day's making or
+/// eating leaves) takes none: the host holds no part of an item (seed 1717's year: Refuge Pointe's 54 slots held 72
+/// stacks, 20 of them less than an item, its Lumberjack felling nothing for want of room while its home waited).
+pub fn warehouse_stacks(content: &Content, good: GoodId, count: f64) -> u32 {
+    stacks_of(content, good, (count + 1e-9).floor())
+}
+
 /// Stacks loose goods fill, each good its own.
 pub fn loose_stacks(content: &Content, loose: &[f64]) -> u32 {
     loose.iter().enumerate().map(|(g, n)| stacks_of(content, g, *n)).sum()

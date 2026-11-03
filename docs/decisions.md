@@ -1425,6 +1425,14 @@ mod's), but no road ever chose it. Then: build them first.
   what its town burns and builds with: `wood_per_user_day` (2) logs a day for each hand of a trade that uses wood
   (`jobs::USE_WOOD`), and a Novice's day's felling more while a home or a hall waits on timber, as far as its woodlots
   give them, beyond what its Lumberjacks fell (`jobs::woodland_marbles`): a Novice's 8 a day covers four wood users.
+- **A home waiting on timber has it felled however full the warehouse, and less than an item takes no slot.** The year
+  rerun after the Lumberjack fix and security (run-a3d5218734d4 again) ended with 702 villagers, not 845, its towns
+  stopped at 30 to 44 beds with land for 40 to 48: each had a Master Lumberjack and 1 to 3 logs, its home waiting on 16
+  for months. Felling waits on warehouse room, and the warehouses were full: Refuge Pointe's 54 slots held 72 stacks, 20
+  of them less than an item (the dust a day's making and eating leaves). Now a warehouse counts whole items' stacks
+  (`cargo::warehouse_stacks`), and a home or a hall waiting on its timber has it felled and laid by, room or not, and
+  draws a Lumberjack in a full town (`rules/kit.rs`, `jobs::woodland_marbles`). Replayed on the year's journal,
+  Refuge Pointe grew to 49 villagers in 50 beds on its garrison's land.
 - **Road pricing, the first: a stop tolls by weight and distance (John, 2026-11-03: "tolls based on wagon weight x
   distance traveled at/between way stations"; "Replace the flat fee").** A wagon of another town home again pays each
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out
