@@ -86,6 +86,7 @@ fn owe(content: &Content, kits: &mut Kits, name: &str, amount: f64) {
 #[allow(clippy::too_many_arguments)]
 pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: Res<Territory>, order: Res<Towns>,
         seed: Res<Rng>, mut dice: ResMut<Dice>, mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
+        security: Res<crate::security::Security>,
         far: Query<(&Roster, &crate::lockers::Lockers)>,
         mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -243,7 +244,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             kit: if smithy { SMITHY_WEAR } else { 1.0 },
             guards: if kits.armoury_until.is_some_and(|u| u >= now) { ARMOURY_WEAR } else { 1.0 },
         };
-        let crew = crew(&content, &territory, town.id, Some(roster));
+        let crew = crew(&content, &territory, town.id, Some(roster), security.watchmen(town.id));
         for (g, n) in kits.wear(&content, stock, days, crew, how) {
             ledger.used[g] += n as f64;
         }
@@ -295,13 +296,13 @@ pub fn deep_mine(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mu
 /// The share of each kind's wearers the kit in the warehouse covers, and what follows from it: the farm's hands, the
 /// hunting share, the guards armed and armoured (`Territory.touch`'s end).
 #[allow(clippy::type_complexity)]
-pub fn measure(content: Res<Content>, order: Res<Towns>, mut territory: ResMut<Territory>,
+pub fn measure(content: Res<Content>, order: Res<Towns>, mut territory: ResMut<Territory>, security: Res<crate::security::Security>,
         mut towns: Query<(&Town, &mut Kits, &Stock, Option<&Roster>, Option<&Works>, Option<&mut Farm>)>) {
     let guards_kit = ["iron_sword", "bow", "iron_chestplate"].iter().any(|n| content.good(n).is_some());
     for &e in &order.0 {
         let Ok((town, mut kits, stock, roster, works, farm)) = towns.get_mut(e) else { continue };
         kits.fit(&content, &stock.0);
-        let crew = crew(&content, &territory, town.id, roster);
+        let crew = crew(&content, &territory, town.id, roster, security.watchmen(town.id));
         kits.measure(&content, &stock.0, crew);
         if let Some(mut farm) = farm {
             let hands = 1.0 + content.dials.tool_bonus * kits.share_of("iron_hoe");

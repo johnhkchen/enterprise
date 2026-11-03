@@ -713,4 +713,25 @@ dials! {
     congestion_fee: f64 = 0.01,
     /// What a wagon pays a town of another people of what it took there (`taxes.rs`).
     customs_duty: f64 = 0.05,
+    // Security (`security.rs`; John: "introduce a new dimension of spending: security").
+    /// Villagers a town has before it keeps a watch and draws raiders and thieves: a hamlet knows its own.
+    secure_villagers: f64 = 12.0,
+    /// Villagers a watchman keeps: a town of so many with one is half protected.
+    watch_per_villagers: f64 = 10.0,
+    /// Days of its watch's pay a town keeps beyond its reserve to keep a watchman.
+    watch_days: f64 = 10.0,
+    /// The most a day a rich town undefended is raided, at `raid_wealth` (treasury and goods at worth) or more, and the
+    /// share of its treasury and goods a raid takes from it undefended.
+    raid_chance: f64 = 0.05,
+    raid_wealth: f64 = 2000.0,
+    raid_take: f64 = 0.25,
+    /// The share of its warehouse and its households' purses taken a day by thieves from an undefended town.
+    theft_rate: f64 = 0.002,
+    /// The chance a day of an attack in the night on an unwalled, unlit, undefended town.
+    night_chance: f64 = 0.03,
+    /// Mood a raid and a night's attack take, and the days a raid frightens it (a night half that); at most `fear_most`.
+    raid_mood: f64 = 1.0,
+    night_mood: f64 = 0.5,
+    fear_days: f64 = 10.0,
+    fear_most: f64 = 2.0,
 }

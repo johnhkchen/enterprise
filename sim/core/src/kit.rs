@@ -393,12 +393,13 @@ pub fn miners(content: &Content, territory: &Territory, town: usize, roster: Opt
 }
 
 /// A town's crew of kit wearers (`Territory.touch`): its Farmers, miners, guards (posts held) and hunters (Fletchers).
-pub fn crew(content: &Content, territory: &Territory, town: usize, roster: Option<&Roster>) -> Crew {
+pub fn crew(content: &Content, territory: &Territory, town: usize, roster: Option<&Roster>, watchmen: usize) -> Crew {
     let count = |name: &str| roster.map_or(0, |r| at_home(r, content.trade(name)).count());
     Crew {
         farmers: count("farmer"),
         miners: miners(content, territory, town, roster),
-        guards: territory.holdings.get(&town).map_or(0, |h| h.posts.len()),
+        // Its posts' guards and its watch (`security.rs`).
+        guards: territory.holdings.get(&town).map_or(0, |h| h.posts.len()) + watchmen,
         hunters: count("fletcher"),
     }
 }

@@ -43,6 +43,7 @@ pub mod realms;
 pub mod road;
 pub mod roster;
 pub mod settlers;
+pub mod security;
 pub mod services;
 pub mod squad;
 pub mod sourcing;

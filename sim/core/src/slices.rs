@@ -66,6 +66,7 @@ crate::saved! {
         waystations: crate::waystations::Waystations = crate::waystations::Waystations::default(),
         bonds: crate::bonds::Bonds = crate::bonds::Bonds::default(),
         taxes: crate::taxes::Taxes = crate::taxes::Taxes::default(),
+        security: crate::security::Security = crate::security::Security::default(),
     }
     town {
         town: Town,
@@ -139,4 +140,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::waystations::register(schedule);
     crate::rules::bonds::register(schedule);
     crate::rules::taxes::register(schedule);
+    crate::rules::security::register(schedule);
 }

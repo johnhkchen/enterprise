@@ -151,6 +151,7 @@ pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&cr
         + d.variety_mood * (people.variety.min(d.variety_most) - 1.0).max(0.0) // its meals' variety
         + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
         - crate::army::grief(d, people) // its soldiers fallen (`army.rs`)
+        - crate::security::fear(d, people) // raids and attacks in the night (`security.rs`)
         - people.villagers / d.villagers_per_want
         - d.crowding_mood * (people.villagers - people.beds).max(0.0)
         - d.unpaid_mood * (1.0 - people.paid_share)

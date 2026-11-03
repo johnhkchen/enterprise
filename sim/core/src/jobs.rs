@@ -94,6 +94,26 @@ pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Ho
     (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0 + wait))
 }
 
+/// A town's watch short of its kit, the smiths' and the Fletcher's marbles (`security.rs`): four days of the swords' or
+/// bows' worth its unarmed watchmen lack (a Weaponsmith's, and a Fletcher's half as many), and of the chestplates its
+/// unarmoured ones lack (an Armorer's), while it has no hand of that trade at home.
+pub fn security_marbles(content: &Content, roster: &Roster, watchmen: usize, armed: f64, armoured: f64) -> Marbles {
+    let mut out = Marbles::new();
+    if watchmen == 0 {
+        return out;
+    }
+    let worth = |name: &str| content.good(name).map_or(0.0, |g| content.goods[g].value);
+    let lacking = |share: f64| watchmen as f64 * (1.0 - share).max(0.0);
+    for (trade, good, short) in [("weaponsmith", "iron_sword", lacking(armed)), ("fletcher", "bow", 0.5 * lacking(armed)),
+            ("armorer", "iron_chestplate", lacking(armoured))] {
+        let Some(t) = content.trade(trade) else { continue };
+        if short > 0.0 && crate::kit::at_home(roster, Some(t)).next().is_none() && worth(good) > 0.0 {
+            out.push((t, 4.0 * short * worth(good)));
+        }
+    }
+    out
+}
+
 /// What else a trade takes, a glut of which trains a hand to it ([`for_glut`]; not as the mod): the Butcher cooks beef and
 /// mutton, the Armorer smelts ore. Every town held hundreds of beef, its cows' as their leather was taken, with no
 /// Butcher drawn for it. Not in the job draw's bag: a glut the trade can't use up would draw hand after hand to it.
@@ -695,6 +715,11 @@ impl crate::society::Society {
         if let Some((t, m)) = woodland_marbles(content, self.world.resource::<crate::territory::Territory>().holding(town),
                 e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock,
                 people.timber_wait + e.get::<crate::works::Works>().map_or(0.0, |w| w.timber_wait)) {
+            put(&mut bag, t, m);
+        }
+        let held = self.world.resource::<crate::territory::Territory>().holding(town);
+        for (t, m) in security_marbles(content, &roster, self.world.resource::<crate::security::Security>().watchmen(town),
+                held.map_or(0.0, |h| h.armed), held.map_or(0.0, |h| h.armoured)) {
             put(&mut bag, t, m);
         }
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()

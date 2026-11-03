@@ -1386,6 +1386,22 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Security, the first: a town keeps a watch against raiders, thieves and the night (John, 2026-11-03: "introduce a
+  new dimension of spending: security. This is an example of where smiths, fletchers, miners, masons all can
+  contribute"; "Bandits on the roads", "Raids on rich towns", "Monsters at night", "Theft from within", "Soldiers to
+  hold/contest a territory"; "Out of the world").** A town of `secure_villagers` (12) or more keeps a watch: a watchman
+  for each `watch_per_villagers` (10) villagers, twice that for `fear_days` (10) after a raid, as far as it can pay
+  `watch_days` (10) of their `guard_pay` beyond its reserve, changing by one a day ("watch", `rules/security.rs`).
+  Watchmen are guards to the kit (`kit::crew`): they wear swords, bows and chestplates, and a watch short of them puts
+  a Weaponsmith's, a Fletcher's and an Armorer's marbles in the job draw (`jobs::security_marbles`), whose services arm
+  it from the miners' iron. Its defence is its watch and its idle hands at half, by its arms (half again armed) and
+  armour (half again armoured), and its wall (a full watch's worth) and watchtower (half); its protection is defence
+  over what its size needs plus one (`security::protection`: half at par). What protection doesn't keep off falls on
+  it each day, out of the world: thieves take `theft_rate` (0.002) of its warehouse and purses; a rich town is raided
+  at up to `raid_chance` (0.05) a day as its wealth nears `raid_wealth` (2,000), a raid taking `raid_take` (0.25) of
+  its treasury and goods and frightening it (`raid_mood` 1 for 10 days, `People::fear`); the night attacks an unwalled
+  town at `night_chance` (0.03) less its lanterns' light (one for four villagers), `night_mood` 0.5. A town raided
+  lately walls itself in whatever its mood (the Masons). Next: bandits on the roads; garrisons to hold land.
 - **A town draws Lumberjacks for the wood it uses, not for the logs their own trades buy back (John, 2026-11-03:
   "Let's dig into lumberjack hiring. They might just be really good at generating emeralds?"; "Go").** Seed 1717's year
   ended with 363 of 845 villagers Lumberjacks, the poorest earners in the economy (0.38 emeralds a day each against a

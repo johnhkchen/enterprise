@@ -117,7 +117,8 @@ const PARTY_MOST: usize = 2;
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
         settlers: Res<Settlers>, hands: Res<crate::roster::Hands>, mut outbox: ResMut<Outbox>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
-        (routes, map, territory): (Query<(&Route, &RouteState)>, Res<crate::map::Map>, Res<crate::territory::Territory>),
+        (routes, map, territory, security): (Query<(&Route, &RouteState)>, Res<crate::map::Map>, Res<crate::territory::Territory>,
+            Res<crate::security::Security>),
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
             Option<&mut Roster>, &mut Lockers, Option<&crate::herds::Herds>, Option<&crate::works::Works>)>) {
     let (now, today) = (clock.now, clock.now / content.day_ticks.max(1));
@@ -181,6 +182,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
                 people.timber_wait + works.map_or(0.0, |w| w.timber_wait)) {
             far.push(marbles);
         }
+        // Its watch short of its kit, a smith's or a Fletcher's (`security.rs`).
+        let held = territory.holding(town.id);
+        far.extend(crate::jobs::security_marbles(&content, &roster, security.watchmen(town.id),
+            held.map_or(0.0, |h| h.armed), held.map_or(0.0, |h| h.armoured)));
         let people = &mut *people;
         let timber_wait = people.timber_wait + works.map_or(0.0, |w| w.timber_wait);
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,

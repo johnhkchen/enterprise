@@ -130,7 +130,8 @@ fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
         mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>, places: Query<&Town>,
-        (atlas, roads, bonds): (Res<crate::atlas::Atlas>, Query<(&Route, &RouteState, &RoutePath)>, Res<crate::bonds::Bonds>),
+        (atlas, roads, bonds, security): (Res<crate::atlas::Atlas>, Query<(&Route, &RouteState, &RoutePath)>, Res<crate::bonds::Bonds>,
+            Res<crate::security::Security>),
         mut q: Query<(&Town, &mut Works, &mut Money, &mut Stock, &Trades, &mut Budget, &People, Option<&Farm>,
             Option<&Roster>, &Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -295,10 +296,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
                 }
             }
         }
-        // Nothing that pays: a content town with money to spare walls itself in, if it can pay all the masons'
+        // Nothing that pays: a content town with money to spare (or one raided lately) walls itself in, if it can pay all the masons'
         // wages, keep `wall_buffer` beyond, keep buying what it brings in while the wall goes up, and keep its roads'
         // round trips (`Trades::road_keep`).
-        if toll_review && works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
+        // A town raided lately walls itself in whatever its mood (`security.rs`): for its safety, not its pride.
+        let raided = security.towns.get(&t).and_then(|w| w.raided)
+            .is_some_and(|r| now < r + (d.fear_days * 3.0 * day as f64) as u64);
+        if toll_review && works.wall().is_none() && (people.mood >= MOOD_TO_START || raided) && spare >= d.wall_start_emeralds {
             let days = d.wall_blocks as f64 / per_day;
             let wages = days * d.masons as f64 * d.mason_pay;
             let roads = trades.road_keep.to_f64() * d.wall_road_trips;
