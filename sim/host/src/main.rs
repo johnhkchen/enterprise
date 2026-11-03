@@ -124,6 +124,19 @@ fn main() {
                 w.hex, w.owner, w.level, if w.rising.is_some() { " (rising)" } else { "" }, w.passes, w.taken.to_f64(),
                 w.banked.to_f64(), w.roads.to_f64(), w.laid);
         }
+        let bonds = s.bonds();
+        for state in [enterprise_core::bonds::State::Sold, enterprise_core::bonds::State::Repaid, enterprise_core::bonds::State::Defaulted,
+                enterprise_core::bonds::State::Offered, enterprise_core::bonds::State::Lapsed] {
+            let of: Vec<_> = bonds.iter().filter(|b| b.state == state).collect();
+            let lent: f64 = of.iter().map(|b| b.principal.to_f64()).sum();
+            println!("bonds {state:?}: {} for {lent:.0}", of.len());
+        }
+        for b in bonds.iter().filter(|b| b.sold.is_some()) {
+            println!("  bond of town {} for {}: {:.0} lent by town {:?}, {:.1} of {:.1} repaid, {:?}", b.issuer, b.purpose.name(),
+                b.principal.to_f64(), b.holder, b.repaid.to_f64(), b.face.to_f64(), b.state);
+        }
+        let (highways, laid) = s.highways();
+        println!("king's highways: {:.1} to spend, {laid} hexes laid", highways.to_f64());
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();
         println!("outside, net since the world began: {:.0} (+ out of the world, - into it)", book.net(Account::Outside).to_f64());
         let mut months: std::collections::BTreeMap<u64, (f64, f64)> = Default::default();

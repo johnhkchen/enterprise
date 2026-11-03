@@ -678,4 +678,22 @@ dials! {
     /// Every road's food, and so its cost, at this share of the mod's (`road::food_needed`, `map::per_hex_at_bread`):
     /// John, "let's cut all transport costs by 40%", after seed 1001's wagons ran three times in 30 days, each at a loss.
     road_cost_share: f64 = 0.6,
+    // Bonds (`bonds.rs`; John: "Towns invest by buying municipal bonds/royal treasuries").
+    /// What a bond pays its holder beyond what it lent, as a share of it, over its term.
+    bond_coupon: f64 = 0.1,
+    /// Days a bond's issuer has to repay it, a share a day; twice that unpaid, it's in default.
+    bond_term_days: f64 = 40.0,
+    /// Days a bond is offered before it lapses unsold.
+    bond_offer_days: f64 = 20.0,
+    /// The most a town borrows on one bond.
+    bond_most: f64 = 60.0,
+    /// A buyer keeps this much beyond its reserve and what opening a road asks, besides what it lends.
+    bond_idle: f64 = 20.0,
+    /// Wagons passing its stop before a town borrows for the stop's next level: its road is used.
+    bond_stop_passes: u32 = 10,
+    /// The most bonds a town holds at once.
+    bonds_held_most: u32 = 3,
+    /// A royal bond's size, and the most the crown has out at once (its king's highways' money).
+    royal_bond: f64 = 20.0,
+    royal_bonds_most: u32 = 4,
 }

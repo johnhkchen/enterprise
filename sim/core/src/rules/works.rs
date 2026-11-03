@@ -130,7 +130,7 @@ fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
         mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>, places: Query<&Town>,
-        (atlas, roads): (Res<crate::atlas::Atlas>, Query<(&Route, &RouteState, &RoutePath)>),
+        (atlas, roads, bonds): (Res<crate::atlas::Atlas>, Query<(&Route, &RouteState, &RoutePath)>, Res<crate::bonds::Bonds>),
         mut q: Query<(&Town, &mut Works, &mut Money, &mut Stock, &Trades, &mut Budget, &People, Option<&Farm>,
             Option<&Roster>, &Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -157,6 +157,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             continue;
         }
         works.reviewed = Some(now);
+        works.short = None;
         let t = town.id;
         let spare = money.0 - super::farms::build_reserve(&content, trades, farm);
         // What its halls would cost, for the Mason's marbles in the job draw (`BuildServices.work`).
@@ -281,7 +282,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
                 let wages = blocks as f64 / per_day * d.masons as f64 * d.mason_pay;
                 let timber = if crate::works::takes_timber(&content) { WAYSTATION_LOGS } else { 0.0 };
                 let materials = crate::fixed::Fixed::ceil(WAYSTATION_EMERALDS);
-                if spare >= wages + WAYSTATION_EMERALDS + d.commission_spare && logs(&content, &stock.0) >= timber {
+                let need = wages + WAYSTATION_EMERALDS + d.commission_spare;
+                if spare.to_f64() < need && logs(&content, &stock.0) >= timber {
+                    works.short = Some((crate::bonds::Purpose::Waystation, need - spare.to_f64()));
+                }
+                if spare >= need && logs(&content, &stock.0) >= timber {
                     take_logs(&content, &mut stock, &mut ledger, timber);
                     post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), materials,
                         Reason::Other("a waystation".into()), now, day);
@@ -310,8 +315,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             Some(None) => continue, // its Masons are away
             Some(Some(level)) => level,
         };
-        let Some(kind) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare.to_f64(), now, skill)
-            else { works.timber_wait = 0.0; continue };
+        let funded = |kind: Kind| bonds.funds_hall(t, kind);
+        let (kind, short) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare.to_f64(), now, skill,
+            funded);
+        if works.short.is_none() {
+            works.short = short.map(|(k, need)| (crate::bonds::Purpose::Hall(k), need));
+        }
+        let Some(kind) = kind else { works.timber_wait = 0.0; continue };
         // Its timber, where the host has Lumberjacks: short of it, the hall waits (and draws one).
         let timber = if crate::works::takes_timber(&content) { d.hall_logs } else { 0.0 };
         if logs(&content, &stock.0) < timber {
@@ -335,20 +345,28 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
 type Hex2 = (crate::hex::Hex, crate::hex::Hex, crate::hex::Hex, u32);
 
 /// The first kind a town lacks whose partners it has, if it can pay twice over (`BuildServices.next`): a town that
-/// isn't content or can't yet pay for the first it wants saves up, and builds in order.
+/// isn't content or can't yet pay for the first it wants saves up, and builds in order. One a bond paid for it builds
+/// once it can pay for it (`bonds.rs`). Besides, the kind a content town is short of the money for, and by how much it
+/// is short of paying for it once: what a bond would raise.
 #[allow(clippy::too_many_arguments)]
 fn next_hall(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
-        stock: &[f64], mood: f64, spare: f64, now: u64, skill: u8) -> Option<Kind> {
+        stock: &[f64], mood: f64, spare: f64, now: u64, skill: u8, funded: impl Fn(Kind) -> bool)
+        -> (Option<Kind>, Option<(Kind, f64)>) {
     for kind in KINDS {
         if works.has_started(kind) || skill < kind.mason_level() || !buildable(content, works, roster, farm, paperwork, now, kind) {
             continue;
         }
-        if mood < MOOD_TO_START || spare < content.dials.build_savings * cost(content, stock, kind) {
-            return None;
+        if mood < MOOD_TO_START {
+            return (None, None);
         }
-        return Some(kind);
+        let c = cost(content, stock, kind);
+        let savings = if funded(kind) { 1.0 } else { content.dials.build_savings };
+        if spare < savings * c {
+            return (None, (spare < c).then_some((kind, c - spare)));
+        }
+        return (Some(kind), None);
     }
-    None
+    (None, None)
 }
 
 /// A master Farmer with a square to plant and eight flowers in the warehouse plants its beds

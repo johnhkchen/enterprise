@@ -664,3 +664,17 @@ fn waystations_daisy_chain_toward_a_town_too_far_for_one() {
     assert!(east(&ways[0]) < 400.0 && east(&ways[1]) > east(&ways[0]), "each out from the last: {ways:?}");
     assert!(s.known(far).contains(&town) && s.known(town).contains(&far), "900 blocks, heard of by the chain");
 }
+
+#[test]
+fn a_content_town_short_of_its_next_halls_money_offers_a_bond_for_it() {
+    // A square costs some 10.5 emeralds (8 of materials, 2.53 of wages): 6 isn't enough, so it borrows the rest.
+    let mut roster = CONTENT_ROSTER.to_vec();
+    roster.push(("mason", 2));
+    let mut s = content_town(6.0, 4, &roster);
+    s.content_mut().dials.wall_start_emeralds = 1e9; // (no wall)
+    s.advance(25 * DAY);
+    let bond = s.bonds().into_iter().find(|b| b.issuer == 0).expect("a bond for its square");
+    assert_eq!(bond.purpose, enterprise_core::bonds::Purpose::Hall(Kind::Square), "{bond:?}");
+    assert!(bond.principal.to_f64() > 0.0 && bond.principal.to_f64() <= 11.0, "what it lacks of the cost: {bond:?}");
+    assert!(!s.works(0).has_started(Kind::Square), "and waits on it: nobody's wagon calls to buy it");
+}

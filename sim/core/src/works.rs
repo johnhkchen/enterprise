@@ -356,6 +356,10 @@ pub struct Works {
     pub calls_at: Option<u64>,
     #[serde(default)]
     pub berths: u32,
+    /// The work it wanted at its last review and was short of the money for, and by how much: what a bond would raise
+    /// (`bonds.rs`).
+    #[serde(default)]
+    pub short: Option<(crate::bonds::Purpose, f64)>,
 }
 
 /// Ship calls a berth serves a season; a season, in days; what a berth costs (its stretch of quay, jetty and building).

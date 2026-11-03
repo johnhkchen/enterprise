@@ -424,6 +424,20 @@ def place_bids(desks, day, say):
 DIALS = [sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--dial"]
 
 
+# `--capital TOWN[:SPURS]`: the network town TOWN (its place, 0 the first) named the crown's capital on the first day,
+# in peacetime (`/enterprise war capital`), minting SPURS a day (0 by default): its royal bonds pave the realm's roads
+# (`bonds.rs`).
+CAPITAL = next((sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--capital"), None)
+
+
+def name_capital(desks, day, say):
+    if CAPITAL is None or day != 1:
+        return
+    town, _, spurs = CAPITAL.partition(":")
+    said = rcon(f"enterprise war capital {desks[int(town)]} {int(spurs or 0)}").strip().splitlines()
+    say(f"day {day}: capital at town {town}: " + (said[-1] if said else "(no answer)"))
+
+
 def set_dials(day, say):
     for d in DIALS if day == 1 else []:
         name, _, value = d.partition("=")
@@ -435,6 +449,7 @@ def run_days(chosen, desks, roads, first, start, days, say, stages, points):
     for day in range(start, days + 1):
         started = time.time()
         set_dials(day, say)
+        name_capital(desks, day, say)
         place_bids(desks, day, say)
         if day == 2 and "--loaded" not in sys.argv:
             # After the first day, the towns left to the core's ledgers: each town's conversion and harbour are laid in

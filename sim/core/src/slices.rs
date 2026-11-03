@@ -64,6 +64,7 @@ crate::saved! {
         crown_shop: crate::crown_host::CrownShop = crate::crown_host::CrownShop::default(),
         market: crate::market::Market = crate::market::Market::default(),
         waystations: crate::waystations::Waystations = crate::waystations::Waystations::default(),
+        bonds: crate::bonds::Bonds = crate::bonds::Bonds::default(),
     }
     town {
         town: Town,
@@ -135,4 +136,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::pallet_messages::register(schedule);
     crate::rules::market::register(schedule);
     crate::rules::waystations::register(schedule);
+    crate::rules::bonds::register(schedule);
 }

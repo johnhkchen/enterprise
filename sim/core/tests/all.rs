@@ -70,4 +70,5 @@ mod wagon_host;
 mod wire;
 mod works;
 mod waystations;
+mod bonds;
 mod workshop;

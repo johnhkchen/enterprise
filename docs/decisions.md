@@ -1386,6 +1386,22 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Towns lend to each other by bonds, and the crown's royal bonds build its highways (John, 2026-11-03: "Towns
+  invest by buying municipal bonds/royal treasuries"; "Any town works"; "Crown builds roads").** Seed 1717's stops
+  stayed stops (the busiest took 6 of the 12 a waystation costs in 180 days) while two thirds of the world's money sat
+  idle. A town short of the money for a work it wants offers a bond for what it lacks, up to `bond_most` (60): the hall
+  it would build but for its savings (built once it can pay for it, not twice over), a waystation out on the road, its
+  stop's next level once `bond_stop_passes` (10) wagons passed it (the money banked to the stop) (`bonds.rs`,
+  `Works::short`). A town with money idle beyond its reserve, what opening a road asks and `bond_idle` (20) buys it,
+  holding `bonds_held_most` (3) at most. The issuer repays it and `bond_coupon` (0.1) more over `bond_term_days` (40),
+  a share a day; unpaid twice the term, it's in default and the holder's loss; an offer unsold in `bond_offer_days`
+  (20) lapses. The capital keeps `royal_bonds_most` (4) royal bonds of `royal_bond` (20) out; what they raise grades,
+  then paves, the most worn trail hex of any land road, one a day, from its treasury ("king's highways"), and it repays
+  them as a town does. Nothing crosses distance without a carrier: a bond is bought and repaid only where a wagon
+  between the two calls, at the far end (`rules/bonds.rs`, after the advances): the purse pays home's dues and buys the
+  far end's offer (its plan filled it, the trip pressing), and the far end pays its dues and buys home's offer into the
+  purse; a trip to collect a quarter of a bond's face is pressing. `survival_study.py --capital TOWN[:SPURS]` names a
+  capital on day 1; `enterprise-sim --money` lists the bonds.
 - **A town matches its stop's toll take for the road works by it (John, 2026-11-03: "Fix road works with towns
   matching toll take as part of their own taxation system").** Seed 1717's 180 days built 20 stops and none rose past
   a stop: the road works spent what each banked first (34 hexes graded for 72 emeralds, 10.2 taken in all). Now every

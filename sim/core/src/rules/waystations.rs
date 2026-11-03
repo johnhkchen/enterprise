@@ -123,21 +123,9 @@ pub fn mend(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut way
         s.mended = today;
         let (reach, best) = (road_reach(s.level), best_surface(s.level));
         // The most worn trail hex by it its level can better, on a land road, with that road's path.
-        let mut pick: Option<(f64, crate::hex::Hex, &Route, &RoutePath)> = None;
-        for &(route, path) in &land {
-            for &h in &path.0 {
-                if h.distance(s.hex) > reach || !map.trail(h) || map.surface(h) >= best {
-                    continue;
-                }
-                let worn = map.wear.get(&h).map_or(0.0, |w| w.at(now, day));
-                if pick.as_ref().is_none_or(|(w, ph, ..)| worn > *w || worn == *w && h < *ph) {
-                    pick = Some((worn, h, route, path));
-                }
-            }
-        }
-        let Some((_, hex, route, path)) = pick else { continue };
+        let Some((hex, route, path)) = most_worn(&map, &land, Some((s.hex, reach)), best, now, day) else { continue };
         let next = map.surface(hex) + 1;
-        let cost = Fixed::ceil(if next >= crate::map::PAVED { PAVE_COST } else { GRADE_COST });
+        let cost = surface_cost(&map, hex);
         let Some(&owner) = towns.0.get(s.owner) else { continue };
         let Ok((mut money, trades, farm)) = q.get_mut(owner) else { continue };
         // Its town's pledge, paid while its money beyond its reserve and what opening a road asks covers it: the stop's
@@ -150,12 +138,42 @@ pub fn mend(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut way
             Reason::Other("road works".into()), now, day as u64);
         s.roads -= cost;
         s.laid += 1;
-        map.surface.insert(hex, next);
-        let at = path.0.iter().position(|&h| h == hex).unwrap_or(0);
-        let (from, to) = (path.0[at.saturating_sub(1)], path.0[(at + 1).min(path.0.len() - 1)]);
-        let width = map.widths.get(&hex).copied().unwrap_or(crate::map::TRAIL_WIDTH);
-        outbox.0.push(crate::messages::Output::Trail { hex: crate::wire::HexAt::of(hex), from: crate::wire::HexAt::of(from),
-            to: crate::wire::HexAt::of(to), width, path: path.0.iter().map(|&h| crate::wire::HexAt::of(h)).collect(),
-            llama: route.carrier == crate::map::Carrier::Llama, surface: next });
+        lay(&mut map, &mut outbox, route, path, hex, next);
     }
+}
+
+/// The most worn trail hex of these land roads within `reach` of `at` (anywhere, with none) whose surface is below
+/// `best`, with its road and path.
+pub(crate) fn most_worn<'a>(map: &crate::map::Map, land: &[(&'a Route, &'a RoutePath)], at: Option<(crate::hex::Hex, i32)>,
+        best: u8, now: u64, day: u64) -> Option<(crate::hex::Hex, &'a Route, &'a RoutePath)> {
+    let mut pick: Option<(f64, crate::hex::Hex, &Route, &RoutePath)> = None;
+    for &(route, path) in land {
+        for &h in &path.0 {
+            if at.is_some_and(|(c, reach)| h.distance(c) > reach) || !map.trail(h) || map.surface(h) >= best {
+                continue;
+            }
+            let worn = map.wear.get(&h).map_or(0.0, |w| w.at(now, day));
+            if pick.as_ref().is_none_or(|(w, ph, ..)| worn > *w || worn == *w && h < *ph) {
+                pick = Some((worn, h, route, path));
+            }
+        }
+    }
+    pick.map(|(_, h, r, p)| (h, r, p))
+}
+
+/// The emeralds a hex takes to lay the next surface on.
+pub(crate) fn surface_cost(map: &crate::map::Map, hex: crate::hex::Hex) -> Fixed {
+    Fixed::ceil(if map.surface(hex) + 1 >= crate::map::PAVED { PAVE_COST } else { GRADE_COST })
+}
+
+/// A hex laid with its next surface, the host told (`Output::Trail`'s `surface`).
+pub(crate) fn lay(map: &mut crate::map::Map, outbox: &mut Outbox, route: &Route, path: &RoutePath, hex: crate::hex::Hex,
+        next: u8) {
+    map.surface.insert(hex, next);
+    let at = path.0.iter().position(|&h| h == hex).unwrap_or(0);
+    let (from, to) = (path.0[at.saturating_sub(1)], path.0[(at + 1).min(path.0.len() - 1)]);
+    let width = map.widths.get(&hex).copied().unwrap_or(crate::map::TRAIL_WIDTH);
+    outbox.0.push(crate::messages::Output::Trail { hex: crate::wire::HexAt::of(hex), from: crate::wire::HexAt::of(from),
+        to: crate::wire::HexAt::of(to), width, path: path.0.iter().map(|&h| crate::wire::HexAt::of(h)).collect(),
+        llama: route.carrier == crate::map::Carrier::Llama, surface: next });
 }

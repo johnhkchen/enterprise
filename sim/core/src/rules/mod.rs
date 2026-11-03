@@ -21,6 +21,7 @@ pub mod arrive;
 pub mod atlas;
 pub mod bank;
 pub mod bills;
+pub mod bonds;
 pub mod cargo;
 pub mod chokepoints;
 pub mod contracts;
