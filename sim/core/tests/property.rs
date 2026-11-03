@@ -146,19 +146,31 @@ fn a_field_its_household_can_t_work_is_sold_to_its_tenant_once_it_can_pay() {
     assert_eq!(standing(&s, t, buyer), Standing::Owner);
 }
 
-#[test]
-fn estate_land_left_untended_is_homesteaded_and_the_others_that_could_have_dispute_it() {
-    let (mut s, t) = village(&["farmer", "farmer", "farmer"], 6.0);
+/// The fields homesteaded and the town's disputes, `farmers` Farmers with `plots` plots after six days.
+fn homesteading(farmers: usize, plots: u32) -> (Society, Vec<Party>) {
+    let (mut s, t) = village(&vec!["farmer"; farmers], 2.0 * farmers as f64);
     s.content_mut().dials.homestead_days = 2.0;
-    s.set_plots(t, WHEAT, 600);
+    s.set_plots(t, WHEAT, plots);
     s.set_farm_demand(t, WHEAT, 1000.0);
     run(&mut s, 6);
     let r = s.land_register();
-    let homesteaded: Vec<_> = r.claims.values().filter(|c| c.how == Acquired::Homesteaded).collect();
-    assert!(!homesteaded.is_empty(), "idle: {:?}", s.farm(t).unwrap().farm.idle);
-    let d = r.disputes.iter().find(|d| d.why == Contest::Homestead).expect("a dispute");
-    assert!(d.claimants.len() >= 2 && d.claimants.contains(&homesteaded[0].owner), "{d:?}");
-    assert!(s.farm(t).unwrap().farm.freeholds >= r.fields.values().map(|f| f.plots).sum::<u32>());
+    let owners = r.claims.iter().filter(|(k, c)| matches!(k, Target::Field(_)) && c.how == Acquired::Homesteaded)
+        .map(|(_, c)| c.owner).collect();
+    (s, owners)
 }
 
+#[test]
+fn estate_land_enough_for_each_is_homesteaded_in_turn_with_no_dispute() {
+    let (s, owners) = homesteading(3, 600);
+    assert!(owners.len() >= 2, "idle: {:?}", s.farm(0).unwrap().farm.idle);
+    assert!(s.land_register().disputes.is_empty(), "{:?}", s.land_register().disputes);
+}
 
+#[test]
+fn estate_land_too_little_for_all_that_could_take_it_is_disputed() {
+    let (s, owners) = homesteading(6, 800);
+    let r = s.land_register();
+    let d = r.disputes.iter().find(|d| d.why == Contest::Homestead).expect("a dispute");
+    assert!(d.claimants.len() >= 2 && owners.iter().any(|o| d.claimants.contains(o)), "{d:?}");
+    assert!(s.farm(0).unwrap().farm.freeholds >= r.fields.values().map(|f| f.plots).sum::<u32>());
+}

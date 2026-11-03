@@ -226,7 +226,8 @@ pub fn fields(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
         }
 
         // Homesteaded: a field's worth of the estate's plots untended for long enough is taken by the Farmer household
-        // with hands to spare and room for it that holds least; the others that could have are left with a dispute.
+        // with hands to spare and room for it that holds least; when the idle land is too little for all that could
+        // have, they're left with a dispute.
         let (idle_crop, untended) = farm.idle.iter().max_by(|a, b| a.1.total_cmp(b.1))
             .map_or((None, 0.0), |(g, n)| (Some(*g), n / YIELD_PER_PLOT_PER_DAY));
         let estate = register.estates.get_mut(&t).unwrap();
@@ -251,7 +252,9 @@ pub fn fields(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
         register.claims.insert(Target::Field(f), Claim { id: register.next, owner: Party::Household(list[taker].id),
             how: Acquired::Homesteaded, since: now });
         register.next += 1;
-        if could.len() > 1 {
+        // Land enough for each of them in turn is no quarrel: only the ones the estate's idle land can't give a field
+        // dispute it.
+        if could.len() > (untended / plots as f64) as usize {
             let claimants = could.iter().map(|&i| Party::Household(list[i].id)).collect();
             register.disputes.push(Dispute { id: register.next_dispute, town: t, target: Target::Field(f), claimants,
                 why: Contest::Homestead, since: now });

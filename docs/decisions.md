@@ -2483,8 +2483,9 @@ freeholds were everyone's. Now each is one household's field (`property.rs`, `ru
   when that household's own share pays for it; what it paid out of the households' purse is its own at the next share-out
   (`Homes::charges`, `households::shares`).
 - **Homesteaded:** estate land left untended, a field's worth of plots for `homestead_days` (20), is taken by the Farmer
-  household with room that holds least: the plots become its freehold. Any other that could have taken it is left with
-  a dispute (`Contest::Homestead`).
+  household with room that holds least: the plots become its freehold. Land enough for each that could take one in turn
+  is no quarrel; when the idle land is too little for all of them, the others are left with a dispute
+  (`Contest::Homestead`): any that could have was four a town a year, a few, as the guide has it, needs land short.
 - **Worked or let:** a household works as many of its fields as it has grown Farmers and lets the rest to a Farmer
   household with hands to spare, for `lease_share` (0.5) of what the field earns (`Lease`).
 - **Inherited:** a household left empty passes its fields to its kin, the household its first hand moved out of
@@ -2501,4 +2502,4 @@ freeholds were everyone's. Now each is one household's field (`property.rs`, `ru
   `households` table has it and its fields, its `disputes` table the disputes; `enterprise-sim --money` counts them.
 - **Seed 1717's year, its journal replayed on these rules** (23 of 11,023 requests refused: the game answered the old
   core): by day 360, 205 owners' households (their purses 316 emeralds on average), 101 labourers' (140), 5 landlords'
-  (412) and 5 tenants' (265); 220 fields; 170 homestead disputes, about four a town.
+  (412) and 5 tenants' (265); 220 fields; 38 homestead disputes, under one a town (170 when any household that could have took it disputed it).
