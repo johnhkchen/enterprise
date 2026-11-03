@@ -323,6 +323,18 @@ dials! {
     idle_sale_days: f64 = 30.0,
     /// A field's price between households: this many days of what it earns.
     land_price_days: f64 = 30.0,
+    // firms (`firms.rs`)
+    /// Batches of its finer pieces a firm's hand makes a day, a level.
+    firm_batches_per_level: f64 = 4.0,
+    /// Hands a firm employs, at most (more wants a foreman: step 4).
+    firm_hands_most: f64 = 4.0,
+    /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
+    firm_wage_premium: f64 = 0.25,
+    /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its
+    /// takings are its owners'.
+    firm_working_days: f64 = 10.0,
+    /// Days running a firm can't pay its hands in full before it's wound up.
+    firm_broke_days: f64 = 10.0,
     /// What a piece of the finer tier (dyed and enchanted, bought of a town's own villagers: a Leatherworker's armour)
     /// is worth in comfort, plain ones being 1: a day met with it lifts the mood up to this many plain days' (at most
     /// two), and the households pay its worth times it (John: "we'd want the happiness boost to make buying equipment

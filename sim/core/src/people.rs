@@ -105,7 +105,9 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
 /// whole items come off it as it fills, so a town looked at often eats no more than one looked at once a day; a food
 /// that runs out drops its tab (no hunger). Returns how varied the meal was: the number of foods it was as good as made
 /// of, each an equal share (the inverse of the sum of the shares squared: two half and half, 2); 0 with none to eat.
-pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mut Vec<f64>, points: f64) -> f64 {
+/// The finer pieces of a food (`fine`, a bakery's bread) are eaten first: with the variety, the finer pieces eaten.
+pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mut Vec<f64>,
+        fine: &mut std::collections::BTreeMap<usize, f64>, points: f64) -> (f64, Vec<(usize, f64)>) {
     owed.resize(content.goods.len(), 0.0);
     let held = |comforts: bool, stock: &Stock| -> Vec<(usize, f64)> {
         content.goods.iter().enumerate()
@@ -123,9 +125,10 @@ pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mu
         }
     }
     if total <= 0.0 || points <= 0.0 {
-        return 0.0;
+        return (0.0, Vec::new());
     }
     let mut squares = 0.0;
+    let mut finer = Vec::new();
     for &(i, m) in &bag {
         let share = m / total;
         squares += share * share;
@@ -136,9 +139,14 @@ pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mu
             stock.0[i] -= n;
             ledger.used[i] += n;
             owed[i] = (owed[i] - n * g.food).max(0.0);
+            if let Some(f) = fine.get_mut(&i) {
+                let ate = f.min(n);
+                *f -= ate;
+                finer.push((i, ate));
+            }
         }
     }
-    1.0 / squares
+    (1.0 / squares, finer)
 }
 
 /// Where a town's mood is heading (`Territory.moodTarget`): the comforts met and its works (a wall, a square, its flower
@@ -147,6 +155,7 @@ pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mu
 pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
     people.comfort_met.iter().sum::<f64>()
         + people.comfort_fine.iter().sum::<f64>() // the finer tier's lift (`State::People::fine`)
+        + people.meal_fine // and its food's (`firms.rs`)
         + works.map_or(0.0, |w| w.mood())
         + d.variety_mood * (people.variety.min(d.variety_most) - 1.0).max(0.0) // its meals' variety
         + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
@@ -303,7 +312,19 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // mod, whose villagers ate only to be born). Short, it eats what there is: no hunger, but no variety either
         // (John: "daily meals, no hunger"; "a variety of food happiness weight").
         let meal = people.villagers * d.meal_points * days;
-        people.variety = dine(&content, &mut ledger, &mut stock, &mut people.meal_owed, meal);
+        let (variety, finer) = dine(&content, &mut ledger, &mut stock, &mut people.meal_owed, &mut people.fine, meal);
+        people.variety = variety;
+        // The finer pieces' lift, as a comfort's (the share of the meals' points they were, over about a day: a firm
+        // bakes once a day and its bread is eaten first), and their worth beyond plain ones paid, as far as the purse
+        // goes.
+        let lift = d.fine_quality - 1.0;
+        let points: f64 = finer.iter().map(|&(g, n)| n * content.goods[g].food).sum();
+        let now_fine = if meal > 0.0 { (points / meal).min(1.0) * lift.max(0.0) } else { 0.0 };
+        people.meal_fine += (now_fine - people.meal_fine) * (1.0 - crate::fixed::halved(days, 1.0));
+        let worth: f64 = finer.iter().map(|&(g, n)| n * content.goods[g].value * lift.max(0.0)).sum();
+        let pays = Fixed::ceil(worth).min(people.purse.at_least_zero());
+        post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,
+            Reason::Comforts, now, day);
         // Mood heads toward the comforts met, less its size, villagers without beds and unpaid wages.
         let target = mood_target(d, people, works);
         people.mood += (target - people.mood) * (1.0 - crate::fixed::halved(days, d.mood_half_life_days));

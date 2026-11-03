@@ -24,6 +24,7 @@ pub fn register(schedule: &mut Schedule) {
 /// struck out of theirs (a household left empty gone, what it held passing to the rest), then its hands new to the
 /// roster housed: a home of their own while the town has one empty, else (and always a child) the household of fewest.
 pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut households: ResMut<Households>,
+        firms: Res<crate::firms::Firms>,
         q: Query<(&Town, &People, &Roster), (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let households = &mut *households;
@@ -34,9 +35,11 @@ pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
             continue;
         }
         homes_of.reckoned = Some(now);
+        // (A firm's hands earn its wages, not a share of the town's: `firms.rs`.)
+        let employed = firms.employed(town.id);
         let list = &mut homes_of.list;
         // Their shares as they stand, before any leaves: what the purse gained, its earners earned.
-        let weights: Vec<usize> = list.iter().map(|h| earners(roster, h)).collect();
+        let weights: Vec<usize> = list.iter().map(|h| earners(roster, h, &employed)).collect();
         let purses = shares(list, &homes_of.charges, &weights, people.purse);
         homes_of.charges.clear();
         for (h, p) in list.iter_mut().zip(purses) {
@@ -76,7 +79,7 @@ pub fn reckon(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut h
             households.next += 1;
         }
         // And the purse shared again: what the gone held to their kin, a town's first households' from the start.
-        let weights: Vec<usize> = list.iter().map(|h| earners(roster, h)).collect();
+        let weights: Vec<usize> = list.iter().map(|h| earners(roster, h, &employed)).collect();
         let purses = allot(list, &weights, people.purse);
         for (h, p) in list.iter_mut().zip(purses) {
             h.purse = p;

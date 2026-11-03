@@ -62,4 +62,5 @@ slices! {
     shop_host,
     crown_host,
     households,
+    firms,
 }

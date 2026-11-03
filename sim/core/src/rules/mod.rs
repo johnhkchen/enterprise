@@ -48,6 +48,7 @@ pub mod storage;
 pub mod households;
 pub mod registers;
 pub mod property;
+pub mod firms;
 pub mod services;
 pub mod squad;
 pub mod sourcing;

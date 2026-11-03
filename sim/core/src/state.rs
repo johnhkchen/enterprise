@@ -153,6 +153,10 @@ pub struct People {
     /// mood's, not `comfort_met`'s, which stays the share of the ration met.
     #[serde(default)]
     pub comfort_fine: Vec<f64>,
+    /// What the finer tier of its food (a bakery's bread, `firms.rs`) added to its last meals, beyond plain ones', as
+    /// `comfort_fine`'s: the share of the meal's points of finer pieces times what they're worth beyond plain.
+    #[serde(default)]
+    pub meal_fine: f64,
     /// The finer pieces' comfort beyond plain ones', banked by kind in emeralds' worth as they're put on and taken as
     /// the days they cover pass (a pair of boots is days of clothing).
     #[serde(default)]

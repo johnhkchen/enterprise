@@ -14,7 +14,7 @@
 //! lost comes out of them by what they hold ([`allot`]). Nothing reads a household's purse yet: the households'
 //! choices come with firms (`docs/decisions.md`). A town without a roster (its villagers only a number) has none.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -110,9 +110,10 @@ pub fn pay(list: &mut [Household], from: usize, to: usize, amount: Fixed) -> Fix
     amount
 }
 
-/// The hands of a household that earn: those grown.
-pub fn earners(roster: &Roster, h: &Household) -> usize {
-    h.members.iter().filter(|&&id| roster.hands.iter().any(|x| x.id == id && x.baby_until.is_none())).count()
+/// The hands of a household that earn the town's wages: those grown, but those a firm employs.
+pub fn earners(roster: &Roster, h: &Household, employed: &BTreeSet<HandId>) -> usize {
+    h.members.iter().filter(|&&id| !employed.contains(&id) && roster.hands.iter().any(|x| x.id == id && x.baby_until.is_none()))
+        .count()
 }
 
 /// Each household's purse once `total` (the households' purse) is split among them: what it gained since their shares
@@ -190,7 +191,8 @@ impl crate::society::Society {
     pub fn households(&self, town: TownId) -> Vec<Household> {
         let Some(homes) = self.world.resource::<Households>().towns.get(&town) else { return Vec::new() };
         let roster = self.roster(town);
-        let weights: Vec<usize> = homes.list.iter().map(|h| earners(&roster, h)).collect();
+        let employed = self.world.resource::<crate::firms::Firms>().employed(town);
+        let weights: Vec<usize> = homes.list.iter().map(|h| earners(&roster, h, &employed)).collect();
         let purses = shares(&homes.list, &homes.charges, &weights, self.town(town).people.purse);
         homes.list.iter().zip(purses).map(|(h, purse)| Household { purse, ..h.clone() }).collect()
     }

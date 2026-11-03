@@ -520,6 +520,7 @@ impl Society {
             Account::Treasury(t) => self.world.get::<Money>(self.towns[t]).map(|m| m.0),
             Account::Households(t) => self.world.get::<People>(self.towns[t]).map(|p| p.purse),
             Account::Wagon(r) => self.world.get::<RouteState>(self.routes[r]).and_then(|s| s.wagon.as_ref()).map(|w| w.purse),
+            Account::Firm(f) => self.world.resource::<crate::firms::Firms>().firms.iter().find(|x| x.id == f).map(|x| x.treasury),
             Account::Outside => None,
         }
     }
@@ -529,6 +530,7 @@ impl Society {
             Account::Treasury(t) => self.world.get_mut::<Money>(self.towns[t]).unwrap().0 = value,
             Account::Households(t) => self.world.get_mut::<People>(self.towns[t]).unwrap().purse = value,
             Account::Wagon(r) => self.world.get_mut::<RouteState>(self.routes[r]).unwrap().wagon.as_mut().unwrap().purse = value,
+            Account::Firm(f) => self.world.resource_mut::<crate::firms::Firms>().get_mut(f).unwrap().treasury = value,
             Account::Outside => {}
         }
     }

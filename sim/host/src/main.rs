@@ -109,16 +109,18 @@ fn main() {
         let mut s = enterprise_core::Society::load(&save.blob).expect("a society");
         use enterprise_core::cash_book::Account;
         let totals = s.totals();
-        let (mut treasuries, mut households, mut wagons) = (0.0, 0.0, 0.0);
+        let (mut treasuries, mut households, mut wagons, mut firms) = (0.0, 0.0, 0.0, 0.0);
         for (account, v) in &totals.balances {
             match account {
                 Account::Treasury(_) => treasuries += v.to_f64(),
                 Account::Households(_) => households += v.to_f64(),
                 Account::Wagon(_) => wagons += v.to_f64(),
+                Account::Firm(_) => firms += v.to_f64(),
                 _ => {}
             }
         }
-        println!("money {:.0}: treasuries {treasuries:.0}, households {households:.0}, wagons {wagons:.0}", totals.money.to_f64());
+        println!("money {:.0}: treasuries {treasuries:.0}, households {households:.0}, wagons {wagons:.0}, firms {firms:.0}",
+            totals.money.to_f64());
         for w in s.waystations() {
             println!("stop at {:?} of town {}: level {}{}, {} passes, {:.1} taken, {:.1} banked, {:.1} pledged to roads, {} hexes laid",
                 w.hex, w.owner, w.level, if w.rising.is_some() { " (rising)" } else { "" }, w.passes, w.taken.to_f64(),
@@ -160,6 +162,15 @@ fn main() {
         let r = s.land_register();
         println!("the land: {} fields ({} let); households {}; {} disputes open", r.fields.len(), r.leases.len(),
             by.iter().map(|(k, n)| format!("{n} {k}")).collect::<Vec<_>>().join(", "), r.disputes.len());
+        let dt = s.content().day_ticks.max(1);
+        for f in s.firms() {
+            println!("firm {} of town {}: {} hands, {:.0} made, {:.1} in its treasury, {} days unpaid, founded day {}", f.name, f.town,
+                f.employees.len(), f.made, f.treasury.to_f64(), f.broke_days, f.founded / dt);
+        }
+        for (f, at) in s.firms_wound_up() {
+            println!("firm {} of town {} wound up on day {} (founded day {}, {:.0} made)", f.name, f.town,
+                at / dt, f.founded / dt, f.made);
+        }
         let (highways, laid) = s.highways();
         println!("king's highways: {:.1} to spend, {laid} hexes laid", highways.to_f64());
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();

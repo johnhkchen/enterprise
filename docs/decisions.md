@@ -2503,3 +2503,41 @@ freeholds were everyone's. Now each is one household's field (`property.rs`, `ru
 - **Seed 1717's year, its journal replayed on these rules** (23 of 11,023 requests refused: the game answered the old
   core): by day 360, 205 owners' households (their purses 316 emeralds on average), 101 labourers' (140), 5 landlords'
   (412) and 5 tenants' (265); 220 fields; 38 homestead disputes, under one a town (170 when any household that could have took it disputed it).
+
+## Society: firms (2026-11-04)
+
+Step 3 of "How to Add Society Systems to the Sim": "Firms, plus 2–3 processing jobs with threshold and range" (John:
+"Allow capital investments for higher quality goods"; "Baker, Weaver, Tanner. Higher quality goods"; "Town hands of
+its trade"). A firm is a household's capital put into a workshop that makes the **finer tier** of what the town's own
+workshop makes plain (`firms.rs`, `rules/firms.rs`, daily, before the town's workshop):
+
+- **Three kinds** (`firms::KINDS`): a bakery (Farmers, bread: 40 people within 150 blocks, 30 emeralds of capital), a
+  weaver's (Shepherds, carpets) and a tannery (Leatherworkers, boots), each 50 people within 300 blocks and 40
+  emeralds. The guide's smith wanted 60; seed 1717's towns are 55 at most, and no Shepherd's or Leatherworker's town had
+  60 within its range all year.
+- **Higher quality, not more:** its pieces are the finer tier the lockers already bought of villagers' selling trades
+  (`People::fine`, each worth `fine_quality`, 1.5, plain ones), of the same inputs. The town's people use them first,
+  so a firm keeps the town's finer stock at the par its workshop keeps of the good (`firms::fine_wanted`) and the
+  workshop makes plain only what the firm can't. Finer bread is eaten first too, and lifts the mood as a comfort's
+  finer tier does (`People::meal_fine`, over about a day), the households paying its worth beyond plain.
+- **Founded** where enough people live within its range and no bigger town within it has one (the central place
+  serves the country round it), the town wants a batch of its finer pieces, and a hand of its trade makes more
+  (`firm_batches_per_level`, 4 batches a level a day, at their worth less their inputs) than it would be offered; by the
+  household that holds its capital and `firm_working_days` (10) of wages, the richest, or the two richest together,
+  partners by what each put in. Its capital goes to the town, which builds its workshop; its working days to its own
+  treasury, a ledger account of its own (`Account::Firm`).
+- **Its day:** it takes on hands of its trade, the best first, as many as its batches take (up to `firm_hands_most`, 4;
+  past that, step 4's foreman), at `firm_wage_premium` (0.25) more than a hand earns of the town's wages, by the last
+  ten days' of them; a hand on a firm's wages earns no share of the town's (`households::earners`), and its wage is its
+  household's own. It buys its inputs of the town at their worth and sells it its pieces at theirs, `fine_quality`
+  times a plain one's. Beyond its working days of wages, its takings are its owners'.
+- **Wound up** once it hasn't paid its hands in full for `firm_broke_days` (10): what's left in its treasury its
+  owners', its hands back on the town's wages. A firm keeps one hand while it's open, so a firm that sells nothing
+  goes broke and dies, rather than sitting idle.
+- **Not yet:** its claims (its workshop, its sale when wound up); rivals of one kind in one town; its reputation; its
+  pieces carried abroad (a wagon moves them as plain ones).
+- **Seed 1717's year, its journal replayed** (23 of 11,023 requests refused): the first bakery on day 188, the first
+  weaver's and tannery on day 238; by day 361, 16 bakeries, 5 weavers and 5 tanneries, all three in the five biggest
+  towns (51 to 59 people), a bakery alone in 11 of 41 to 49, none in a town under 41; 9 bakeries wound up, after 48
+  days on average. Over the last two months the towns with all three were at a mood of 0.51 where the same replay
+  without firms had them at 0.09, a bakery's at 1.39 for 1.24.

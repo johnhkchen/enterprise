@@ -41,6 +41,8 @@ pub enum Account {
     /// Outside the society: money paid in, and money spent out of it.
     #[default]
     Outside,
+    /// A firm's treasury (`firms.rs`).
+    Firm(crate::firms::FirmId),
 }
 
 /// What money moved for.
@@ -133,6 +135,9 @@ impl<'a> Side<'a> {
     }
     pub fn wagon(route: RouteId, purse: &'a mut Fixed) -> Self {
         Side { account: Account::Wagon(route), balance: Some(purse) }
+    }
+    pub fn firm(id: crate::firms::FirmId, treasury: &'a mut Fixed) -> Self {
+        Side { account: Account::Firm(id), balance: Some(treasury) }
     }
     pub fn outside() -> Self {
         Side { account: Account::Outside, balance: None }

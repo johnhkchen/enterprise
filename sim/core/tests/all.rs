@@ -74,6 +74,7 @@ mod bonds;
 mod taxes;
 mod households;
 mod property;
+mod firms;
 mod security;
 mod storage;
 mod workshop;

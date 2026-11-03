@@ -80,6 +80,11 @@ impl Society {
             }
             balances.insert(Account::Wagon(route.seq), purse);
         }
+        // Firms' treasuries (`firms.rs`).
+        for f in &self.world.resource::<crate::firms::Firms>().firms {
+            money += f.treasury;
+            balances.insert(Account::Firm(f.id), f.treasury);
+        }
         Totals { goods, money, balances, ledger: self.world.resource::<Ledger>().clone(),
             posted: self.world.resource::<CashBook>().net.clone() }
     }
