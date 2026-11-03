@@ -165,6 +165,9 @@ public final class WagonAdapter {
      */
     private void release(MinecraftServer server, long hand, boolean now) {
         Back b = back.get(hand);
+        if (b == null) {
+            return; // let out or forgotten already, by a release before it in the same catch-up (seed 1717's day 146)
+        }
         GlobalPos desk = desk(b.town());
         ServerLevel level = desk == null ? null : server.getLevel(desk.dimension());
         if (level == null || !level.isLoaded(desk.pos())) {
