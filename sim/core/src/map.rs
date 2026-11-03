@@ -73,6 +73,8 @@ pub const GRADED_EASE: f64 = 0.75;
 pub const PAVED_EASE: f64 = 0.9;
 pub const PAVED_COST: f64 = 0.8;
 pub const PAVED_PACE: f64 = 0.67;
+/// Wagons' crossings a day a hex carries without crowding: a trail or open ground, a graded road, a paved one.
+pub const FREE_CROSSINGS: [f64; 3] = [2.0, 4.0, 8.0];
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
 /// A ship sails a hex of water at this much a hex of open ground: the wind and the current do a team's work, so its
@@ -452,13 +454,27 @@ impl Map {
         self.surface.get(&hex).copied().unwrap_or(0)
     }
 
-    /// The share of its blocks' time a wagon takes along `hexes`: its paved hexes at [`PAVED_PACE`].
-    pub fn pace(&self, hexes: &[Hex]) -> f64 {
+    /// The share of its blocks' time a wagon takes along `hexes` at `now`: its paved hexes at [`PAVED_PACE`], and each
+    /// crowded one slower by its [`Map::crowding`], up to twice the time.
+    pub fn pace(&self, hexes: &[Hex], now: u64, day_ticks: u64) -> f64 {
         if hexes.is_empty() {
             return 1.0;
         }
-        let paved = hexes.iter().filter(|&&h| self.surface(h) == PAVED).count() as f64;
-        (hexes.len() as f64 - paved * (1.0 - PAVED_PACE)) / hexes.len() as f64
+        let each = |h: Hex| (if self.surface(h) == PAVED { PAVED_PACE } else { 1.0 }) * (1.0 + self.crowding(h, now, day_ticks));
+        hexes.iter().map(|&h| each(h)).sum::<f64>() / hexes.len() as f64
+    }
+
+    /// Wagons' crossings a day a hex has carried lately: its wear, which fades by half every [`WEAR_HALF_LIFE_DAYS`],
+    /// as a daily rate.
+    pub fn crossings_a_day(&self, hex: Hex, now: u64, day_ticks: u64) -> f64 {
+        self.wear.get(&hex).map_or(0.0, |w| w.at(now, day_ticks)) * std::f64::consts::LN_2 / WEAR_HALF_LIFE_DAYS
+    }
+
+    /// How crowded a hex is (John, 2026-11-03: "congestion fees for high volume traffic areas"; "Add the harm"): its
+    /// crossings a day beyond what its surface carries freely ([`FREE_CROSSINGS`]), as a share of that, at most 1.
+    pub fn crowding(&self, hex: Hex, now: u64, day_ticks: u64) -> f64 {
+        let free = FREE_CROSSINGS[self.surface(hex).min(PAVED) as usize];
+        ((self.crossings_a_day(hex, now, day_ticks) - free) / free).clamp(0.0, 1.0)
     }
 
     /// The height of a hex's ground (none: unknown), keeping the rest of it.

@@ -1392,7 +1392,13 @@ mod's), but no road ever chose it. Then: build them first.
   (`Wagon::stacks_out`, as it left) and home, over each hex of its path within the stop's road-works reach (the
   stretch it keeps): a full wagon over a stop's five hexes pays about what the flat 0.2 did, an empty one rests free.
   A ship of another town pays the port it lands at `harbour_fee` (0.02) a stack it set out with, out of what it took
-  there ("harbour fees", `rules/taxes.rs` `harbour`, after the realms' customs). Next: congestion where roads crowd (a slowdown, the fee to the land's owner), customs between
+  there ("harbour fees", `rules/taxes.rs` `harbour`, after the realms' customs). Crowding is a harm now ("Add the harm,
+  fee to land owner"): a hex carries `FREE_CROSSINGS` wagons' crossings a day freely (2 a trail or open ground, 4
+  graded, 8 paved; its wear, fading by half in 20 days, read as a daily rate); beyond that it's crowded by the excess's
+  share, at most 1, and a wagon takes 1 + that of the time across it (`Map::crowding`, `pace`: a road's days and food
+  follow). A wagon home again by land pays each town whose crowded land it crossed, its own excepted,
+  `congestion_fee` (0.01) a stack it carried for each such hex, as crowded as it is ("congestion fees"): money for the
+  owner to pave with, which lifts the hex's capacity. Next: congestion where roads crowd (a slowdown, the fee to the land's owner), customs between
   peoples.
 - **Taxes, the third: a town's VAT falls on what its households buy (John, 2026-11-03: "VAT / broad consumption tax:
   broad base, low rates, and self-policing through the invoice chain"; "Towns and crown split").** A town's treasury is

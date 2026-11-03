@@ -248,6 +248,12 @@ impl Society {
         self.world.resource::<crate::map::Map>()
     }
 
+    /// Other wagons' crossings worn into these hexes now (a test's: traffic it doesn't model).
+    pub fn wear_hexes(&mut self, hexes: &[crate::hex::Hex], crossings: f64) {
+        let (now, day) = (self.now(), self.content().day_ticks);
+        self.world.resource_mut::<crate::map::Map>().wear(hexes, crossings, now, day);
+    }
+
     /// Road food both ways across a hex of open ground (`Caravans.perHex`): 16 food points, at bread's worth a point
     /// (the mod's 1/30 of an emerald when the host has no bread with food points).
     pub fn per_hex(&self) -> f64 {
@@ -276,7 +282,9 @@ impl Society {
             let path = self.plan_road(from, to, carrier)?;
             // A ship's way counts its blocks at its pace: its days and its crew's food (`map::SHIP_PACE`).
             // A paved road's wagon goes quicker, and eats for the time it's out (`map::PAVED_PACE`).
-            let paved = if carrier == crate::map::Carrier::Ship { 1.0 } else { self.map().pace(&path.hexes) };
+            // A crowded hex slows it (`map::Map::crowding`).
+            let paved = if carrier == crate::map::Carrier::Ship { 1.0 }
+                else { self.map().pace(&path.hexes, self.now(), self.content().day_ticks) };
             let blocks = self.road_blocks(from, to, &path) / carrier.pace() * paved;
             let short = !crate::road::road_food(self.content()) || crate::road::in_range(self.content(), blocks.round() as u32);
             short.then_some((carrier, path, blocks))

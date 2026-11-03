@@ -705,4 +705,7 @@ dials! {
     vat: f64 = 0.05,
     /// What a ship of another town pays a port for each stack it lands there (`taxes.rs`).
     harbour_fee: f64 = 0.02,
+    /// What a wagon pays the owner of a crowded hex for each stack it carried over it, the hex crowded fully
+    /// (`map::Map::crowding`).
+    congestion_fee: f64 = 0.01,
 }

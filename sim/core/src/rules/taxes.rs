@@ -6,6 +6,7 @@
 //!   treasury; a town's wagon at the capital pays what its town owes out of its purse. What's collected goes to the
 //!   king's highways.
 //! - **Plan:** a town's wagon to the capital takes what its town owes in its purse.
+//! - **Congestion** (home again, after the stops): a wagon pays each town whose crowded land it crossed.
 //! - **Harbour** (at the far end, once it has sold): a ship landing at a port pays it its fee for each stack it landed,
 //!   out of what it took there.
 
@@ -16,12 +17,13 @@ use crate::bonds::Bonds;
 use crate::cash_book::{post, CashBook, Side};
 use crate::content::Content;
 use crate::state::*;
-use crate::taxes::{harbour_reason, land_rent, land_tax_reason, Taxes};
+use crate::taxes::{congestion_reason, harbour_reason, land_rent, land_tax_reason, Taxes};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         assess.in_set(Step::Review).after(super::bonds::highways).before(super::jobs::relocate).before(super::jobs::review),
         collect.in_set(Step::Papers).after(super::bonds::papers).before(super::bills::present),
+        congestion.in_set(Step::Services).after(super::waystations::serve),
         harbour.in_set(Step::Sell).after(super::realms::customs).before(super::harvest::redeem).before(super::cargo::relot),
         plan.in_set(Step::PlanPapers).after(super::bonds::plan).before(super::bills::plan_papers),
     ));
@@ -127,5 +129,43 @@ pub fn harbour(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
         let pay = due.min((wagon.purse - keep).at_least_zero());
         post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut port.0),
             pay, harbour_reason(), now, day);
+    }
+}
+
+/// A wagon home again by land pays each town whose crowded land it crossed (not its own) `congestion_fee` for each stack
+/// it carried, out and home, over each such hex as crowded as it is now.
+#[allow(clippy::too_many_arguments)]
+pub fn congestion(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, map: Res<crate::map::Map>,
+        territory: Res<crate::territory::Territory>, pallets: Res<crate::pallet::Pallets>, mut ledger: ResMut<Ledger>,
+        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
+        mut money: Query<&mut Money>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    if content.dials.congestion_fee <= 0.0 {
+        return;
+    }
+    for entity in in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
+        let (_, route, mut state, path) = routes.get_mut(entity).unwrap();
+        let Some(path) = path else { continue };
+        if state.arrived != Some(Leg::Home) || route.carrier == crate::map::Carrier::Ship {
+            continue;
+        }
+        let route = *route;
+        let Some(wagon) = state.wagon.as_mut() else { continue };
+        let carried = (wagon.stacks_out + crate::cargo::stacks(&content, &pallets, route.seq, wagon)) as f64;
+        let mut owed: std::collections::BTreeMap<usize, f64> = Default::default();
+        for &h in &path.0 {
+            let crowded = map.crowding(h, now, day);
+            let Some(owner) = territory.owner(h).filter(|&o| o != route.from_id) else { continue };
+            if crowded > 0.0 {
+                *owed.entry(owner).or_default() += content.dials.congestion_fee * carried * crowded;
+            }
+        }
+        for (owner, due) in owed {
+            let Some(&e) = towns.0.get(owner) else { continue };
+            let Ok(mut m) = money.get_mut(e) else { continue };
+            let pay = crate::fixed::Fixed::floor(due).min(wagon.purse.at_least_zero());
+            post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(owner, &mut m.0), pay,
+                congestion_reason(), now, day);
+        }
     }
 }

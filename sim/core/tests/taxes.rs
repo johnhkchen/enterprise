@@ -103,3 +103,51 @@ fn a_town_takes_vat_on_the_comforts_its_households_buy() {
     assert!(vat <= rate * comforts + 1e-6 && vat >= 0.5 * rate * comforts, "{rate} of {comforts}, as far as their purse went: {vat}");
     s.conserved(&before).unwrap();
 }
+
+#[test]
+fn a_crowded_hex_slows_wagons_and_a_paved_one_carries_more() {
+    let mut map = enterprise_core::map::Map::default();
+    let h = enterprise_core::Hex::new(0, 0);
+    let day = DAY;
+    assert_eq!(map.crowding(h, 0, day), 0.0, "an empty hex isn't crowded");
+    // Six crossings a day, kept up: three times what a trail carries freely.
+    let kept = 6.0 * enterprise_core::map::WEAR_HALF_LIFE_DAYS / std::f64::consts::LN_2;
+    map.wear(&[h], kept, 0, day);
+    assert!((map.crossings_a_day(h, 0, day) - 6.0).abs() < 1e-9);
+    assert_eq!(map.crowding(h, 0, day), 1.0, "crowded fully");
+    assert!((map.pace(&[h], 0, day) - 2.0).abs() < 1e-9, "twice the time");
+    map.surface.insert(h, enterprise_core::map::PAVED);
+    assert!((map.crowding(h, 0, day) - 0.0).abs() < 1e-9, "paved, it carries eight a day freely");
+    assert!((map.pace(&[h], 0, day) - enterprise_core::map::PAVED_PACE).abs() < 1e-9);
+}
+
+#[test]
+fn a_wagon_pays_the_owner_of_crowded_land_it_crosses() {
+    // The farm's wagons to the mill over Crowdham's land, its middle hex crowded by others' traffic.
+    let goods = vec![Good::new("wheat", 0.05, 64)];
+    let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.standing_orders = false;
+    let farm = s.add_town("Wheatfield", 100.0);
+    let mill = s.add_town("Hayford", 200.0);
+    let crowd = s.add_town("Crowdham", 10.0);
+    let (a, b) = (enterprise_core::Hex::new(0, 0), enterprise_core::Hex::new(6, 0));
+    s.place_town(farm, a.center_x(), a.center_z());
+    s.place_town(mill, b.center_x(), b.center_z());
+    s.place_town(crowd, 999_000.5, 999_000.5);
+    s.set_trade(farm, 0, 128.0, 0.0);
+    s.set_trade(mill, 0, 0.0, 64.0);
+    s.deliver(farm, 0, 640.0);
+    let road = s.add_road(farm, mill, 1.0).expect("a road");
+    let middle: Vec<_> = s.route_path(road).unwrap().into_iter().filter(|h| h.distance(a) >= 2 && h.distance(b) >= 2).collect();
+    for &h in &middle {
+        s.claim_hex(crowd, h);
+    }
+    let money = s.town(crowd).money.to_f64();
+    for d in 1..=10 {
+        s.wear_hexes(&middle, 20.0);
+        s.advance(d * DAY);
+    }
+    let fees: f64 = s.cash_book(crowd, 30).iter().filter(|(_, w, _)| w == "congestion fees").map(|(_, _, n)| n.to_f64()).sum();
+    assert!(s.route(road).trips >= 1 && fees > 0.0, "Crowdham took its congestion fees: {} trips, {fees}", s.route(road).trips);
+    assert!(s.town(crowd).money.to_f64() >= money + fees - 1e-6);
+}

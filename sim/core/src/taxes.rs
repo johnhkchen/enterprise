@@ -13,6 +13,10 @@
 //!   price besides, to its treasury ([`vat`]). One rate on every good, the households of every town alike.
 //! - **Harbour fees:** a ship of another town landing at a port pays it `harbour_fee` a stack it landed, out of its
 //!   purse, for the quay and the jetty (John: "vessel/harbor fees for ships").
+//! - **Congestion fees:** a crowded hex slows the wagons on it (`map::Map::crowding`); a wagon home again pays each
+//!   town whose crowded land it crossed `congestion_fee` a stack it carried for each such hex, as crowded as it was
+//!   (John: "congestion fees for high volume traffic areas"; "Add the harm, fee to land owner"). The owner's own wagons
+//!   pay none: they'd pay themselves.
 
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
@@ -66,6 +70,10 @@ pub fn land_rent(content: &Content, map: &crate::map::Map, hex: crate::hex::Hex,
 
 pub fn harbour_reason() -> Reason {
     Reason::Other("harbour fees".into())
+}
+
+pub fn congestion_reason() -> Reason {
+    Reason::Other("congestion fees".into())
 }
 
 pub fn land_tax_reason() -> Reason {
