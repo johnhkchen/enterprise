@@ -5,17 +5,17 @@
 //! where none of a kind is, a household founds one if enough people live within its range, the town wants what it
 //! makes and a hand of its trade would make more than it earns now.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bevy_ecs::prelude::*;
 
 use crate::cash_book::{post, Account, CashBook, Reason, Side};
 use crate::charters::{Charters, Mandate, Party, Source, Verb};
-use crate::content::Content;
-use crate::firms::{added, graded_wanted, ingredients, kinds, Firm, Firms, Head, Kind};
+use crate::content::{Content, GoodId};
+use crate::firms::{added, graded_wanted_for, ingredients, kinds, Firm, FirmId, Firms, Head, Kind};
 use crate::fixed::Fixed;
 use crate::households::{earners, shares, Homes, HouseholdId, Households};
-use crate::persons::{draw, fundamentals, roll, skill_cap, Event, Grade, Habit, Person, Persons};
+use crate::persons::{draw, fundamentals, knack_of, roll, skill_cap, Event, Grade, Habit, Knack, Person, Persons, Work};
 use crate::roster::{Hand, HandId, Roster};
 use crate::rules::Step;
 use crate::state::*;
@@ -79,7 +79,12 @@ fn pay_owners(firm: &mut Firm, homes: &mut Homes, people: &mut People, ledger: &
 
 /// A hand as a person: its make-up drawn from its id the first time a firm looks at it.
 fn person<'a>(persons: &'a mut Persons, hand: &Hand, all: &[String]) -> &'a mut Person {
-    persons.hands.entry(hand.id).or_insert_with(|| draw(hand.id, hand.level, all))
+    let m = persons.hands.entry(hand.id).or_insert_with(|| draw(hand.id, hand.level, all));
+    // (A work new since it was drawn, it knows as its draw would have.)
+    for w in Work::ALL {
+        m.skills.entry(w).or_insert(3.0 * hand.level.clamp(1, 5) as f64);
+    }
+    m
 }
 
 /// The batches a hand makes a day for its firm: its rank's, a quarter fewer a Perfectionist's or a Mentor head's own,
@@ -113,10 +118,25 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
     let d = &content.dials;
     let firms = &mut *firms;
     let persons = &mut *persons;
-    // Every kind's ingredients, an ingredient talent's choice.
-    let mut all: Vec<String> = kinds.iter().flat_map(|k| ingredients(&content, &k.conversion)).collect();
+    // (A tannery of an older save made boots: it's a bootmaker now.)
+    for f in firms.firms.iter_mut().filter(|f| f.name == "tannery" && f.recipe.as_deref().is_some_and(|r| r.ends_with("leather_boots"))) {
+        f.name = "bootmaker".into();
+    }
+    // Every kind's materials, a material talent's choice.
+    let mut all: Vec<String> = kinds.iter().flat_map(|k| k.steps.iter().flat_map(|s| materials_of(&content, s))).collect();
     all.sort();
     all.dedup();
+    // Each business's knack a Copycat buying of it copies: its most skilled Master's, not a Copycat's own.
+    let mut masters: BTreeMap<FirmId, Knack> = BTreeMap::new();
+    for f in &firms.firms {
+        let work = kinds.iter().find(|k| k.name == f.name).map(|k| k.work);
+        let best = f.employees.iter().filter_map(|e| persons.hands.get(&e.0).map(|m| (e.0, m)))
+            .filter(|(_, m)| m.knack.is_some_and(|k| k != Knack::Copycat))
+            .max_by(|a, b| work.map_or(0.0, |w| a.1.skill(w)).total_cmp(&work.map_or(0.0, |w| b.1.skill(w))).then(b.0.cmp(&a.0)));
+        if let Some((_, m)) = best {
+            masters.insert(f.id, m.knack.unwrap());
+        }
+    }
     // Where each town stands and how many live there, for the kinds' ranges.
     let places: Vec<(usize, Option<(f64, f64)>, f64)> = q.iter().map(|(t, p, ..)| (t.id, t.at, p.villagers)).collect();
     for &e in &towns.0 {
@@ -130,16 +150,33 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
         let free = roster.hands.iter().filter(|x| x.baby_until.is_none() && !employed.contains(&x.id)).count();
         let earns = earned(&book, t, free, today).max(d.hand_wage);
         let offer = Fixed::ceil(earns * (1.0 + d.firm_wage_premium));
+        // The town's businesses by what they sell it, and what of each material they'd use of it: two days' of what
+        // their town wants of them, a tannery's leather kept at what its bootmaker would sew.
+        let mut makers: BTreeMap<GoodId, FirmId> = BTreeMap::new();
+        let mut needs: BTreeMap<GoodId, f64> = BTreeMap::new();
+        for f in firms.firms.iter().filter(|f| f.town == t) {
+            let Some(kind) = kinds.iter().find(|k| k.name == f.name) else { continue };
+            makers.insert(kind.steps[kind.steps.len() - 1].output, f.id);
+            for &(g, n) in &kind.conversion.inputs {
+                *needs.entry(g).or_insert(0.0) += 2.0 * f.used / kind.conversion.out.max(1e-9) * n;
+            }
+        }
         let mut done = Vec::new();
         for firm in firms.firms.iter_mut().filter(|f| f.town == t) {
             let Some(kind) = kinds.iter().find(|k| k.name == firm.name) else { continue };
-            work(&content, kind, firm, persons, &all, roster, people, stock, money, hooks, &mut ledger, &mut book, now);
+            let copied = firm.main_supplier().and_then(|f| masters.get(&f).copied());
+            let output = kind.steps[kind.steps.len() - 1].output;
+            // (Not its own use: a tannery cures the town's hides for others.)
+            let own: f64 = kind.conversion.inputs.iter().filter(|i| i.0 == output)
+                .map(|i| 2.0 * firm.used / kind.conversion.out.max(1e-9) * i.1).sum();
+            let needed = needs.get(&output).copied().unwrap_or(0.0) - own;
+            work(&content, kind, firm, persons, &all, roster, people, stock, money, hooks, &mut ledger, &mut book, now,
+                needed, &makers, copied);
             if matches!(firm.reckoned, Some(k) if now < k + day) {
                 continue;
             }
             firm.reckoned = Some(now);
             let c = &kind.conversion;
-            let ing = ingredients(&content, c);
             let ours = |id: HandId| grown(id).filter(|x| x.trade == kind.trade);
             firm.employees.retain(|&(id, _)| ours(id).is_some());
             // A head gone from its hands, or at its term's end, is no longer: its owners appoint again below.
@@ -148,7 +185,9 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             if firm.head.is_some_and(|h| !firm.employees.iter().any(|e| e.0 == h.hand) || now >= since(h.mandate) + term) {
                 end_head(firm, &mut charters, now);
             }
-            spirits(firm, persons, &all, &ours, homes, now, today, day);
+            spirits(kind, firm, persons, &all, &ours, homes, copied, now, today, day);
+            firm.regular = if firm.sold > 0.0 { firm.regular + 1 } else { 0 };
+            firm.sold = 0.0;
             // What its town wanted of what it makes since yesterday, its average moved a fifth of the way: it hires
             // for a quarter more than that (a batch at least), not for the whole of the town's stock at once.
             firm.used += (firm.eaten - firm.used) * 0.2;
@@ -175,7 +214,7 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                 for x in roster.hands.iter()
                         .filter(|x| x.trade == kind.trade && x.baby_until.is_none() && !employed.contains(&x.id)) {
                     let m = person(persons, x, &all);
-                    let w = fundamentals(m, kind.work, &ing);
+                    let w = best_step(&content, kind, m).0;
                     let pays = added(&content, c, Grade::of(w)) * pace(d, x, m, None) > offer.to_f64();
                     let key = (kin.is_some() && home_of(homes, x.id) == kin, (w * 1000.0) as i64, x.level,
                         std::cmp::Reverse(x.id));
@@ -191,7 +230,8 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             let hands = firm.employees.len() as f64;
             let more = capacity < hire_for && hands >= d.firm_hands_unled && candidate(firm, persons, &employed).is_some();
             if firm.head.is_none() && (hands > d.firm_hands_unled || more) {
-                let skill = |id: HandId| persons.hands.get(&id).map_or(0.0, |m| m.skill(kind.work));
+                let skill = |id: HandId| persons.hands.get(&id)
+                    .map_or(0.0, |m| kind.steps.iter().map(|s| m.skill(s.work)).fold(0.0, f64::max));
                 if let Some(i) = (0..firm.employees.len()).max_by(|&a, &b| {
                     let (x, y) = (firm.employees[a].0, firm.employees[b].0);
                     skill(x).total_cmp(&skill(y)).then(y.cmp(&x))
@@ -275,14 +315,13 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             }
             let c = &kind.conversion;
             let par = hooks.map_or(0.0, |h| h.par_of(c.output));
-            if graded_wanted(&content, people, c.output, par) < c.out {
+            if graded_wanted_for(&content, people, c.output, par, needs.get(&c.output).copied().unwrap_or(0.0)) < c.out {
                 continue;
             }
-            let ing = ingredients(&content, c);
             let pays = roster.hands.iter().filter(|x| x.trade == kind.trade && x.baby_until.is_none()
                 && !employed.contains(&x.id)).any(|x| {
                 let m = person(persons, x, &all);
-                added(&content, c, Grade::of(fundamentals(m, kind.work, &ing))) * pace(d, x, m, None) > offer.to_f64()
+                added(&content, c, Grade::of(best_step(&content, kind, m).0)) * pace(d, x, m, None) > offer.to_f64()
             });
             if !pays {
                 continue;
@@ -317,88 +356,250 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
     }
 }
 
-/// A firm's work since its last look: what its town wants of its graded pieces (`graded_wanted`; noted, for its hiring), its hands'
-/// batches for the time passed (a day's at most carried; none of a hand out for the day), as far as the town wants
-/// them, its inputs go (not what's set aside for forward sales) and the treasury pays; each batch graded by its maker's
-/// Fundamentals × the shop's Morale, give or take the batch's own draw, and its maker the more skilled for it. The
-/// pieces are sold to the town at their grades' worth and the inputs bought of it at theirs.
+/// The names of a step's materials, bare (a material talent's).
+fn materials_of(content: &Content, step: &crate::firms::Step) -> Vec<String> {
+    let mut all: Vec<String> = step.recipes.iter().flat_map(|c| ingredients(content, c)).collect();
+    all.sort();
+    all.dedup();
+    all
+}
+
+/// What a hand brings to its firm at its best step, and which step that is (the later on a tie: a bootmaker's hands
+/// sew unless they're tanners at heart).
+fn best_step(content: &Content, kind: &Kind, m: &Person) -> (f64, usize) {
+    kind.steps.iter().enumerate().map(|(i, s)| (fundamentals(m, s.work, &materials_of(content, s)), i))
+        .fold((f64::NEG_INFINITY, 0), |a, b| if b.0 >= a.0 { b } else { a })
+}
+
+/// A hand's knack at work: its own, or a Copycat's, the knack it copies (`copied`).
+fn knack(m: &Person, copied: Option<Knack>) -> Option<Knack> {
+    match m.knack {
+        Some(Knack::Copycat) => copied,
+        k => k,
+    }
+}
+
+/// Where a batch's materials came from: its own firm's earlier step, its town's graded pieces (a business's), or its
+/// town's plain stock.
+fn take_materials(people: &mut People, stock: &Stock, pool: &mut BTreeMap<GoodId, [f64; 5]>, g: GoodId, n: f64,
+        plain_only: bool) -> ([f64; 5], [f64; 5]) {
+    let mut own = [0.0; 5];
+    let mut left = n;
+    if let Some(of) = pool.get_mut(&g).filter(|_| !plain_only) {
+        for grade in [Grade::Masterwork, Grade::Fine, Grade::Good, Grade::Plain, Grade::Seconds] {
+            let t = of[grade.index()].min(left);
+            of[grade.index()] -= t;
+            own[grade.index()] += t;
+            left -= t;
+        }
+    }
+    let mut bought = [0.0; 5];
+    if left > 1e-9 {
+        if plain_only {
+            bought[Grade::Plain.index()] = left;
+        } else {
+            let pooled: f64 = pool.get(&g).map_or(0.0, |of| of.iter().sum());
+            bought = crate::people::take_graded(&mut people.graded, g, stock.0[g] - pooled, left);
+        }
+    }
+    (own, bought)
+}
+
+/// A firm's work since its last look, step by step: what its town wants of its graded pieces (`graded_wanted_for`;
+/// noted, for its hiring) its last step makes, and each earlier step what the next will work of its output that its
+/// town's businesses haven't made (bought of them first), as far as each step's hands' batches for the time passed go
+/// (a day's at most carried; none of a hand out for the day), the inputs (not what's set aside for forward sales) and
+/// the town's treasury pays. Each batch is graded by its maker's Fundamentals (with its materials' grades) × the shop's
+/// Morale, give or take the batch's own draw, as its maker's knack bends it, and its maker the more skilled for it.
+/// Its pieces are sold to the town at their grades' worth, and the materials it buys of the town paid for at theirs.
 #[allow(clippy::too_many_arguments)]
 fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, all: &[String], roster: &Roster,
         people: &mut People, stock: &mut Stock, money: &mut Money, hooks: Option<&Workshop>, ledger: &mut Ledger,
-        book: &mut CashBook, now: u64) {
+        book: &mut CashBook, now: u64, needed: f64, makers: &BTreeMap<GoodId, FirmId>, copied: Option<Knack>) {
     let d = &content.dials;
     let day = content.day_ticks.max(1);
-    let c = &kind.conversion;
+    let today = now / day;
     let t = firm.town;
-    let value = content.goods[c.output].value;
-    let par = hooks.map_or(0.0, |h| h.par_of(c.output));
-    let wanted = graded_wanted(content, people, c.output, par);
+    let last = kind.steps.len() - 1;
+    let output = kind.steps[last].output;
+    let par = hooks.map_or(0.0, |h| h.par_of(output));
+    let wanted = graded_wanted_for(content, people, output, par, needed);
     firm.eaten += wanted;
     let since = firm.worked.map_or(0.0, |w| now.saturating_sub(w) as f64 / day as f64);
     firm.worked = Some(now);
-    // Its hands at work, and how fast each goes.
+    // Its hands at work, each at the step it brings most to (the last step never without one), and how fast each goes.
     let head = firm.head.and_then(|h| persons.hands.get(&h.hand).map(|m| (h.hand, m.clone())));
-    let crew: Vec<(HandId, f64)> = firm.employees.iter().filter_map(|&(id, _)| {
+    let mut crew: Vec<(HandId, usize, f64, u8)> = firm.employees.iter().filter_map(|&(id, _)| {
         let x = roster.hands.iter().find(|x| x.id == id && x.trade == kind.trade && x.baby_until.is_none())?;
         let m = person(persons, x, all);
-        m.out_until.is_none_or(|u| now >= u).then(|| (id, pace(d, x, m, head.as_ref().map(|(h, m)| (*h, m)))))
+        m.out_until.is_none_or(|u| now >= u)
+            .then(|| (id, best_step(content, kind, m).1, pace(d, x, m, head.as_ref().map(|(h, m)| (*h, m))), x.level))
     }).collect();
-    let capacity: f64 = crew.iter().map(|c| c.1).sum();
-    firm.progress = (firm.progress + capacity * since).min(capacity.max(1.0));
-    let inputs = c.inputs.iter().map(|&(g, n)| {
-        let aside = hooks.map_or(0.0, |h| h.aside_of(g));
-        ((stock.0[g] - aside).max(0.0) / n + 1e-9).floor()
-    }).fold(f64::INFINITY, f64::min);
-    let best = Grade::Masterwork.worth(d);
-    let affords = (money.0.at_least_zero().to_f64() / (c.out * value * best).max(1e-9)).floor();
-    let n = (wanted / c.out - 1e-9).ceil().max(0.0).min(inputs).min(affords).min(firm.progress.floor());
-    if n < 1.0 || crew.is_empty() {
+    if !crew.is_empty() && !crew.iter().any(|c| c.1 == last) {
+        let at_last = |id: HandId| persons.hands.get(&id)
+            .map_or(0.0, |m| fundamentals(m, kind.steps[last].work, &materials_of(content, &kind.steps[last])));
+        let i = (0..crew.len()).max_by(|&a, &b| at_last(crew[a].0).total_cmp(&at_last(crew[b].0)).then(crew[b].0.cmp(&crew[a].0)))
+            .unwrap();
+        crew[i].1 = last;
+    }
+    firm.progress.resize(kind.steps.len(), 0.0);
+    let capacity: Vec<f64> = (0..=last).map(|s| crew.iter().filter(|c| c.1 == s).map(|c| c.2).sum()).collect();
+    for (p, &c) in firm.progress.iter_mut().zip(&capacity) {
+        *p = (*p + c * since).min(c.max(1.0));
+    }
+    if crew.is_empty() {
         return;
     }
     // The shop's morale: its crew's spirits, its head's habits.
     let spirits: f64 = crew.iter().filter_map(|c| persons.hands.get(&c.0)).map(|m| m.spirits).sum::<f64>() / crew.len() as f64;
     let morale = crate::persons::morale(spirits, head.as_ref().map(|h| &h.1));
     let mentor = head.as_ref().is_some_and(|h| h.1.has(Habit::Mentor));
-    let ing = ingredients(content, c);
-    let mut given = vec![0.0; crew.len()];
+    // (House style: the other Masters of the crew who share a talent with each.)
+    let masters: Vec<(HandId, Vec<crate::persons::Talent>)> = crew.iter().filter(|c| c.3 >= 5)
+        .filter_map(|c| persons.hands.get(&c.0).map(|m| (c.0, m.talents.clone()))).collect();
+    // How many batches each step makes: the last what its town wants, as far as its progress and the town's treasury
+    // go; an earlier one what the next would work of its output beyond the graded pieces its town holds.
+    let best = Grade::Masterwork.worth(d);
+    let mut target = vec![0.0; kind.steps.len()];
+    let out_last = kind.steps[last].recipes.iter().map(|c| c.out).fold(f64::INFINITY, f64::min);
+    let affords = (money.0.at_least_zero().to_f64() / (out_last * content.goods[output].value * best).max(1e-9)).floor();
+    target[last] = (wanted / out_last - 1e-9).ceil().max(0.0).min(affords).min(firm.progress[last].floor());
+    for s in (0..last).rev() {
+        let g = kind.steps[s].output;
+        let per = kind.steps[s + 1].recipes[0].inputs.iter().find(|i| i.0 == g).map_or(0.0, |i| i.1);
+        let held: f64 = people.graded.get(&g).map_or(0.0, |of| of.iter().sum());
+        let out = kind.steps[s].recipes[0].out.max(1e-9);
+        target[s] = ((target[s + 1] * per - held) / out - 1e-9).ceil().max(0.0).min(firm.progress[s].floor());
+    }
+    let value = |g: GoodId| content.goods[g].value;
+    let mut pool: BTreeMap<GoodId, [f64; 5]> = BTreeMap::new();
     let mut made = [0.0; 5];
-    for b in 0..n as usize {
-        // Each batch to the hand furthest behind its share.
-        let i = (0..crew.len()).max_by(|&x, &y| {
-            let behind = |k: usize| crew[k].1 * (b + 1) as f64 / capacity - given[k];
-            behind(x).total_cmp(&behind(y)).then(y.cmp(&x))
-        }).unwrap();
-        given[i] += 1.0;
-        let (id, _) = crew[i];
-        let level = roster.hands.iter().find(|x| x.id == id).map_or(1, |x| x.level);
-        let m = persons.hands.get_mut(&id).unwrap();
-        let spread = d.grade_spread * if m.has(Habit::Experimenter) { 2.0 } else { 1.0 };
-        let draw = roll(firm.id as u64, firm.batches, 11);
-        let score = crate::persons::score(fundamentals(m, kind.work, &ing), morale + crate::persons::own_form(m, now), spread, draw);
-        let mut grade = Grade::of(score);
-        if m.has(Habit::SteadyHand) {
-            grade = grade.max(Grade::Plain);
+    let mut cost = 0.0;
+    for s in 0..=last {
+        let step = &kind.steps[s];
+        let ing = materials_of(content, step);
+        let hands: Vec<(HandId, f64, u8)> = crew.iter().filter(|c| c.1 == s).map(|c| (c.0, c.2, c.3)).collect();
+        let cap: f64 = hands.iter().map(|h| h.1).sum();
+        let mut given = vec![0.0; hands.len()];
+        for b in 0..target[s] as usize {
+            if hands.is_empty() {
+                break;
+            }
+            // Its recipe: the first its inputs are there for (a hide cured only of the plain ones: the graded are
+            // cured already; its own step's pieces count, as do its town's).
+            let avail = |g: GoodId, pool: &BTreeMap<GoodId, [f64; 5]>| {
+                let aside = hooks.map_or(0.0, |h| h.aside_of(g));
+                let graded: f64 = people.graded.get(&g).map_or(0.0, |of| of.iter().sum());
+                let pooled: f64 = pool.get(&g).map_or(0.0, |of| of.iter().sum());
+                if g == step.output { stock.0[g] - aside - graded - pooled } else { stock.0[g] - aside }
+            };
+            let Some(c) = step.recipes.iter().find(|c| c.inputs.iter().all(|&(g, n)| avail(g, &pool) >= n - 1e-9)) else { break };
+            // Each batch to the hand furthest behind its share.
+            let i = (0..hands.len()).max_by(|&x, &y| {
+                let behind = |k: usize| hands[k].1 * (b + 1) as f64 / cap - given[k];
+                behind(x).total_cmp(&behind(y)).then(hands[y].0.cmp(&hands[x].0))
+            }).unwrap();
+            given[i] += 1.0;
+            let (id, _, level) = hands[i];
+            let mut took = [0.0; 5];
+            for &(g, n) in &c.inputs {
+                let (own, bought) = take_materials(people, stock, &mut pool, g, n, g == step.output);
+                stock.0[g] -= n;
+                ledger.used[g] += n;
+                cost += Grade::ALL.iter().map(|gr| bought[gr.index()] * value(g) * gr.worth(d)).sum::<f64>();
+                // (A business's graded pieces: its supplier's, and a Supply whisperer's a grade higher.)
+                let theirs: f64 = Grade::COUNTED.iter().map(|gr| bought[gr.index()]).sum();
+                if let Some(&f) = makers.get(&g).filter(|&&f| f != firm.id && theirs > 0.0) {
+                    match firm.suppliers.iter_mut().find(|x| x.0 == f) {
+                        Some(x) => x.1 += theirs,
+                        None => firm.suppliers.push((f, theirs)),
+                    }
+                }
+                let m = persons.hands.get(&id).unwrap();
+                let whispers = knack(m, copied) == Some(Knack::SupplyWhisperer) && makers.contains_key(&g);
+                for gr in Grade::ALL {
+                    took[gr.index()] += own[gr.index()];
+                    let to = if whispers && gr != Grade::Plain { gr.up() } else { gr };
+                    took[to.index()] += bought[gr.index()];
+                }
+            }
+            let m = persons.hands.get_mut(&id).unwrap();
+            let k = knack(m, copied);
+            let mut brought = fundamentals(m, step.work, &ing) + crate::persons::materials_grade(&took) + m.scrap;
+            m.scrap = 0.0;
+            if k == Some(Knack::GlassHands) {
+                brought *= 2.0;
+            }
+            let mut lift = crate::persons::own_form(m, now);
+            lift += match k {
+                Some(Knack::HouseStyle) => 0.1 * masters.iter().filter(|(o, ts)| *o != id
+                    && ts.iter().any(|x| m.talents.contains(x))).count() as f64,
+                Some(Knack::Unbroken) => 0.05 * today.saturating_sub(m.seconds_on).min(10) as f64,
+                Some(Knack::TheRegular) => 0.05 * firm.regular.min(10) as f64,
+                _ => 0.0,
+            };
+            let spread = d.grade_spread * if m.has(Habit::Experimenter) { 2.0 } else { 1.0 };
+            let mut grade = Grade::of(crate::persons::score(brought, morale + lift, spread, roll(firm.id as u64, firm.batches, 11)));
+            if k == Some(Knack::SecondProof) && m.batches % 3 == 2 {
+                grade = grade.max(Grade::of(crate::persons::score(brought, morale + lift, spread,
+                    roll(firm.id as u64, firm.batches, 12))));
+            }
+            if m.has(Habit::SteadyHand) {
+                grade = grade.max(Grade::Plain);
+            }
+            if k == Some(Knack::RabbitsFoot) && c.inputs.iter().any(|i| content.goods[i.0].name.ends_with("rabbit_hide")) {
+                grade = grade.up();
+            }
+            let ruined = k == Some(Knack::GlassHands) && m.batches % 10 == 9;
+            let scrapped = !ruined && grade == Grade::Seconds && k == Some(Knack::ScrapArtist);
+            if grade == Grade::Seconds {
+                m.seconds_on = today;
+            }
+            if scrapped {
+                m.scrap += 4.0;
+            }
+            m.batches += 1;
+            firm.batches += 1;
+            firm.progress[s] -= 1.0;
+            let gain = d.skill_per_batch * if m.gifted(step.work) { 1.5 } else { 1.0 }
+                * if m.has(Habit::Ambitious) { 1.5 } else { 1.0 } * if mentor { 2.0 } else { 1.0 };
+            let skill = m.skills.entry(step.work).or_insert(0.0);
+            *skill = (*skill + gain).min(skill_cap(level).max(*skill));
+            if ruined {
+                firm.note(today, id, Event::Ruined);
+                continue;
+            }
+            if scrapped {
+                continue;
+            }
+            stock.0[step.output] += c.out;
+            ledger.made[step.output] += c.out;
+            if s < last {
+                pool.entry(step.output).or_insert([0.0; 5])[grade.index()] += c.out;
+            } else {
+                made[grade.index()] += c.out;
+            }
         }
-        made[grade.index()] += c.out;
-        firm.batches += 1;
-        let gain = d.skill_per_batch * if m.gifted(kind.work) { 1.5 } else { 1.0 }
-            * if m.has(Habit::Ambitious) { 1.5 } else { 1.0 } * if mentor { 2.0 } else { 1.0 };
-        let skill = m.skills.entry(kind.work).or_insert(0.0);
-        *skill = (*skill + gain).min(skill_cap(level).max(*skill));
     }
-    let pieces = crate::workshop::run(c, n * c.out, stock, ledger);
-    let graded = people.graded.entry(c.output).or_insert([0.0; 5]);
-    for g in Grade::ALL.into_iter().filter(|&g| g != Grade::Plain) {
-        graded[g.index()] += made[g.index()];
+    // What its own earlier steps made beyond what the next worked is sold to the town with the rest.
+    let mut sales = 0.0;
+    for (g, of) in pool.iter().chain(std::iter::once((&output, &made))) {
+        let graded = people.graded.entry(*g).or_insert([0.0; 5]);
+        for gr in Grade::COUNTED {
+            graded[gr.index()] += of[gr.index()];
+        }
+        sales += Grade::ALL.iter().map(|gr| of[gr.index()] * value(*g) * gr.worth(d)).sum::<f64>();
     }
+    people.graded.retain(|_, of| of.iter().any(|x| *x > 0.0));
     for (a, b) in firm.grades.iter_mut().zip(made) {
         *a += b;
     }
+    let pieces: f64 = made.iter().sum();
     firm.made += pieces;
-    let sales = Fixed::floor(Grade::ALL.iter().map(|g| made[g.index()] * value * g.worth(d)).sum::<f64>());
-    post(ledger, book, Side::treasury(t, &mut money.0), Side::firm(firm.id, &mut firm.treasury), sales,
+    firm.sold += pieces;
+    post(ledger, book, Side::treasury(t, &mut money.0), Side::firm(firm.id, &mut firm.treasury), Fixed::floor(sales),
         Reason::Other("firm sales".into()), now, day);
-    let bought = Fixed::ceil(n * crate::workshop::inputs_worth(content, c)).min(firm.treasury);
+    let bought = Fixed::ceil(cost).min(firm.treasury);
     post(ledger, book, Side::firm(firm.id, &mut firm.treasury), Side::treasury(t, &mut money.0), bought,
         Reason::Other("firm inputs".into()), now, day);
 }
@@ -410,18 +611,30 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
 /// day (never a Homebody), quarrels with another of the crew (both the lower for it; a Hothead's likelier), or sulks
 /// (two days of worse work). An Ambitious hand ten days in low spirits leaves.
 #[allow(clippy::too_many_arguments)]
-fn spirits<'r>(firm: &mut Firm, persons: &mut Persons, all: &[String], ours: &dyn Fn(HandId) -> Option<&'r Hand>,
-        homes: &Homes, now: u64, today: u64, day: u64) {
+fn spirits<'r>(kind: &Kind, firm: &mut Firm, persons: &mut Persons, all: &[String],
+        ours: &dyn Fn(HandId) -> Option<&'r Hand>, homes: &Homes, copied: Option<Knack>, now: u64, today: u64, day: u64) {
     let head = firm.head.and_then(|h| persons.hands.get(&h.hand).map(|m| (h.hand, m.clone())));
     let crew: Vec<HandId> = firm.employees.iter().map(|e| e.0).collect();
-    let work = crate::firms::KINDS.iter().find(|k| k.0 == firm.name).map(|k| k.3);
+    // A hand become a Master finds its knack.
+    for &id in &crew {
+        let Some(x) = ours(id).filter(|x| x.level >= 5) else { continue };
+        let m = person(persons, x, all);
+        if m.knack.is_none() {
+            let k = knack_of(id);
+            m.knack = Some(k);
+            m.seconds_on = today;
+            firm.note(today, id, Event::Mastered(k));
+        }
+    }
+    // (A Peacemaker in the shop: no quarrels.)
+    let peace = crew.iter().any(|id| persons.hands.get(id).is_some_and(|m| knack(m, copied) == Some(Knack::Peacemaker)));
     let mut left = Vec::new();
     for &id in &crew {
         let Some(x) = ours(id) else { continue };
         let kin = head.as_ref().is_some_and(|(h, m)| *h != id && m.has(Habit::KinMinded)
             && home_of(homes, *h).is_some() && home_of(homes, *h) == home_of(homes, id));
         let m = person(persons, x, all);
-        let mut mark: f64 = 0.55 + if work.is_some_and(|w| m.gifted(w)) { 0.15 } else { 0.0 };
+        let mut mark: f64 = 0.55 + if kind.steps.iter().any(|s| m.gifted(s.work)) { 0.15 } else { 0.0 };
         if let Some((_, hm)) = head.as_ref().filter(|(h, _)| *h != id) {
             mark += if hm.has(Habit::Beloved) { 0.2 } else { 0.0 } - if hm.has(Habit::Taskmaster) { 0.2 } else { 0.0 };
         }
@@ -446,7 +659,7 @@ fn spirits<'r>(firm: &mut Firm, persons: &mut Persons, all: &[String], ours: &dy
         if roll(id as u64, today, 22) < p {
             let others: Vec<HandId> = crew.iter().copied().filter(|&o| o != id).collect();
             let walk = if m.has(Habit::Homebody) { 0.0 } else { 1.0 };
-            let quarrel = if others.is_empty() { 0.0 } else if hot { 2.0 } else { 1.0 };
+            let quarrel = if others.is_empty() || peace { 0.0 } else if hot { 2.0 } else { 1.0 };
             let r = roll(id as u64, today, 23) * (walk + quarrel + 1.0);
             if r < walk {
                 m.out_until = Some(now + day);

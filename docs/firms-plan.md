@@ -11,7 +11,8 @@ spine: what a piece is worth is a sum times a multiplier, shown, and the masters
 
 ## Glossary
 
-The words a player reads. The code follows them where a player sees it (a firm is `firm` in code).
+The words a player reads. The code follows them where a player sees it (a firm is `firm` in code); each word's
+tooltip is `persons::GLOSSARY`, each habit's, knack's, grade's and work's its `tooltip()`.
 
 | Word | What it is |
 |---|---|
@@ -26,6 +27,7 @@ The words a player reads. The code follows them where a player sees it (a firm i
 | **Fundamentals** | What a person brings to a task: its skill, its talents, the grade of its materials or kit. |
 | **Morale** | How the shop is running: its head, its crew and their spirits. Not only crafting's: a squad has morale too. |
 | **Grade** | A piece's worth: Seconds, Plain, Good, Fine, Masterwork (Fundamentals × Morale sets it). |
+| **Steps** | The works a business does in turn: a bootmaker's tanning, then its sewing. |
 | **Suppliers** | The businesses a business buys its materials of. |
 | **Reputation** | A house's fame: the basket of what its name does (its premium, its customers' loyalty, its draw...). |
 | **Draw** | The part of reputation that brings masters to it: who comes seeking work. |
@@ -57,20 +59,23 @@ Habits (twelve to start; cut as they prove dull):
 | Ambitious | Learns half again as fast | Long in low spirits, it leaves |
 | Homebody | Never walks out | Won't run a branch |
 
-Knacks (a first ten, slice 2):
+Knacks (a first ten, slice 2; the tooltip a player reads is `Knack::tooltip`, and a test keeps this table to them):
 
 | Knack | The rule it bends |
 |---|---|
-| House Style | More morale for each other master of the business who shares its talent |
-| Supply Whisperer | Materials of a supplier within 300 blocks count a grade higher |
-| Copycat | Has the knack of the master who made its main material |
-| Unbroken | More morale each day with no seconds; none after one |
+| House Style | +0.1 morale for each other Master of its business who shares a talent with it |
+| Supply Whisperer | Materials bought of another business count a grade higher |
+| Copycat | Has the knack of a Master at the business it buys its materials of most |
+| Unbroken | +0.05 morale for each day in a row it has made no seconds, up to +0.5; seconds start it over |
 | Second Proof | Every third batch is graded twice, the better kept |
 | Glass Hands | Twice the fundamentals; one batch in ten ruined |
-| Scrap Artist | Its seconds go back in as fundamentals for the next batch |
-| Rabbit's Foot | Pieces of rabbit hide are graded as a grade higher |
-| The Regular | More morale for each day in a row the same town has bought |
-| Patron | Reputation twice over for pieces sold in its home town |
+| Scrap Artist | Its seconds aren't sold: worked back in, +4 fundamentals to its next batch |
+| Rabbit's Foot | Whatever it makes of rabbit hide comes out a grade higher |
+| The Regular | +0.05 morale for each day in a row its town has bought of its business, up to +0.5 |
+| Peacemaker | No quarrels in its shop: whoever would quarrel sulks instead |
+
+Patron (reputation twice over for pieces sold in its home town) waits on reputation, slice 3; Peacemaker stands in.
+A hand finds its knack the day it's a Master in a business (drawn from its id, `persons::knack_of`).
 
 ## One engine: a person's task
 
@@ -104,7 +109,8 @@ the strike it risks. The fun is the combination that breaks the curve, shown in 
 ## Grading a batch
 
 Fundamentals = the hand's skill at the work + four with a talent for it + two for each material it has a talent for +
-four a Perfectionist (+ the grade of its materials, slice 2). Morale = 1 + a third of how far its crew's spirits are
+four a Perfectionist + its materials' grades (two for each grade a piece is above Plain, a Masterwork's six; seconds
+two less; on average, `persons::materials_grade`). Morale = 1 + a third of how far its crew's spirits are
 from a half, less a tenth under a Beloved head, + a half inspired or less three tenths sulking. The score, give or
 take `grade_spread` (0.3; twice an Experimenter's), sets the grade: Seconds under 6, Plain under 12, Good under 18,
 Fine under 30, Masterwork beyond (a Master's capped skill, 20, is Fine; a masterwork takes more).
@@ -119,7 +125,13 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    its owners see it); its hands' spirits, inspirations and off-form spells. The trace shows each hand's make-up, each
    business's batches by grade and its events.
 2. **Suppliers and knacks**: processes in steps within a business (tanning, then sewing); materials' grades in the
-   fundamentals; businesses buying of businesses; the first ten knacks.
+   fundamentals; businesses buying of businesses; the first ten knacks. Done (2026-11-04): a **tannery** cures its
+   town's hides (a cow's leather, plain) into graded leather and tans rabbit hides into it, and sells its town the
+   leather; a **bootmaker** (a step-3 tannery, renamed) tans what leather it can't buy graded of its town, then sews
+   boots, its hands each at the step they bring most to. A business's materials are its own earlier step's first, then
+   its town's graded pieces, best first, then plain; graded pieces another business of its town made are bought of it
+   (its suppliers, `Firm::suppliers`). Each batch spends its hands' pace (slice 1 never did: a business made all its
+   town wanted at each look).
 3. **Houses**: reputation and draw; grades carried by wagon; masters coming seeking work; branches.
 4. **Stations and chains** (moved up from 3, industry's heart and "capital investment for higher quality"): a
    process's station, its throughput and grade ceiling; multi-step chains (ore to steel).

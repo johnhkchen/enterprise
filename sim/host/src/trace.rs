@@ -91,10 +91,10 @@ create table farm_towns (day integer, town integer, focus text, fields_planted i
 create table stock (day integer, town integer, good text, count real);
 create table households (day integer, town integer, household integer, members integer, earners integer, purse real, standing text, fields integer);
 create table firms (day integer, town integer, firm integer, kind text, owners text, hands integer, wages real, made real, treasury real, broke_days integer,
-    head integer, seconds real, plain real, good real, fine real, masterwork real);
+    head integer, seconds real, plain real, good real, fine real, masterwork real, suppliers text);
 create table firms_closed (firm integer, town integer, kind text, founded integer, closed integer, made real);
 create table firm_events (firm integer, town integer, day integer, hand integer, event text);
-create table persons (hand integer, habits text, talents text, skills text, spirits real);
+create table persons (hand integer, habits text, talents text, skills text, spirits real, knack text);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -287,9 +287,10 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         for f in s.firms().into_iter().filter(|f| f.town == t) {
             let wages: f64 = f.employees.iter().map(|e| e.1.to_f64()).sum();
             let g = f.grades;
-            tx.execute("insert into firms values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            let suppliers: Vec<String> = f.suppliers.iter().map(|(id, n)| format!("{id}: {n}")).collect();
+            tx.execute("insert into firms values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
                 params![day, t, f.id, f.name, format!("{:?}", f.owners), f.employees.len(), wages, f.made, f.treasury.to_f64(),
-                f.broke_days, f.head.map(|x| x.hand), g[0], g[1], g[2], g[3], g[4]]).map_err(sql)?;
+                f.broke_days, f.head.map(|x| x.hand), g[0], g[1], g[2], g[3], g[4], suppliers.join(", ")]).map_err(sql)?;
         }
         for (h, (_, st)) in s.households(t).into_iter().zip(standings) {
             let fields = register.held_by(enterprise_core::charters::Party::Household(h.id))
@@ -445,13 +446,10 @@ fn finals(tx: &rusqlite::Transaction, society: &mut Option<Society>, (abi, schem
         }
         for (hand, p) in &s.world.resource::<enterprise_core::persons::Persons>().hands {
             let habits: Vec<&str> = p.habits.iter().map(|h| h.name()).collect();
-            let talents: Vec<String> = p.talents.iter().map(|t| match t {
-                enterprise_core::persons::Talent::Work(w) => w.name().to_string(),
-                enterprise_core::persons::Talent::Material(m) => m.clone(),
-            }).collect();
+            let talents: Vec<String> = p.talents.iter().map(|t| t.name()).collect();
             let skills: Vec<String> = p.skills.iter().map(|(w, n)| format!("{} {n:.1}", w.name())).collect();
-            tx.execute("insert into persons values (?1, ?2, ?3, ?4, ?5)", params![hand, habits.join(", "), talents.join(", "),
-                skills.join(", "), p.spirits]).map_err(sql)?;
+            tx.execute("insert into persons values (?1, ?2, ?3, ?4, ?5, ?6)", params![hand, habits.join(", "), talents.join(", "),
+                skills.join(", "), p.spirits, p.knack.map(|k| k.name())]).map_err(sql)?;
         }
         for (f, at) in s.firms_wound_up() {
             let dt = s.content().day_ticks.max(1);

@@ -199,7 +199,7 @@ fn graded_pieces_are_used_best_first_and_seconds_last() {
 }
 
 #[test]
-fn a_master_baker_s_bread_grades_finer_than_a_novice_s() {
+fn a_master_baker_s_bread_grades_finer_than_an_apprentice_s() {
     let average = |level: u8| {
         let mut s = society();
         s.content_mut().dials.hand_wage = 0.01;
@@ -213,8 +213,9 @@ fn a_master_baker_s_bread_grades_finer_than_a_novice_s() {
         assert!(pieces > 0.0);
         Grade::ALL.iter().map(|g| f.grades[g.index()] * g.index() as f64).sum::<f64>() / pieces
     };
-    let (novice, master) = (average(1), average(5));
-    assert!(master > novice + 1.0, "{novice} {master}");
+    // (A Novice's skill, 3, makes seconds without a talent for baking: no bakery opens round it.)
+    let (apprentice, master) = (average(2), average(5));
+    assert!(master > apprentice + 1.0, "{apprentice} {master}");
 }
 
 #[test]
@@ -263,4 +264,99 @@ fn hands_kept_in_low_spirits_go_off_form_and_it_shows_in_the_business_s_record()
     use enterprise_core::persons::Event;
     assert!(events.iter().any(|e| matches!(e, Event::WalkedOut | Event::Quarrelled(_) | Event::Sulked)), "{events:?}");
     assert!(!events.contains(&Event::Inspired), "not in those spirits");
+}
+
+/// Hides, leather and boots, with wheat and bread as ever: a cow's leather the town holds plain, boots a comfort.
+fn leather_content() -> Content {
+    let clothing = Content::COMFORTS.iter().position(|k| *k == "clothing").unwrap();
+    Content::new(vec![Good::new("wheat", 0.05, 64).crop(), Good::new("bread", 0.2, 64).food(5.0),
+        Good::new("leather", 1.0, 64), Good::new("leather_boots", 6.0, 1).comfort(clothing),
+        Good::new("rabbit_hide", 0.2, 64)], DAY)
+}
+
+const LEATHER: usize = 2;
+
+#[test]
+fn a_tannery_cures_its_town_s_hides_for_its_bootmaker_who_buys_of_it_its_supplier() {
+    let mut s = Society::new(leather_content());
+    s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    s.content_mut().dials.hand_wage = 0.01;
+    let mut hands = vec!["leatherworker"; 8];
+    hands.push("merchant");
+    let t = town_of(&mut s, "Stormwind", 60, (0.0, 0.0), &hands, 4, 600.0);
+    let before = s.totals();
+    for _ in 0..30 {
+        s.deliver(t, LEATHER, 40.0);
+        run(&mut s, 1);
+    }
+    s.conserved(&before).unwrap();
+    let firms = s.firms();
+    let boots = firms.iter().find(|f| f.name == "bootmaker").expect("a bootmaker");
+    let tannery = firms.iter().find(|f| f.name == "tannery").expect("a tannery");
+    assert!(boots.grades.iter().sum::<f64>() > 0.0 && tannery.grades.iter().sum::<f64>() > 0.0, "{firms:?}");
+    assert_eq!(boots.main_supplier(), Some(tannery.id), "{:?}", boots.suppliers);
+}
+
+#[test]
+fn better_materials_make_better_pieces() {
+    use enterprise_core::persons::{materials_grade, Person};
+    assert_eq!(materials_grade(&[0.0, 4.0, 0.0, 0.0, 0.0]), 0.0);
+    assert_eq!(materials_grade(&[0.0, 0.0, 0.0, 4.0, 0.0]), 4.0);
+    assert_eq!(materials_grade(&[2.0, 0.0, 0.0, 0.0, 2.0]), 2.0);
+    let p = Person { skills: [(Work::Leatherwork, 12.0)].into(), ..Default::default() };
+    let plain = enterprise_core::persons::fundamentals(&p, Work::Leatherwork, &[]);
+    assert_eq!(Grade::of(plain), Grade::Good);
+    assert_eq!(Grade::of(plain + materials_grade(&[0.0, 0.0, 0.0, 0.0, 4.0])), Grade::Fine, "masterwork leather");
+}
+
+#[test]
+fn a_firm_makes_no_more_a_day_than_its_hands_pace() {
+    // (One hand, at half a batch a day a level: two and a half a day a Master, a quarter more under a Taskmaster.)
+    let mut s = society();
+    s.content_mut().dials.hand_wage = 0.001;
+    s.content_mut().dials.firm_hands_most = 1.0;
+    s.content_mut().dials.firm_batches_per_level = 0.5;
+    let t = town(&mut s, "Stormwind", 44, (0.0, 0.0), &["farmer", "merchant"], 200.0);
+    for _ in 0..6 {
+        s.deliver(t, WHEAT, 600.0);
+        run(&mut s, 1);
+    }
+    let f = s.firms().into_iter().next().expect("a bakery");
+    assert!(f.batches > 0 && f.batches as f64 <= 7.0 * 2.5 * 1.25, "{} batches", f.batches);
+}
+
+#[test]
+fn a_master_finds_its_knack_and_every_knack_turns_up() {
+    use enterprise_core::persons::{knack_of, Event, Knack};
+    let knacks: std::collections::BTreeSet<_> = (1..500).map(knack_of).collect();
+    assert_eq!(knacks.len(), Knack::ALL.len());
+    let mut s = society();
+    s.content_mut().dials.hand_wage = 0.01;
+    let t = town_of(&mut s, "Stormwind", 44, (0.0, 0.0), &["farmer", "merchant"], 5, 200.0);
+    for _ in 0..3 {
+        s.deliver(t, WHEAT, 120.0);
+        run(&mut s, 1);
+    }
+    let f = s.firms().into_iter().next().expect("a bakery");
+    let hand = f.employees[0].0;
+    let k = s.person(hand).and_then(|m| m.knack).expect("a knack");
+    assert_eq!(k, knack_of(hand));
+    assert!(f.events.iter().any(|e| e.1 == hand && e.2 == Event::Mastered(k)), "{:?}", f.events);
+}
+
+#[test]
+fn every_habit_knack_and_word_has_its_tooltip_and_its_row_in_the_plan() {
+    use enterprise_core::persons::{Knack, GLOSSARY};
+    let plan = include_str!("../../../docs/firms-plan.md").to_lowercase();
+    let row = |name: &str| plan.lines().any(|l| l.starts_with(&format!("| {name} |")) || l.starts_with(&format!("| **{name}** |")));
+    for h in Habit::ALL {
+        assert!(!h.tooltip().is_empty() && row(h.name()), "{}", h.name());
+    }
+    for k in Knack::ALL {
+        assert!(!k.tooltip().is_empty() && row(k.name()), "{}", k.name());
+    }
+    for (word, means) in GLOSSARY {
+        assert!(!means.is_empty() && row(&word.to_lowercase()), "{word}");
+    }
+    assert!(Grade::ALL.iter().all(|g| !g.tooltip().is_empty()) && Work::ALL.iter().all(|w| !w.tooltip().is_empty()));
 }

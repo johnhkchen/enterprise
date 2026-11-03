@@ -31,23 +31,44 @@ use crate::workshop::Conversion;
 
 pub type FirmId = u32;
 
-/// The kinds of firm: name, the trade it hires, what it makes and by what work, the people within its range it
-/// needs (threshold) and that range in blocks, and the capital its workshop takes, in emeralds (the guide's starting
-/// values: a baker 40 and 150; the weaver's and the tanner's the smith's 300 blocks, and its 60 people cut to 50: seed
-/// 1717's towns are 55 at most, and no Shepherd's or Leatherworker's had 60 within its range all year).
+/// A step of a kind of firm: its work, what it makes, and the recipes it makes it by (the first its town has the
+/// inputs for first): each its inputs by name and how many it makes.
+pub type StepDef = (Work, &'static str, &'static [(&'static [(&'static str, f64)], f64)]);
+
+/// A tannery's tanning, and a bootmaker's first step: four rabbit hides tanned into a leather (the game's recipe), or a
+/// hide cured (a cow's leather, which the town holds plain, into graded leather).
+const TANNING: StepDef = (Work::Tanning, "leather", &[(&[("rabbit_hide", 4.0)], 1.0), (&[("leather", 1.0)], 1.0)]);
+
+/// The kinds of firm: name, the trade it hires, its steps in turn (the last makes what it sells; an earlier one makes
+/// what the next works, `docs/firms-plan.md` slice 2), the people within its range it needs (threshold) and that range
+/// in blocks, and the capital its workshop takes, in emeralds (the guide's starting values: a baker 40 and 150; the
+/// others the smith's 300 blocks, and its 60 people cut to 50: seed 1717's towns are 55 at most, and no Shepherd's or
+/// Leatherworker's had 60 within its range all year). A tannery sells its leather to its town, where a bootmaker buys
+/// it before tanning its own.
 #[allow(clippy::type_complexity)]
-pub const KINDS: [(&str, &str, &str, Work, f64, f64, f64); 3] = [
-    ("bakery", "farmer", "bread", Work::Baking, 40.0, 150.0, 30.0),
-    ("weaver", "shepherd", "white_carpet", Work::Weaving, 50.0, 300.0, 40.0),
-    ("tannery", "leatherworker", "leather_boots", Work::Leatherwork, 50.0, 300.0, 40.0),
+pub const KINDS: [(&str, &str, &[StepDef], f64, f64, f64); 4] = [
+    ("bakery", "farmer", &[(Work::Baking, "bread", &[(&[("wheat", 3.0)], 1.0)])], 40.0, 150.0, 30.0),
+    ("weaver", "shepherd", &[(Work::Weaving, "white_carpet", &[(&[("white_wool", 2.0)], 3.0)])], 50.0, 300.0, 40.0),
+    ("tannery", "leatherworker", &[TANNING], 50.0, 300.0, 40.0),
+    ("bootmaker", "leatherworker", &[TANNING, (Work::Leatherwork, "leather_boots", &[(&[("leather", 4.0)], 1.0)])],
+        50.0, 300.0, 40.0),
 ];
 
-/// A kind of firm as the host's content has it: its trade and the town workshop's conversion it works. `None` where
-/// the host lacks the trade or the conversion.
+/// A step of a kind as the host's content has it: its work, and its recipes the host has the goods of.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Step {
+    pub work: Work,
+    pub output: GoodId,
+    pub recipes: Vec<Conversion>,
+}
+
+/// A kind of firm as the host's content has it: its trade, its steps, and the recipe its hands are judged by (its last
+/// step's last: a bootmaker's sewing, a tannery's curing). `None` where the host lacks the trade or the last step's goods.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Kind {
     pub name: &'static str,
     pub trade: TradeId,
+    pub steps: Vec<Step>,
     pub conversion: Conversion,
     pub work: Work,
     pub threshold: f64,
@@ -55,13 +76,31 @@ pub struct Kind {
     pub capital: f64,
 }
 
+impl Kind {
+    /// The step that makes this good (an earlier step's output, the next one's material), if one does.
+    pub fn step_of(&self, g: GoodId) -> Option<usize> {
+        self.steps.iter().position(|s| s.output == g)
+    }
+}
+
 /// Each kind the host's content has.
 pub fn kinds(content: &Content) -> Vec<Kind> {
-    KINDS.iter().filter_map(|&(name, trade, output, work, threshold, range, capital)| {
+    KINDS.iter().filter_map(|&(name, trade, steps, threshold, range, capital)| {
         let trade = content.trade(trade)?;
-        let output = content.good(output)?;
-        let conversion = content.conversions.iter().find(|c| c.output == output && c.trades.contains(&trade))?.clone();
-        Some(Kind { name, trade, conversion, work, threshold, range, capital })
+        let steps: Vec<Option<Step>> = steps.iter().map(|&(work, output, recipes)| {
+            let output = content.good(output)?;
+            let recipes: Vec<Conversion> = recipes.iter().filter_map(|&(inputs, out)| {
+                let inputs = inputs.iter().map(|&(g, n)| content.good(g).map(|g| (g, n))).collect::<Option<Vec<_>>>()?;
+                Some(Conversion { trades: vec![trade], inputs, output, out })
+            }).collect();
+            (!recipes.is_empty()).then_some(Step { work, output, recipes })
+        }).collect();
+        // (Without its last step's goods there's no such kind; an earlier step the host can't do, its materials are
+        // bought.)
+        let last = steps.last()?.clone()?;
+        let steps: Vec<Step> = steps.into_iter().flatten().collect();
+        let (conversion, work) = (last.recipes.last()?.clone(), last.work);
+        Some(Kind { name, trade, steps, conversion, work, threshold, range, capital })
     }).collect()
 }
 
@@ -76,13 +115,19 @@ pub fn ingredients(content: &Content, c: &Conversion) -> Vec<String> {
 /// their stock up whatever else the town holds (meat enough, its people still eat bread, a business's first), and the
 /// town's workshop makes plain only what the firm can't.
 pub fn graded_wanted(content: &Content, people: &crate::state::People, output: GoodId, locker_par: f64) -> f64 {
+    graded_wanted_for(content, people, output, locker_par, 0.0)
+}
+
+/// [`graded_wanted`], a material its town's businesses use kept at what they would use too (`needed`).
+pub fn graded_wanted_for(content: &Content, people: &crate::state::People, output: GoodId, locker_par: f64,
+        needed: f64) -> f64 {
     let g = &content.goods[output];
     let par = if g.comfort.is_some() {
         crate::people::comfort_par(content, people) / content.comfort_worth(output).max(1e-9)
     } else if g.food > 0.0 {
         2.0 * crate::workshop::FOOD_PAR_POINTS / g.food.max(1e-9)
     } else {
-        locker_par
+        locker_par.max(needed)
     };
     let held: f64 = people.graded.get(&output).map_or(0.0, |of| of.iter().sum());
     (par - held).max(0.0).floor()
@@ -128,12 +173,20 @@ pub struct Firm {
     pub used: f64,
     #[serde(default)]
     pub eaten: f64,
-    /// When it last worked, and the batches its hands have done toward the next (worked at each look, a day's at most
-    /// carried).
+    /// When it last worked, and the batches its hands have done toward the next at each step (worked at each look, a
+    /// day's at most carried).
     #[serde(default)]
     pub worked: Option<u64>,
     #[serde(default)]
-    pub progress: f64,
+    pub progress: Vec<f64>,
+    /// The graded pieces of its materials it has bought of each other business, all told: its suppliers.
+    #[serde(default)]
+    pub suppliers: Vec<(FirmId, f64)>,
+    /// What it has sold its town since its last reckoning, and the days in a row its town has bought of it.
+    #[serde(default)]
+    pub sold: f64,
+    #[serde(default)]
+    pub regular: u32,
     /// Its head, past `firm_hands_unled` hands: one of them, by mandate (`charters.rs`).
     #[serde(default)]
     pub head: Option<Head>,
@@ -155,6 +208,11 @@ pub struct Head {
 impl Firm {
     pub fn output(&self, content: &Content) -> Option<GoodId> {
         self.recipe.as_deref().and_then(|r| content.good(r))
+    }
+
+    /// The business it has bought most of its materials of.
+    pub fn main_supplier(&self) -> Option<FirmId> {
+        self.suppliers.iter().max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.cmp(&a.0))).map(|s| s.0)
     }
 
     pub fn note(&mut self, day: u64, hand: HandId, event: Event) {

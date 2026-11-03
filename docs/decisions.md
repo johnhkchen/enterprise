@@ -2580,3 +2580,37 @@ industry this engine is for):
   tanneries' boots nearly all seconds (their Leatherworkers new to it); 15 inspirations, and 26 off-form spells (8
   walk-outs, 7 quarrels, 11 sulks). The trace's `firms` table has each firm's head and pieces by grade, `firm_events`
   what befell its hands, `persons` each one's make-up.
+
+## Society: steps, suppliers and knacks (2026-11-04)
+
+Slice 2 of `docs/firms-plan.md` (John: "Slice 2"; "implement several tables' worth, starting at least with the
+tooltips"):
+
+- **Tooltips:** what a player reads of each habit, knack, grade, work and talent is in the code (`Habit::tooltip`,
+  `Knack::tooltip`...), with the numbers the rules use, and the glossary's words with what each means
+  (`persons::GLOSSARY`). A test holds the plan's tables to them: a habit, knack or word without its row fails.
+- **Steps:** a kind of business does its works in turn (`firms::KINDS`, `Step`). A **tannery** (new) cures its
+  town's hides (a cow's leather, which the town holds plain) into graded leather, or tans four rabbit hides into one,
+  and sells its town the leather; a **bootmaker** (step 3's tannery, renamed, and an older save's with it) tans, then
+  sews boots. Each hand works the step it brings most to (the last step never without one): a bootmaker's tanners are
+  those with a gift for it. An earlier step makes only what the next will work beyond the graded pieces its town
+  holds.
+- **Materials' grades** count in a batch's fundamentals: two for each grade a piece is above Plain, seconds two less,
+  on average (`persons::materials_grade`). A business works its own earlier step's pieces first, then its town's
+  graded pieces, best first, then plain ones, and pays the town for those at their grades' worth.
+- **Suppliers:** graded pieces another business of its town made are bought of it (`Firm::suppliers`); a tannery
+  keeps its town's graded leather at two days of what its bootmaker sews, as well as its workshop's par. Nothing
+  crosses distance without a carrier: suppliers in other towns wait on graded goods carried by wagon (slice 3).
+- **Knacks:** a hand that's a Master in a business finds its knack, drawn from its id (`persons::knack_of`): House
+  style, Supply whisperer, Copycat, Unbroken, Second proof, Glass hands, Scrap artist, Rabbit's foot, The regular and
+  Peacemaker (in Patron's place, which waits on reputation).
+- **Pace is spent:** each batch takes one of its step's hands' pace. Slice 1 never spent it, so a business made all
+  its town wanted at each look; its year's numbers overstated what its hands could make.
+- **Seed 1717's year, replayed** (23 of 11,023 requests refused): 13 bakeries in 11 towns (2 wound up, 12 before),
+  5 weavers', 5 bootmakers, and no tannery: at this world's prices a leather is a sixth of an emerald, so curing one
+  to Fine adds a twelfth, and a tanner's day of it (about one emerald) doesn't pay its wage (about two); four rabbit
+  hides are worth more than the leather they make. Bread mostly Fine (10,201 of 18,459); the weavers' carpets 7,887
+  masterworks of 18,945; the bootmakers' boots nearly all seconds (their Leatherworkers Novices and Apprentices),
+  which still pay at four emeralds a boot. 20 hands became Masters and found their knacks; heads in 13 businesses;
+  10 inspirations, 21 sulks, 8 quarrels, 4 walk-outs. The trace's `firms` has each business's suppliers, `persons`
+  each hand's knack.
