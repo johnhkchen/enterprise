@@ -701,4 +701,6 @@ dials! {
     income_tax: f64 = 0.1,
     /// The crown's land value tax a day on a hex of dry land its best crop suits fully (`taxes::land_rent`).
     land_tax: f64 = 0.05,
+    /// A town's VAT on what its households buy, a share of the price besides (`taxes::vat`).
+    vat: f64 = 0.05,
 }

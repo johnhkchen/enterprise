@@ -78,3 +78,28 @@ fn a_town_off_the_capitals_roads_owes_nothing() {
     assert_eq!(s.land_tax(far), (enterprise_core::Fixed::ZERO, enterprise_core::Fixed::ZERO), "no road, no carrier, no tax");
     let _ = mill;
 }
+
+#[test]
+fn a_town_takes_vat_on_the_comforts_its_households_buy() {
+    let mut goods: Vec<Good> = Content::COMFORTS.iter().enumerate()
+        .map(|(k, name)| Good::new(&format!("{name}_good"), 0.05, 64).comfort(k)).collect();
+    goods.push(Good::new("wheat", 0.05, 64));
+    let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.standing_orders = false;
+    let t = s.add_town("Meadowworth", 40.0);
+    s.set_people(t, 8.0, 8.0, 8.0);
+    s.set_trade(t, 5, 128.0, 0.0);
+    for k in 0..5 {
+        s.deliver(t, k, 500.0);
+    }
+    let before = s.totals();
+    s.advance(5 * DAY);
+    let book = s.account_book(enterprise_core::cash_book::Account::Households(t), 30);
+    let sum = |what: &str| -book.iter().filter(|(_, w, _)| w == what).map(|(_, _, n)| n.to_f64()).sum::<f64>();
+    let (comforts, vat) = (sum("comforts"), sum("VAT"));
+    assert!(comforts > 0.0 && vat > 0.0, "they bought their comforts and paid VAT on them: {book:?}");
+    let rate = s.content().dials.vat;
+    // Their purse spent on the comforts first, the VAT as far as what's left goes.
+    assert!(vat <= rate * comforts + 1e-6 && vat >= 0.5 * rate * comforts, "{rate} of {comforts}, as far as their purse went: {vat}");
+    s.conserved(&before).unwrap();
+}

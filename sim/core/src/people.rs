@@ -294,6 +294,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             let pays = Fixed::ceil(used).min(people.purse.at_least_zero());
             post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,
                 Reason::Comforts, now, day);
+            crate::taxes::vat(&content, &mut ledger, &mut book, t, &mut money.0, &mut people.purse, pays, now, day);
             people.comfort_met[kind] = if due > 0.0 { (1.0 - (owed.max(0.0) + rationed) / due).clamp(0.0, 1.0) } else { 0.0 };
             people.comfort_owed[kind] = owed.min(0.0);
         }

@@ -7,6 +7,10 @@
 //! - **Land value tax, the crown's:** each day a town on the capital's roads owes the rent of the hexes it holds
 //!   ([`land_rent`]), whatever it does with them; the capital's wagons collect it where they call, and the town's own
 //!   carry it to the capital (`rules/taxes.rs`). It pays for the king's highways (`bonds.rs`).
+//! - **VAT, the towns':** a town's treasury is every firm in it (it buys the wagons' goods, keeps the warehouse, sells
+//!   to its people), so the invoice chain's credits net to nothing inside a town and the tax falls where the chain ends:
+//!   on what its households buy, their comforts from its warehouse and what they buy off a wagon there, `vat` of the
+//!   price besides, to its treasury ([`vat`]). One rate on every good, the households of every town alike.
 
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
@@ -24,6 +28,21 @@ pub fn withhold(content: &Content, ledger: &mut Ledger, book: &mut CashBook, tow
     let tax = Fixed::floor(gross.to_f64() * content.dials.income_tax).min(purse.at_least_zero());
     if tax > Fixed::ZERO {
         post(ledger, book, Side::households(town, purse), Side::treasury(town, treasury), tax, income_tax_reason(), now, day);
+    }
+}
+
+pub fn vat_reason() -> Reason {
+    Reason::Other("VAT".into())
+}
+
+/// The town's VAT on `price` its households just paid for what they bought: from their purse to its treasury, as far
+/// as the purse goes.
+#[allow(clippy::too_many_arguments)]
+pub fn vat(content: &Content, ledger: &mut Ledger, book: &mut CashBook, town: usize, treasury: &mut Fixed,
+        purse: &mut Fixed, price: Fixed, now: u64, day: u64) {
+    let tax = Fixed::floor(price.to_f64() * content.dials.vat).min(purse.at_least_zero());
+    if tax > Fixed::ZERO {
+        post(ledger, book, Side::households(town, purse), Side::treasury(town, treasury), tax, vat_reason(), now, day);
     }
 }
 

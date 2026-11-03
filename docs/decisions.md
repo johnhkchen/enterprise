@@ -1386,6 +1386,14 @@ mod's), but no road ever chose it. Then: build them first.
   nor a kept trade), once in `comfort_retrain_days` (20). A weighted running met for the job draw was tried and dropped
   (no change). Seed 1717's days 31-60, the first five towns: reading met 0.90 on average (0.65 before), a day with none
   1 in 150 (44), full 126 (96); Refuge Pointe's Librarian by day 7 (53), mood and villagers as before.
+- **Taxes, the third: a town's VAT falls on what its households buy (John, 2026-11-03: "VAT / broad consumption tax:
+  broad base, low rates, and self-policing through the invoice chain"; "Towns and crown split").** A town's treasury is
+  every firm in it: it buys the wagons' goods, keeps the warehouse, sells to its people. Inside a town the invoice
+  chain's credits net to nothing, so the tax falls where the chain ends, on its households: `vat` (0.05) of the price
+  besides on their comforts from its warehouse and on what they buy off a wagon there, to its treasury ("VAT",
+  `taxes::vat`), as far as their purse goes once the goods are paid for. One rate on every good; with one purse a town
+  there's nobody poorer within it for it to fall harder on, and the transfers that would offset it are its wages.
+  Pigouvian taxes wait for a harm worth modelling for its own sake (John: "Skip it for now").
 - **Taxes, the second: the crown's land value tax pays for its highways (John, 2026-11-03: "Land value tax: the
   least distorting tax there is, held back only by assessment difficulty"; "Towns and crown split").** The core sees
   every hex, so the assessor is perfect: a hex's rent a day is `land_tax` (0.05) for dry land its best crop suits

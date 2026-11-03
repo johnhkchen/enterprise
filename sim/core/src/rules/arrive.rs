@@ -136,7 +136,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             // in their warehouses to buy).
             let (own, room) = match comfort {
                 Some(kind) if people.comfort_owed.len() > kind => {
-                    let (bought, each) = households_buy(&content, &mut ledger, &mut book, &mut people, wagon, &route, g,
+                    let (bought, each) = households_buy(&content, &mut ledger, &mut book, &mut people, &mut money.0, wagon, &route, g,
                         kind, own, stock.0[g], (seller, buyer), bid.map(|(b, _)| b), (now, day));
                     if bid.is_some() && bought > 0.0 {
                         market.fill(route.to_id, g, bought, each, today);
@@ -222,7 +222,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
 /// far as their purse goes: banked as credit toward their rations (`People::comfort_owed`), the goods used. How many
 /// they bought, and at what each.
 #[allow(clippy::too_many_arguments)]
-fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, people: &mut People, wagon: &mut Wagon,
+fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, people: &mut People, treasury: &mut Fixed, wagon: &mut Wagon,
         route: &Route, g: usize, kind: usize, own: f64, on_hand: f64, (seller, buyer): (u8, u8), bid: Option<f64>,
         (now, day): (u64, u64)) -> (f64, f64) {
     let savings = people.purse.at_least_zero();
@@ -245,6 +245,7 @@ fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, p
     let paid = Fixed::ceil(n * each).min(savings);
     post(ledger, book, Side::households(route.to_id, &mut people.purse), Side::wagon(route.seq, &mut wagon.purse), paid,
         Reason::Sale, now, day);
+    crate::taxes::vat(content, ledger, book, route.to_id, treasury, &mut people.purse, paid, now, day);
     wagon.sold_here[g] += n;
     wagon.takings_here += paid;
     crate::atlas::paid(wagon, g, paid);
