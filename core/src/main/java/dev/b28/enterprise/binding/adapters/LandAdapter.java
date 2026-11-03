@@ -117,6 +117,8 @@ public final class LandAdapter {
     private final Map<Long, Integer> sinceCounted = new HashMap<>();
     /** What the host laid of the core's builds, and the crops of the fields it laid, for the next look. */
     private final List<Input> pending = new ArrayList<>();
+    /** The towns whose people the core was told this server run (`Input.People`: a wagon of another pays customs). */
+    private final Set<Long> peopleSaid = new HashSet<>();
     /**
      * What was said in a look the core refused or trapped on (heard on the core's thread): said again with the next, so
      * a work laid is never asked for, and laid, twice.
@@ -218,6 +220,11 @@ public final class LandAdapter {
                 // a town surveyed before (its forum laid) keeps the style it was built in.
                 if (!dev.b28.enterprise.territory.Forums.get(server).bells().containsKey(town)) {
                     dev.b28.enterprise.territory.Kingdoms.get(server).settle(level, town, bell);
+                }
+                // Its people, once a server run, for the customs between peoples (the core's `taxes.rs`).
+                var kingdoms = dev.b28.enterprise.territory.Kingdoms.get(server);
+                if (kingdoms.has(town) && peopleSaid.add(town)) {
+                    inputs.add(new Input.People(town, kingdoms.of(town)));
                 }
                 // Its forum, laid free at its first survey: the heart its main roads leave from.
                 int paved = dev.b28.enterprise.territory.Forums.get(server).ensure(level, town, bell);

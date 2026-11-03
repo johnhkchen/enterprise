@@ -708,4 +708,6 @@ dials! {
     /// What a wagon pays the owner of a crowded hex for each stack it carried over it, the hex crowded fully
     /// (`map::Map::crowding`).
     congestion_fee: f64 = 0.01,
+    /// What a wagon pays a town of another people of what it took there (`taxes.rs`).
+    customs_duty: f64 = 0.05,
 }

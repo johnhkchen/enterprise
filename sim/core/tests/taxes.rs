@@ -151,3 +151,16 @@ fn a_wagon_pays_the_owner_of_crowded_land_it_crosses() {
     assert!(s.route(road).trips >= 1 && fees > 0.0, "Crowdham took its congestion fees: {} trips, {fees}", s.route(road).trips);
     assert!(s.town(crowd).money.to_f64() >= money + fees - 1e-6);
 }
+
+#[test]
+fn a_wagon_selling_to_a_town_of_another_people_pays_its_customs() {
+    let duty = |farm_people: &str, mill_people: &str| {
+        let (mut s, farm, mill) = farm_and_mill();
+        s.set_people_of(farm, farm_people);
+        s.set_people_of(mill, mill_people);
+        s.advance(10 * DAY);
+        s.cash_book(mill, 30).iter().filter(|(_, w, _)| w == "customs").map(|(_, _, n)| n.to_f64()).sum::<f64>()
+    };
+    assert!(duty("orc", "dwarf") > 0.0, "the dwarves took customs of the orcs' wagon");
+    assert_eq!(duty("dwarf", "dwarf"), 0.0, "none between towns of one people");
+}

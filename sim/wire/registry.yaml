@@ -779,6 +779,11 @@ Input:
         STRUCT:
           - x: I32
           - z: I32
+    43:
+      People:
+        STRUCT:
+          - town: U32
+          - people: STR
 LandKind:
   ENUM:
     0:

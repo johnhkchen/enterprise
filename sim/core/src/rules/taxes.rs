@@ -7,6 +7,7 @@
 //!   king's highways.
 //! - **Plan:** a town's wagon to the capital takes what its town owes in its purse.
 //! - **Congestion** (home again, after the stops): a wagon pays each town whose crowded land it crossed.
+//! - **Customs** (at the far end, once it has sold): a wagon of one people selling at a town of another pays it its duty.
 //! - **Harbour** (at the far end, once it has sold): a ship landing at a port pays it its fee for each stack it landed,
 //!   out of what it took there.
 
@@ -17,14 +18,15 @@ use crate::bonds::Bonds;
 use crate::cash_book::{post, CashBook, Side};
 use crate::content::Content;
 use crate::state::*;
-use crate::taxes::{congestion_reason, harbour_reason, land_rent, land_tax_reason, Taxes};
+use crate::taxes::{congestion_reason, customs_reason, harbour_reason, land_rent, land_tax_reason, Taxes};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         assess.in_set(Step::Review).after(super::bonds::highways).before(super::jobs::relocate).before(super::jobs::review),
         collect.in_set(Step::Papers).after(super::bonds::papers).before(super::bills::present),
         congestion.in_set(Step::Services).after(super::waystations::serve),
-        harbour.in_set(Step::Sell).after(super::realms::customs).before(super::harvest::redeem).before(super::cargo::relot),
+        customs.in_set(Step::Sell).after(super::realms::customs).before(super::harvest::redeem).before(super::cargo::relot),
+        harbour.in_set(Step::Sell).after(customs).before(super::harvest::redeem).before(super::cargo::relot),
         plan.in_set(Step::PlanPapers).after(super::bonds::plan).before(super::bills::plan_papers),
     ));
 }
@@ -167,5 +169,35 @@ pub fn congestion(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, m
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(owner, &mut m.0), pay,
                 congestion_reason(), now, day);
         }
+    }
+}
+
+/// A wagon that sold at a town of another people pays it `customs_duty` of what it took there, rounded up (a duty owed),
+/// as far as its purse goes.
+pub fn customs(clock: Res<Clock>, content: Res<Content>, taxes: Res<Taxes>, mut ledger: ResMut<Ledger>,
+        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut money: Query<&mut Money>) {
+    if taxes.peoples.is_empty() {
+        return;
+    }
+    let (now, day) = (clock.now, content.day_ticks);
+    for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(entity).unwrap();
+        if state.arrived != Some(Leg::Out) {
+            continue;
+        }
+        let (Some(home), Some(here)) = (taxes.peoples.get(&route.from_id), taxes.peoples.get(&route.to_id)) else { continue };
+        if home == here {
+            continue;
+        }
+        let route = *route;
+        let Some(wagon) = state.wagon.as_mut() else { continue };
+        let duty = wagon.takings_here.mul_ceil(content.dials.customs_duty).min(wagon.purse).at_least_zero();
+        let Ok(mut m) = money.get_mut(route.to) else { continue };
+        if !duty.is_positive() {
+            continue;
+        }
+        post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut m.0), duty,
+            customs_reason(), now, day);
+        wagon.takings_here -= duty;
     }
 }

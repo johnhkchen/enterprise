@@ -51,7 +51,8 @@ public sealed interface Input
                 Input.Peace,
                 Input.CrownShop,
                 Input.Port,
-                Input.Village {
+                Input.Village,
+                Input.People {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -100,6 +101,7 @@ public sealed interface Input
             case 40 -> new CrownShop(Point.decode(in));
             case 41 -> new Port(in.u32(), in.i32(), in.i32());
             case 42 -> new Village(in.i32(), in.i32());
+            case 43 -> new People(in.u32(), in.string());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -875,6 +877,24 @@ public sealed interface Input
             out.variant(42);
             out.i32(this.x);
             out.i32(this.z);
+        }
+    }
+
+    /**
+     * The people a town's founders were (the kingdom its buildings are chosen in: {@code territory/Kingdoms.java}, drawn from
+     * the land at its first survey): a wagon selling into a town of another people pays its customs there
+     * ({@code taxes.rs}). Sent again, it changes. Refused for a town that isn't there.
+     */
+    record People(long town, String people) implements Input {
+        public People {
+            Objects.requireNonNull(people, "people");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(43);
+            out.u32(this.town);
+            out.string(this.people);
         }
     }
 }

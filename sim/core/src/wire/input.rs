@@ -206,6 +206,10 @@ pub enum Input {
     /// in that would've made excellent settlement candidates, maybe even adding their population"). Taken as a village
     /// of the core's (`Society::add_village`) unless a town or village stands within a hex of it already.
     Village { x: i32, z: i32 },
+    /// The people a town's founders were (the kingdom its buildings are chosen in: `territory/Kingdoms.java`, drawn from
+    /// the land at its first survey): a wagon selling into a town of another people pays its customs there
+    /// (`taxes.rs`). Sent again, it changes. Refused for a town that isn't there.
+    People { town: TownNo, people: String },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

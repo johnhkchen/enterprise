@@ -678,7 +678,7 @@ impl Society {
             }
             Input::Census { .. } | Input::TagHand { .. } => self.apply_census(input).unwrap_or_default(),
             Input::Ground { .. } | Input::Crops { .. } | Input::Survey { .. } | Input::Built { .. } | Input::Port { .. }
-                    | Input::Village { .. } => {
+                    | Input::Village { .. } | Input::People { .. } => {
                 self.apply_land(input);
                 Vec::new()
             }

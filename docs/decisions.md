@@ -1398,8 +1398,12 @@ mod's), but no road ever chose it. Then: build them first.
   share, at most 1, and a wagon takes 1 + that of the time across it (`Map::crowding`, `pace`: a road's days and food
   follow). A wagon home again by land pays each town whose crowded land it crossed, its own excepted,
   `congestion_fee` (0.01) a stack it carried for each such hex, as crowded as it is ("congestion fees"): money for the
-  owner to pave with, which lifts the hex's capacity. Next: congestion where roads crowd (a slowdown, the fee to the land's owner), customs between
-  peoples.
+  owner to pave with, which lifts the hex's capacity. Customs fall between peoples ("Can tack on customs at this
+  broad juncture as well"; "Between peoples"): the host tells the core each town's people once a server run, the
+  kingdom its founders were drawn from the land as (`Input::People`, `LandAdapter`'s survey), and a wagon that sold at
+  a town of another people pays it `customs_duty` (0.05) of what it took there ("customs", `rules/taxes.rs`, after the
+  off-map realms' own customs to the crown). Lordaeron, Stormwind and Dalaran are kingdoms of one race but peoples of
+  their own here; a town none was drawn for pays and charges none.
 - **Taxes, the third: a town's VAT falls on what its households buy (John, 2026-11-03: "VAT / broad consumption tax:
   broad base, low rates, and self-policing through the invoice chain"; "Towns and crown split").** A town's treasury is
   every firm in it: it buys the wagons' goods, keeps the warehouse, sells to its people. Inside a town the invoice

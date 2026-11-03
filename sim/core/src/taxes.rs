@@ -17,6 +17,9 @@
 //!   town whose crowded land it crossed `congestion_fee` a stack it carried for each such hex, as crowded as it was
 //!   (John: "congestion fees for high volume traffic areas"; "Add the harm, fee to land owner"). The owner's own wagons
 //!   pay none: they'd pay themselves.
+//! - **Customs between peoples:** a wagon selling at a town of another people (the kingdom its founders were, as the
+//!   host tells it: `Input::People`) pays it `customs_duty` of what it took there, out of its purse (John: "Can tack on
+//!   customs at this broad juncture as well"; "Between peoples"). Towns whose people the host hasn't said pay none.
 
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
@@ -76,6 +79,10 @@ pub fn congestion_reason() -> Reason {
     Reason::Other("congestion fees".into())
 }
 
+pub fn customs_reason() -> Reason {
+    Reason::Other("customs".into())
+}
+
 pub fn land_tax_reason() -> Reason {
     Reason::Other("land tax".into())
 }
@@ -84,6 +91,9 @@ pub fn land_tax_reason() -> Reason {
 /// capital's roads, and what it has paid.
 #[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Taxes {
+    /// Each town's people, as the host told it.
+    #[serde(default)]
+    pub peoples: std::collections::BTreeMap<usize, String>,
     pub land_owed: std::collections::BTreeMap<usize, f64>,
     pub land_paid: std::collections::BTreeMap<usize, Fixed>,
     /// When the land was last assessed.
@@ -103,6 +113,11 @@ impl Taxes {
 }
 
 impl crate::society::Society {
+    /// Sets the people a town's founders were (`Input::People`).
+    pub fn set_people_of(&mut self, town: usize, people: &str) {
+        self.world.resource_mut::<Taxes>().peoples.insert(town, people.to_string());
+    }
+
     /// What each town owes of its land tax, and has paid.
     pub fn land_tax(&self, town: usize) -> (Fixed, Fixed) {
         let t = self.world.resource::<Taxes>();
