@@ -2601,16 +2601,25 @@ tooltips"):
 - **Suppliers:** graded pieces another business of its town made are bought of it (`Firm::suppliers`); a tannery
   keeps its town's graded leather at two days of what its bootmaker sews, as well as its workshop's par. Nothing
   crosses distance without a carrier: suppliers in other towns wait on graded goods carried by wagon (slice 3).
+- **A buyer bids its gain** (John: "Buyer bids its gain"): its town's businesses bid for each grade above Plain of a
+  material they work what that grade adds to their own pieces (two points of fundamentals a grade, each a 27th of
+  seconds-to-masterwork's worth, `firms::worth_per_point`; per piece of the material), and a graded piece sells at its
+  grade's worth or the best bid, if more (`firms::bids`, `price`). At this world's prices a leather is a sixth of an
+  emerald and a boot four, so a bootmaker bids 0.35 for a Fine leather, not the 0.25 its grade's worth: curing hides
+  to Fine pays a tanner's wage only where a bootmaker works them.
+- **Founding takes its hand:** a business takes on the hand it's founded round, the best of those it would pay, so
+  another kind founded the same day needs another (a tannery and a bootmaker had been founded round one Master, and
+  the bootmaker took it); a business with no hands is wound up as one that can't pay them (`firm_broke_days`).
 - **Knacks:** a hand that's a Master in a business finds its knack, drawn from its id (`persons::knack_of`): House
   style, Supply whisperer, Copycat, Unbroken, Second proof, Glass hands, Scrap artist, Rabbit's foot, The regular and
   Peacemaker (in Patron's place, which waits on reputation).
 - **Pace is spent:** each batch takes one of its step's hands' pace. Slice 1 never spent it, so a business made all
   its town wanted at each look; its year's numbers overstated what its hands could make.
-- **Seed 1717's year, replayed** (23 of 11,023 requests refused): 13 bakeries in 11 towns (2 wound up, 12 before),
-  5 weavers', 5 bootmakers, and no tannery: at this world's prices a leather is a sixth of an emerald, so curing one
-  to Fine adds a twelfth, and a tanner's day of it (about one emerald) doesn't pay its wage (about two); four rabbit
-  hides are worth more than the leather they make. Bread mostly Fine (10,201 of 18,459); the weavers' carpets 7,887
-  masterworks of 18,945; the bootmakers' boots nearly all seconds (their Leatherworkers Novices and Apprentices),
-  which still pay at four emeralds a boot. 20 hands became Masters and found their knacks; heads in 13 businesses;
-  10 inspirations, 21 sulks, 8 quarrels, 4 walk-outs. The trace's `firms` has each business's suppliers, `persons`
-  each hand's knack.
+- **Seed 1717's year, replayed** (23 of 11,023 requests refused): 9 bakeries in 7 towns (4 wound up), 4 weavers', 4
+  bootmakers and 2 tanneries, one after the other in town 1, whose bootmaker bought 482 graded leathers of them (its
+  suppliers): their 2,002 leathers mostly Fine (1,095) and Masterwork (624), and that bootmaker's boots 86
+  masterworks where no bootmaker made one before. The other bootmakers' boots nearly all seconds (their
+  Leatherworkers Novices and Apprentices), which still pay at four emeralds a boot. Bread mostly Fine (7,918 of
+  15,893); the weavers' carpets 7,713 masterworks of 20,862. 17 hands became Masters and found their knacks (Glass
+  hands ruined 51 batches); heads in 10 businesses; 16 inspirations, 12 sulks, 10 quarrels, 4 walk-outs. The trace's
+  `firms` has each business's suppliers, `persons` each hand's knack.

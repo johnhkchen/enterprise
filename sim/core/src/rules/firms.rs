@@ -12,7 +12,7 @@ use bevy_ecs::prelude::*;
 use crate::cash_book::{post, Account, CashBook, Reason, Side};
 use crate::charters::{Charters, Mandate, Party, Source, Verb};
 use crate::content::{Content, GoodId};
-use crate::firms::{added, graded_wanted_for, ingredients, kinds, Firm, FirmId, Firms, Head, Kind};
+use crate::firms::{added, bids, graded_wanted_for, price, ingredients, kinds, Firm, FirmId, Firms, Head, Kind};
 use crate::fixed::Fixed;
 use crate::households::{earners, shares, Homes, HouseholdId, Households};
 use crate::persons::{draw, fundamentals, knack_of, roll, skill_cap, Event, Grade, Habit, Knack, Person, Persons, Work};
@@ -154,6 +154,8 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
         // their town wants of them, a tannery's leather kept at what its bootmaker would sew.
         let mut makers: BTreeMap<GoodId, FirmId> = BTreeMap::new();
         let mut needs: BTreeMap<GoodId, f64> = BTreeMap::new();
+        let bids = bids(&content, firms.firms.iter().filter(|f| f.town == t)
+            .filter_map(|f| kinds.iter().find(|k| k.name == f.name)));
         for f in firms.firms.iter().filter(|f| f.town == t) {
             let Some(kind) = kinds.iter().find(|k| k.name == f.name) else { continue };
             makers.insert(kind.steps[kind.steps.len() - 1].output, f.id);
@@ -171,7 +173,7 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                 .map(|i| 2.0 * firm.used / kind.conversion.out.max(1e-9) * i.1).sum();
             let needed = needs.get(&output).copied().unwrap_or(0.0) - own;
             work(&content, kind, firm, persons, &all, roster, people, stock, money, hooks, &mut ledger, &mut book, now,
-                needed, &makers, copied);
+                needed, &makers, &bids, copied);
             if matches!(firm.reckoned, Some(k) if now < k + day) {
                 continue;
             }
@@ -215,7 +217,7 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                         .filter(|x| x.trade == kind.trade && x.baby_until.is_none() && !employed.contains(&x.id)) {
                     let m = person(persons, x, &all);
                     let w = best_step(&content, kind, m).0;
-                    let pays = added(&content, c, Grade::of(w)) * pace(d, x, m, None) > offer.to_f64();
+                    let pays = added(&content, &bids, c, Grade::of(w)) * pace(d, x, m, None) > offer.to_f64();
                     let key = (kin.is_some() && home_of(homes, x.id) == kin, (w * 1000.0) as i64, x.level,
                         std::cmp::Reverse(x.id));
                     if pays && best.as_ref().is_none_or(|b| key > *b) {
@@ -273,6 +275,8 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                     paid, Reason::Other("firm wages".into()), now, day);
                 credit(homes, home_of(homes, id), paid);
             }
+            // (A business with no hands can't work: it's wound up as one that can't pay them.)
+            short |= firm.employees.is_empty();
             firm.broke_days = if short { firm.broke_days + 1 } else { 0 };
             if firm.broke_days as f64 >= d.firm_broke_days {
                 // Wound up: what's left of its treasury its owners', its hands back to the town's wages.
@@ -318,14 +322,18 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             if graded_wanted_for(&content, people, c.output, par, needs.get(&c.output).copied().unwrap_or(0.0)) < c.out {
                 continue;
             }
-            let pays = roster.hands.iter().filter(|x| x.trade == kind.trade && x.baby_until.is_none()
-                && !employed.contains(&x.id)).any(|x| {
+            // (The hand it's founded round, the best of those it would pay, it takes on: another kind founded today
+            // needs another.)
+            let mut first: Option<(f64, HandId)> = None;
+            for x in roster.hands.iter().filter(|x| x.trade == kind.trade && x.baby_until.is_none() && !employed.contains(&x.id)) {
                 let m = person(persons, x, &all);
-                added(&content, c, Grade::of(best_step(&content, kind, m).0)) * pace(d, x, m, None) > offer.to_f64()
-            });
-            if !pays {
-                continue;
+                let w = best_step(&content, kind, m).0;
+                if added(&content, &bids, c, Grade::of(w)) * pace(d, x, m, None) > offer.to_f64()
+                        && first.is_none_or(|f| w > f.0) {
+                    first = Some((w, x.id));
+                }
             }
+            let Some((_, hand)) = first else { continue };
             let capital = Fixed::ceil(kind.capital);
             let working = Fixed::ceil(offer.to_f64() * d.firm_working_days);
             let cost = capital + working;
@@ -351,6 +359,8 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             for &(i, put) in &founders {
                 homes.charges.push((homes.list[i].id, put));
             }
+            firm.employees.push((hand, offer));
+            employed.insert(hand);
             firms.firms.push(firm);
         }
     }
@@ -412,10 +422,13 @@ fn take_materials(people: &mut People, stock: &Stock, pool: &mut BTreeMap<GoodId
 /// the town's treasury pays. Each batch is graded by its maker's Fundamentals (with its materials' grades) × the shop's
 /// Morale, give or take the batch's own draw, as its maker's knack bends it, and its maker the more skilled for it.
 /// Its pieces are sold to the town at their grades' worth, and the materials it buys of the town paid for at theirs.
+// (Not inlined into `run`: together they're too big a function for the JVM to compile the wasm of.)
+#[inline(never)]
 #[allow(clippy::too_many_arguments)]
 fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, all: &[String], roster: &Roster,
         people: &mut People, stock: &mut Stock, money: &mut Money, hooks: Option<&Workshop>, ledger: &mut Ledger,
-        book: &mut CashBook, now: u64, needed: f64, makers: &BTreeMap<GoodId, FirmId>, copied: Option<Knack>) {
+        book: &mut CashBook, now: u64, needed: f64, makers: &BTreeMap<GoodId, FirmId>, bids: &BTreeMap<GoodId, f64>,
+        copied: Option<Knack>) {
     let d = &content.dials;
     let day = content.day_ticks.max(1);
     let today = now / day;
@@ -459,10 +472,10 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
         .filter_map(|c| persons.hands.get(&c.0).map(|m| (c.0, m.talents.clone()))).collect();
     // How many batches each step makes: the last what its town wants, as far as its progress and the town's treasury
     // go; an earlier one what the next would work of its output beyond the graded pieces its town holds.
-    let best = Grade::Masterwork.worth(d);
     let mut target = vec![0.0; kind.steps.len()];
     let out_last = kind.steps[last].recipes.iter().map(|c| c.out).fold(f64::INFINITY, f64::min);
-    let affords = (money.0.at_least_zero().to_f64() / (out_last * content.goods[output].value * best).max(1e-9)).floor();
+    let best = price(content, bids, output, Grade::Masterwork);
+    let affords = (money.0.at_least_zero().to_f64() / (out_last * best).max(1e-9)).floor();
     target[last] = (wanted / out_last - 1e-9).ceil().max(0.0).min(affords).min(firm.progress[last].floor());
     for s in (0..last).rev() {
         let g = kind.steps[s].output;
@@ -471,7 +484,6 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
         let out = kind.steps[s].recipes[0].out.max(1e-9);
         target[s] = ((target[s + 1] * per - held) / out - 1e-9).ceil().max(0.0).min(firm.progress[s].floor());
     }
-    let value = |g: GoodId| content.goods[g].value;
     let mut pool: BTreeMap<GoodId, [f64; 5]> = BTreeMap::new();
     let mut made = [0.0; 5];
     let mut cost = 0.0;
@@ -506,7 +518,7 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
                 let (own, bought) = take_materials(people, stock, &mut pool, g, n, g == step.output);
                 stock.0[g] -= n;
                 ledger.used[g] += n;
-                cost += Grade::ALL.iter().map(|gr| bought[gr.index()] * value(g) * gr.worth(d)).sum::<f64>();
+                cost += Grade::ALL.iter().map(|gr| bought[gr.index()] * price(content, bids, g, *gr)).sum::<f64>();
                 // (A business's graded pieces: its supplier's, and a Supply whisperer's a grade higher.)
                 let theirs: f64 = Grade::COUNTED.iter().map(|gr| bought[gr.index()]).sum();
                 if let Some(&f) = makers.get(&g).filter(|&&f| f != firm.id && theirs > 0.0) {
@@ -588,7 +600,7 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
         for gr in Grade::COUNTED {
             graded[gr.index()] += of[gr.index()];
         }
-        sales += Grade::ALL.iter().map(|gr| of[gr.index()] * value(*g) * gr.worth(d)).sum::<f64>();
+        sales += Grade::ALL.iter().map(|gr| of[gr.index()] * price(content, bids, *g, *gr)).sum::<f64>();
     }
     people.graded.retain(|_, of| of.iter().any(|x| *x > 0.0));
     for (a, b) in firm.grades.iter_mut().zip(made) {
@@ -610,6 +622,7 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
 /// better work; twice as often a Hothead's, half a Steady hand's); low ones an off-form spell: it walks out for the
 /// day (never a Homebody), quarrels with another of the crew (both the lower for it; a Hothead's likelier), or sulks
 /// (two days of worse work). An Ambitious hand ten days in low spirits leaves.
+#[inline(never)]
 #[allow(clippy::too_many_arguments)]
 fn spirits<'r>(kind: &Kind, firm: &mut Firm, persons: &mut Persons, all: &[String],
         ours: &dyn Fn(HandId) -> Option<&'r Hand>, homes: &Homes, copied: Option<Knack>, now: u64, today: u64, day: u64) {

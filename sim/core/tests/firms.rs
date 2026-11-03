@@ -360,3 +360,20 @@ fn every_habit_knack_and_word_has_its_tooltip_and_its_row_in_the_plan() {
     }
     assert!(Grade::ALL.iter().all(|g| !g.tooltip().is_empty()) && Work::ALL.iter().all(|w| !w.tooltip().is_empty()));
 }
+
+#[test]
+fn a_business_bids_for_a_graded_material_what_its_grade_adds_to_its_own_pieces() {
+    use enterprise_core::firms::{bids, kinds, price};
+    // (This world's prices: a leather a sixth of an emerald, a boot four.)
+    let clothing = Content::COMFORTS.iter().position(|k| *k == "clothing").unwrap();
+    let c = Content::new(vec![Good::new("leather", 1.0 / 6.0, 64), Good::new("leather_boots", 4.0, 1).comfort(clothing)], DAY);
+    let kinds = kinds(&c);
+    let leather = c.good("leather").unwrap();
+    let bid = bids(&c, kinds.iter().filter(|k| k.name == "bootmaker"));
+    let fine = price(&c, &bid, leather, Grade::Fine);
+    // Two grades over Plain: four points of a boot's fundamentals, each a 27th of seconds-to-masterwork's 1.25 of 4.
+    assert!((fine - (1.0 / 6.0 + 4.0 * 1.25 / 27.0 * 4.0 / 4.0)).abs() < 1e-9, "{fine}");
+    assert!(fine > 1.0 / 6.0 * Grade::Fine.worth(&c.dials));
+    assert_eq!(price(&c, &bid, leather, Grade::Seconds), 1.0 / 6.0 * 0.75);
+    assert_eq!(price(&c, &Default::default(), leather, Grade::Fine), 1.0 / 6.0 * Grade::Fine.worth(&c.dials));
+}

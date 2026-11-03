@@ -16,7 +16,7 @@
 //! it has made by grade, what befell its hands, and its reputation (slice 3). Its claims (`property.rs`, owned by
 //! [`Party::Firm`]) are for later.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -133,9 +133,39 @@ pub fn graded_wanted_for(content: &Content, people: &crate::state::People, outpu
     (par - held).max(0.0).floor()
 }
 
+/// What a point of fundamentals is worth to a piece, a plain piece's being 1: the span from seconds (a score of 3) to
+/// a masterwork (30), on the whole.
+pub fn worth_per_point(d: &crate::content::Dials) -> f64 {
+    (Grade::Masterwork.worth(d) - Grade::Seconds.worth(d)) / 27.0
+}
+
+/// What its town's businesses bid for each grade above Plain of each material they work, a piece (John: "Buyer bids
+/// its gain"): what a grade of it adds to their own pieces, its two points of fundamentals a grade, the best bid of
+/// them. A graded piece of a material no business works is worth its grade, as any other.
+pub fn bids<'a>(content: &Content, kinds: impl IntoIterator<Item = &'a Kind>) -> BTreeMap<GoodId, f64> {
+    let mut bids = BTreeMap::new();
+    for k in kinds {
+        let c = &k.conversion;
+        for &(g, per) in c.inputs.iter().filter(|i| i.0 != c.output) {
+            let bid = c.out * content.goods[c.output].value * worth_per_point(&content.dials) * 2.0 / per.max(1e-9);
+            let b = bids.entry(g).or_insert(0.0_f64);
+            *b = b.max(bid);
+        }
+    }
+    bids
+}
+
+/// What a piece of `g` at `grade` sells for in a town whose businesses bid `bids`: its grade's worth, or what they bid
+/// for it if more (seconds at their worth).
+pub fn price(content: &Content, bids: &BTreeMap<GoodId, f64>, g: GoodId, grade: Grade) -> f64 {
+    let value = content.goods[g].value;
+    let bid = bids.get(&g).map_or(0.0, |b| value + b * (grade.index() as f64 - 1.0));
+    (value * grade.worth(&content.dials)).max(if grade > Grade::Plain { bid } else { 0.0 })
+}
+
 /// What a batch at `grade` is worth less its inputs, in emeralds: what a hand's batch adds.
-pub fn added(content: &Content, c: &Conversion, grade: Grade) -> f64 {
-    c.out * content.goods[c.output].value * grade.worth(&content.dials) - crate::workshop::inputs_worth(content, c)
+pub fn added(content: &Content, bids: &BTreeMap<GoodId, f64>, c: &Conversion, grade: Grade) -> f64 {
+    c.out * price(content, bids, c.output, grade) - crate::workshop::inputs_worth(content, c)
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

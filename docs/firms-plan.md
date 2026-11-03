@@ -130,7 +130,8 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    leather; a **bootmaker** (a step-3 tannery, renamed) tans what leather it can't buy graded of its town, then sews
    boots, its hands each at the step they bring most to. A business's materials are its own earlier step's first, then
    its town's graded pieces, best first, then plain; graded pieces another business of its town made are bought of it
-   (its suppliers, `Firm::suppliers`). Each batch spends its hands' pace (slice 1 never did: a business made all its
+   (its suppliers, `Firm::suppliers`), at what a grade of it adds to their own pieces if more than its grade's worth
+   (John: "Buyer bids its gain", `firms::bids`). Each batch spends its hands' pace (slice 1 never did: a business made all its
    town wanted at each look).
 3. **Houses**: reputation and draw; grades carried by wagon; masters coming seeking work; branches.
 4. **Stations and chains** (moved up from 3, industry's heart and "capital investment for higher quality"): a

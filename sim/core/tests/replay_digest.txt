@@ -2,4 +2,4 @@ curves: e07eb9211095ebf0
 seed 3: de1ce121f2d7563c (532620 bytes saved)
 seed 77: 1ea9e9a7dc7c9344 (493001 bytes saved)
 seed 1234: b5333e7a66da7dcd (535257 bytes saved)
-seed 2026: 5558a777065d0ea9 (481207 bytes saved)
+seed 2026: 20c0678cebca0cf8 (488620 bytes saved)
