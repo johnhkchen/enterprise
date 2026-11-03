@@ -5,6 +5,7 @@
 use enterprise_core::cash_book::{Account, Reason};
 use enterprise_core::charters::Party;
 use enterprise_core::fixed::Fixed;
+use enterprise_core::persons::{draw, Grade, Habit, Talent, Work};
 use enterprise_core::{Content, Good, Society};
 
 const DAY: u64 = 24_000;
@@ -25,8 +26,13 @@ fn run(s: &mut Society, days: u64) {
 /// (level 3), then nitwits, in a home for each of these hands and no
 /// land to build more, with wheat to bake and `purse` emeralds in its households' purse.
 fn town(s: &mut Society, name: &str, villagers: usize, at: (f64, f64), hands: &[&str], purse: f64) -> usize {
+    town_of(s, name, villagers, at, hands, 3, purse)
+}
+
+/// As [`town`], its hands of this level.
+fn town_of(s: &mut Society, name: &str, villagers: usize, at: (f64, f64), hands: &[&str], level: u8, purse: f64) -> usize {
     let t = s.add_town(name, 500.0);
-    let mut roster: Vec<(&str, u8)> = hands.iter().map(|h| (*h, 3)).collect();
+    let mut roster: Vec<(&str, u8)> = hands.iter().map(|h| (*h, level)).collect();
     roster.resize(villagers, ("nitwit", 1));
     s.set_roster(t, &roster);
     let beds = 2.0 * hands.len() as f64;
@@ -138,4 +144,123 @@ fn a_village_beside_a_bigger_town_with_a_bakery_opens_none_of_its_own() {
     let village = town(&mut s, "Goldshire", 10, (100.0, 0.0), &["farmer", "merchant"], 200.0);
     run(&mut s, 3);
     assert_eq!((bakeries(&s, big), bakeries(&s, village)), (1, 0), "{:?}", s.firms());
+}
+
+/// A bakery in a big town (60 eat 24 loaves a day, two hands' baking) whose owners run one hand themselves, fed its
+/// wheat for `days` days: it takes on more.
+fn busy_bakery(s: &mut Society, days: u64) -> usize {
+    s.content_mut().dials.firm_hands_unled = 1.0;
+    let t = town(s, "Stormwind", 60, (0.0, 0.0), &["farmer", "farmer", "farmer", "farmer", "farmer", "merchant"], 400.0);
+    for _ in 0..days {
+        s.deliver(t, WHEAT, 120.0);
+        run(s, 1);
+    }
+    t
+}
+
+#[test]
+fn a_person_s_make_up_is_its_own_two_habits_that_don_t_clash_and_skill_by_rank() {
+    let all = vec!["wheat".to_string(), "leather".to_string()];
+    for h in 1..300 {
+        let p = draw(h, 3, &all);
+        assert_eq!(p, draw(h, 3, &all), "the same hand, the same person");
+        assert_eq!(p.habits.len(), 2);
+        assert_ne!(p.habits[0], p.habits[1]);
+        assert!(!(p.has(Habit::Taskmaster) && p.has(Habit::Beloved)) && !(p.has(Habit::Ambitious) && p.has(Habit::Homebody)));
+        assert!(!p.talents.is_empty() && p.talents.iter().all(|t| matches!(t, Talent::Work(_))
+            || matches!(t, Talent::Material(m) if all.contains(m))));
+        assert!(Work::ALL.iter().all(|&w| p.skill(w) == 9.0));
+    }
+    let habits: std::collections::BTreeSet<_> = (1..300).flat_map(|h| draw(h, 3, &all).habits).collect();
+    assert_eq!(habits.len(), Habit::ALL.len(), "every habit turns up");
+}
+
+#[test]
+fn a_task_scores_fundamentals_times_morale_and_the_score_sets_the_grade() {
+    use enterprise_core::persons::{morale, score};
+    assert_eq!(score(12.0, 1.0, 0.3, 0.5), 12.0);
+    assert_eq!(Grade::of(score(12.0, 1.0, 0.3, 0.5)), Grade::Good);
+    assert_eq!(Grade::of(score(12.0, 1.5, 0.3, 0.5)), Grade::Fine, "in good heart, finer");
+    assert!(morale(0.9, None) > morale(0.5, None) && morale(0.5, None) > morale(0.1, None));
+    let d = Content::new(vec![], DAY).dials;
+    let worths: Vec<f64> = Grade::ALL.iter().map(|g| g.worth(&d)).collect();
+    assert!(worths.windows(2).all(|w| w[0] < w[1]) && Grade::Plain.worth(&d) == 1.0);
+}
+
+#[test]
+fn graded_pieces_are_used_best_first_and_seconds_last() {
+    use enterprise_core::people::take_graded;
+    let mut graded = std::collections::BTreeMap::new();
+    graded.insert(1, [2.0, 0.0, 1.0, 0.0, 1.0]); // 2 seconds, 1 good, 1 masterwork, of 10 held: 6 plain
+    let took = take_graded(&mut graded, 1, 10.0, 8.0);
+    assert_eq!(took, [0.0, 6.0, 1.0, 0.0, 1.0]);
+    assert_eq!(take_graded(&mut graded, 1, 2.0, 2.0), [2.0, 0.0, 0.0, 0.0, 0.0]);
+    assert!(graded.is_empty());
+}
+
+#[test]
+fn a_master_baker_s_bread_grades_finer_than_a_novice_s() {
+    let average = |level: u8| {
+        let mut s = society();
+        s.content_mut().dials.hand_wage = 0.01;
+        let t = town_of(&mut s, "Stormwind", 44, (0.0, 0.0), &["farmer", "merchant"], level, 200.0);
+        for _ in 0..10 {
+            s.deliver(t, WHEAT, 120.0);
+            run(&mut s, 1);
+        }
+        let f = s.firms().into_iter().next().expect("a bakery");
+        let pieces: f64 = f.grades.iter().sum();
+        assert!(pieces > 0.0);
+        Grade::ALL.iter().map(|g| f.grades[g.index()] * g.index() as f64).sum::<f64>() / pieces
+    };
+    let (novice, master) = (average(1), average(5));
+    assert!(master > novice + 1.0, "{novice} {master}");
+}
+
+#[test]
+fn past_the_hands_its_owners_run_a_firm_appoints_its_most_skilled_head_by_mandate_and_grows() {
+    let mut s = society();
+    busy_bakery(&mut s, 12);
+    let firm = s.firms().into_iter().next().expect("a bakery");
+    let head = firm.head.expect("a head");
+    assert!(firm.employees.len() as f64 > s.content().dials.firm_hands_unled, "{firm:?}");
+    let c = s.charters();
+    let m = c.mandates.iter().find(|m| m.id == head.mandate).unwrap();
+    assert_eq!((m.principal, m.agent, m.scope.clone(), m.until), (Party::Firm(firm.id), head.hand,
+        vec![enterprise_core::charters::Verb::Hire, enterprise_core::charters::Verb::Command], None));
+    let paid = firm.employees.iter().find(|e| e.0 == head.hand).unwrap().1;
+    assert!(firm.employees.iter().all(|e| e.1 <= paid) && firm.employees.iter().any(|e| e.1 < paid), "paid more");
+    assert!(firm.events.iter().any(|e| e.1 == head.hand && e.2 == enterprise_core::persons::Event::Appointed));
+}
+
+#[test]
+fn a_head_s_term_ends_and_its_owners_appoint_again() {
+    let mut s = society();
+    s.content_mut().dials.firm_head_term_days = 2.0;
+    busy_bakery(&mut s, 14);
+    let firm = s.firms().into_iter().next().expect("a bakery");
+    let c = s.charters();
+    let of: Vec<_> = c.mandates.iter().filter(|m| m.principal == Party::Firm(firm.id)).collect();
+    assert!(of.len() >= 2 && of.iter().filter(|m| m.until.is_none()).count() <= 1, "{of:?}");
+}
+
+#[test]
+fn hands_kept_in_low_spirits_go_off_form_and_it_shows_in_the_business_s_record() {
+    let mut s = society();
+    let t = busy_bakery(&mut s, 4);
+    for _ in 0..30 {
+        let hands: Vec<u32> = s.firms().iter().flat_map(|f| f.employees.iter().map(|e| e.0)).collect();
+        for h in hands {
+            if let Some(p) = s.world.resource_mut::<enterprise_core::persons::Persons>().hands.get_mut(&h) {
+                p.spirits = 0.0;
+            }
+        }
+        s.deliver(t, WHEAT, 120.0);
+        run(&mut s, 1);
+    }
+    let firms: Vec<_> = s.firms().into_iter().chain(s.firms_wound_up().into_iter().map(|x| x.0)).collect();
+    let events: Vec<_> = firms.iter().flat_map(|f| f.events.iter().map(|e| e.2.clone())).collect();
+    use enterprise_core::persons::Event;
+    assert!(events.iter().any(|e| matches!(e, Event::WalkedOut | Event::Quarrelled(_) | Event::Sulked)), "{events:?}");
+    assert!(!events.contains(&Event::Inspired), "not in those spirits");
 }

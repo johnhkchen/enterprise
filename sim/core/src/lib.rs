@@ -68,6 +68,7 @@ pub mod storage;
 pub mod households;
 pub mod property;
 pub mod firms;
+pub mod persons;
 pub mod charters;
 pub mod sweep;
 pub mod training;

@@ -71,6 +71,7 @@ crate::saved! {
         households: crate::households::Households = crate::households::Households::default(),
         land_register: crate::property::Register = crate::property::Register::default(),
         firms: crate::firms::Firms = crate::firms::Firms::default(),
+        makers: crate::persons::Persons = crate::persons::Persons::default(),
         charters: crate::charters::Charters = crate::charters::Charters::default(),
     }
     town {

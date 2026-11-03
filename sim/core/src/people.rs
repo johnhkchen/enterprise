@@ -11,6 +11,7 @@ use bevy_ecs::prelude::*;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::fixed::Fixed;
+use crate::persons::Grade;
 use crate::rules::Step;
 use crate::state::*;
 
@@ -99,15 +100,47 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
     eaten
 }
 
+/// Takes `n` pieces of good `g` out of what a town counts by grade (`People::graded`), best first, then the plain ones
+/// (those not counted), its seconds last: how many of each grade went. `held` is what it held of the good before.
+pub fn take_graded(graded: &mut std::collections::BTreeMap<usize, [f64; 5]>, g: usize, held: f64, n: f64) -> [f64; 5] {
+    let mut took = [0.0; 5];
+    let Some(of) = graded.get_mut(&g) else {
+        took[Grade::Plain.index()] = n;
+        return took;
+    };
+    let plain = (held - of.iter().sum::<f64>()).max(0.0);
+    let mut left = n;
+    for grade in [Grade::Masterwork, Grade::Fine, Grade::Good, Grade::Plain, Grade::Seconds] {
+        let has = if grade == Grade::Plain { plain } else { of[grade.index()] };
+        let t = has.min(left).max(0.0);
+        if grade != Grade::Plain {
+            of[grade.index()] -= t;
+        }
+        took[grade.index()] = t;
+        left -= t;
+    }
+    took[Grade::Plain.index()] += left.max(0.0);
+    if of.iter().all(|x| *x <= 1e-9) {
+        graded.remove(&g);
+    }
+    took
+}
+
+/// What pieces of each grade are worth beyond as many plain ones, each a plain one being 1 (seconds less than none).
+pub fn beyond_plain(d: &crate::content::Dials, took: &[f64; 5]) -> f64 {
+    Grade::ALL.iter().map(|g| took[g.index()] * (g.worth(d) - 1.0)).sum()
+}
+
 /// A town's meals since its last look (John: "a bag of marbles eating approach with tastiness weight"): `points` shared
 /// among the foods it holds as the bag's marbles come out on the whole, each food's points held times its [`taste`]; a
 /// comfort that is food (cookies) only once nothing else is left. Each food runs a tab (`owed`, points by good) and
 /// whole items come off it as it fills, so a town looked at often eats no more than one looked at once a day; a food
 /// that runs out drops its tab (no hunger). Returns how varied the meal was: the number of foods it was as good as made
 /// of, each an equal share (the inverse of the sum of the shares squared: two half and half, 2); 0 with none to eat.
-/// The finer pieces of a food (`fine`, a bakery's bread) are eaten first: with the variety, the finer pieces eaten.
+/// A food's best pieces (`graded`, a bakery's bread) are eaten first, its seconds last: with the variety, how many of
+/// each grade of each food were eaten.
 pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mut Vec<f64>,
-        fine: &mut std::collections::BTreeMap<usize, f64>, points: f64) -> (f64, Vec<(usize, f64)>) {
+        graded: &mut std::collections::BTreeMap<usize, [f64; 5]>, points: f64) -> (f64, Vec<(usize, [f64; 5])>) {
     owed.resize(content.goods.len(), 0.0);
     let held = |comforts: bool, stock: &Stock| -> Vec<(usize, f64)> {
         content.goods.iter().enumerate()
@@ -136,14 +169,12 @@ pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mu
         owed[i] += points * share;
         let n = (owed[i] / g.food + 1e-9).floor().min(stock.0[i].floor());
         if n > 0.0 {
+            if graded.contains_key(&i) {
+                finer.push((i, take_graded(graded, i, stock.0[i], n)));
+            }
             stock.0[i] -= n;
             ledger.used[i] += n;
             owed[i] = (owed[i] - n * g.food).max(0.0);
-            if let Some(f) = fine.get_mut(&i) {
-                let ate = f.min(n);
-                *f -= ate;
-                finer.push((i, ate));
-            }
         }
     }
     (1.0 / squares, finer)
@@ -201,11 +232,20 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.fine_banked = vec![0.0; k];
             people.fine_cover = vec![0.0; k];
         }
-        // (The finer pieces the warehouse still holds: its wagons and lockers move them as plain ones.)
-        for (&g, n) in people.fine.iter_mut() {
-            *n = n.min(stock.0.get(g).copied().unwrap_or(0.0).max(0.0));
+        // (An older save's finer tier, Fine; and the graded pieces the warehouse still holds: its wagons and lockers move
+        // them as plain ones, and what's gone was its plain ones first, then its seconds, then the best last.)
+        for (g, n) in std::mem::take(&mut people.fine) {
+            people.graded.entry(g).or_insert([0.0; 5])[Grade::Fine.index()] += n;
         }
-        people.fine.retain(|_, n| *n > 0.0);
+        for (&g, of) in people.graded.iter_mut() {
+            let mut over = of.iter().sum::<f64>() - stock.0.get(g).copied().unwrap_or(0.0).max(0.0);
+            for grade in [Grade::Seconds, Grade::Good, Grade::Fine, Grade::Masterwork] {
+                let t = over.max(0.0).min(of[grade.index()]);
+                of[grade.index()] -= t;
+                over -= t;
+            }
+        }
+        people.graded.retain(|_, of| of.iter().any(|x| *x > 0.0));
         // Shelves in its warehouse are set in its empty sockets, the library's first (the town's whole), then its homes'.
         if let Some(shelf) = content.goods.iter().position(|g| g.name.rsplit(':').next() == Some(SHELF)) {
             let library = if works.is_some_and(|w| w.built(crate::works::Kind::Library)) { d.library_sockets } else { 0 };
@@ -277,18 +317,16 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 // (What a piece covers of the rations, `comfort_worth`, and what it costs, its worth.)
                 let (value, covers) = (content.goods[i].value.max(1e-9), content.comfort_worth(i));
                 let n = stock.0[i].min(((owed - floor) / covers).ceil());
+                let took = take_graded(&mut people.graded, i, stock.0[i], n);
                 stock.0[i] -= n;
                 ledger.used[i] += n;
                 owed -= n * covers;
                 cover += n * covers;
-                // Its quality's lift, and the finer pieces first: each worth `fine_quality` plain ones, and paid for so.
+                // Its quality's lift, and the best pieces first: each its grade's worth of plain ones, and paid for so.
                 finer += n * covers * (content.goods[i].quality - 1.0).max(0.0);
-                let f = people.fine.get(&i).copied().unwrap_or(0.0).min(n);
-                if f > 0.0 {
-                    *people.fine.get_mut(&i).unwrap() -= f;
-                    finer += f * covers * (d.fine_quality - 1.0).max(0.0);
-                }
-                used += n * value + f * value * (d.fine_quality - 1.0).max(0.0);
+                let beyond = beyond_plain(d, &took);
+                finer += beyond * covers;
+                used += (n + beyond) * value;
             }
             // The finer pieces' comfort is banked as they're put on, with the rations they cover, and taken as those
             // rations are used: a book of 1.5 read over ten days lifts each of them by half.
@@ -312,17 +350,16 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // mod, whose villagers ate only to be born). Short, it eats what there is: no hunger, but no variety either
         // (John: "daily meals, no hunger"; "a variety of food happiness weight").
         let meal = people.villagers * d.meal_points * days;
-        let (variety, finer) = dine(&content, &mut ledger, &mut stock, &mut people.meal_owed, &mut people.fine, meal);
+        let (variety, finer) = dine(&content, &mut ledger, &mut stock, &mut people.meal_owed, &mut people.graded, meal);
         people.variety = variety;
-        // The finer pieces' lift, as a comfort's (the share of the meals' points they were, over about a day: a firm
-        // bakes once a day and its bread is eaten first), and their worth beyond plain ones paid, as far as the purse
-        // goes.
-        let lift = d.fine_quality - 1.0;
-        let points: f64 = finer.iter().map(|&(g, n)| n * content.goods[g].food).sum();
-        let now_fine = if meal > 0.0 { (points / meal).min(1.0) * lift.max(0.0) } else { 0.0 };
+        // The graded pieces' lift, as a comfort's (their points beyond plain ones' a share of the meals', over about a
+        // day: a business's bread is eaten first, its seconds last), and their worth beyond plain ones paid, as far as
+        // the purse goes (seconds are no cheaper to the households: the town ate the loss).
+        let points: f64 = finer.iter().map(|(g, took)| beyond_plain(d, took) * content.goods[*g].food).sum();
+        let now_fine = if meal > 0.0 { (points / meal).clamp(-1.0, 1.0) } else { 0.0 };
         people.meal_fine += (now_fine - people.meal_fine) * (1.0 - crate::fixed::halved(days, 1.0));
-        let worth: f64 = finer.iter().map(|&(g, n)| n * content.goods[g].value * lift.max(0.0)).sum();
-        let pays = Fixed::ceil(worth).min(people.purse.at_least_zero());
+        let worth: f64 = finer.iter().map(|(g, took)| beyond_plain(d, took) * content.goods[*g].value).sum();
+        let pays = Fixed::ceil(worth.max(0.0)).min(people.purse.at_least_zero());
         post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,
             Reason::Comforts, now, day);
         // Mood heads toward the comforts met, less its size, villagers without beds and unpaid wages.

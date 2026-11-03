@@ -326,8 +326,19 @@ dials! {
     // firms (`firms.rs`)
     /// Batches of its finer pieces a firm's hand makes a day, a level.
     firm_batches_per_level: f64 = 4.0,
-    /// Hands a firm employs, at most (more wants a foreman: step 4).
-    firm_hands_most: f64 = 4.0,
+    /// Hands a firm's owners run themselves, at most (the guide: "The first firm can simply be a household that pays
+    /// one other villager"); past that they appoint a head, under whom it employs up to `firm_hands_most`.
+    firm_hands_unled: f64 = 1.0,
+    firm_hands_most: f64 = 8.0,
+    /// A head is paid this much more than its firm's other hands, for a term of this many days (then appointed again,
+    /// perhaps another).
+    firm_head_premium: f64 = 0.5,
+    firm_head_term_days: f64 = 60.0,
+    /// A batch's Fundamentals × Morale, give or take this share of it (twice it an Experimenter's).
+    grade_spread: f64 = 0.3,
+    /// The skill a hand gains at a process a batch it makes (half again with a talent for it, or Ambitious; twice under a
+    /// Mentor), up to its rank's cap (`makers::skill_cap`).
+    skill_per_batch: f64 = 0.02,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its

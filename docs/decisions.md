@@ -2509,7 +2509,8 @@ freeholds were everyone's. Now each is one household's field (`property.rs`, `ru
 Step 3 of "How to Add Society Systems to the Sim": "Firms, plus 2–3 processing jobs with threshold and range" (John:
 "Allow capital investments for higher quality goods"; "Baker, Weaver, Tanner. Higher quality goods"; "Town hands of
 its trade"). A firm is a household's capital put into a workshop that makes the **finer tier** of what the town's own
-workshop makes plain (`firms.rs`, `rules/firms.rs`, daily, before the town's workshop):
+workshop makes plain (`firms.rs`, `rules/firms.rs`: its work at each look, before the town's workshop, which would
+otherwise bake or sell the day's wheat first; the rest once a day):
 
 - **Three kinds** (`firms::KINDS`): a bakery (Farmers, bread: 40 people within 150 blocks, 30 emeralds of capital), a
   weaver's (Shepherds, carpets) and a tannery (Leatherworkers, boots), each 50 people within 300 blocks and 40
@@ -2526,8 +2527,9 @@ workshop makes plain (`firms.rs`, `rules/firms.rs`, daily, before the town's wor
   household that holds its capital and `firm_working_days` (10) of wages, the richest, or the two richest together,
   partners by what each put in. Its capital goes to the town, which builds its workshop; its working days to its own
   treasury, a ledger account of its own (`Account::Firm`).
-- **Its day:** it takes on hands of its trade, the best first, as many as its batches take (up to `firm_hands_most`, 4;
-  past that, step 4's foreman), at `firm_wage_premium` (0.25) more than a hand earns of the town's wages, by the last
+- **Its day:** it takes on hands of its trade, the best first, as many as a quarter more than what its town has used
+  of its pieces lately takes (its average a fifth of the way to each day's: hired for what's used, not to fill the
+  town's stock at once; past one hand, a foreman: below), at `firm_wage_premium` (0.25) more than a hand earns of the town's wages, by the last
   ten days' of them; a hand on a firm's wages earns no share of the town's (`households::earners`), and its wage is its
   household's own. It buys its inputs of the town at their worth and sells it its pieces at theirs, `fine_quality`
   times a plain one's. Beyond its working days of wages, its takings are its owners'.
@@ -2541,3 +2543,40 @@ workshop makes plain (`firms.rs`, `rules/firms.rs`, daily, before the town's wor
   towns (51 to 59 people), a bakery alone in 11 of 41 to 49, none in a town under 41; 9 bakeries wound up, after 48
   days on average. Over the last two months the towns with all three were at a mood of 0.51 where the same replay
   without firms had them at 0.09, a bakery's at 1.39 for 1.24.
+
+## Society: businesses' people and grades (2026-11-04)
+
+Step 4 of "How to Add Society Systems to the Sim" ("Mandates for foremen"), redone. Its first try (foremen with
+hidden competence and loyalty who skimmed the takings) went: "Magic production and way too easy to blackball
+embezzlement seems boring." In its place, slice 1 of `docs/firms-plan.md` (its glossary, its plan, the war and
+industry this engine is for):
+
+- **People** (`persons.rs`, John: "Generalize"): each hand a firm looks at is drawn from its id a make-up: two habits
+  that cut both ways (twelve: Perfectionist, Steady hand, Experimenter, Tinkerer, Mentor, Taskmaster, Beloved,
+  Kin-minded, Showman, Hothead, Ambitious, Homebody; Tinkerer and Showman wait on stations and reputation), a talent
+  for a kind of work or a material (a second one time in four), a skill at each work (three a level, grown
+  `skill_per_batch` a batch, half again with a talent or Ambitious, twice under a Mentor head, to four a level), and
+  spirits.
+- **Grades** (`persons::Grade`): Seconds, Plain, Good, Fine, Masterwork, worth 0.75, 1, 1.25, `fine_quality` and 2
+  plain ones. A town counts each good's pieces by grade (`People::graded`, which takes in the old finer tier as
+  Fine); its people use the best first and seconds last, in comfort and at meals (seconds take from the mood).
+- **A batch is a task** (John: "Fundamentals", "Morale"): the fundamentals of the hand that made it (`persons::
+  fundamentals`) times its shop's morale (`persons::morale`, `own_form`), give or take `grade_spread`, sets its grade
+  (`persons::score`, `Grade::of`). A firm works at each look, its town wanting its graded pieces up to the par its
+  workshop keeps (`firms::graded_wanted`), and sells them to it at their grades' worth. A firm opens, and takes a hand
+  on, only where the grade that hand works at pays more than the hand earns now: plain bread doesn't pay a baker, so a
+  bakery opens round a gifted baker or a Master.
+- **Heads:** past `firm_hands_unled` (1) hands its owners appoint the most skilled at its work its head, by a mandate
+  of the firm's (hire, command) for `firm_head_term_days` (60), at `firm_head_premium` (0.5) more; under one it takes
+  on up to `firm_hands_most` (8). A head's habits work on its crew (a Taskmaster's make a quarter more in lower
+  spirits; a Mentor's learn twice as fast; a Beloved one's are happier and a little careless; a Kin-minded one takes
+  its kin first and keeps them happier).
+- **Spirits:** each day a hand's head a third of the way to its mark (a little over a half, more at work it has a talent
+  for, the head's habits, much less with wages unpaid). High, they bring inspiration (three days of half again the
+  morale); low, an off-form spell: it walks out for the day, quarrels with another of the crew, or sulks. An
+  Ambitious hand ten days low leaves. Each firm keeps its last 40 events.
+- **Seed 1717's year, replayed** (23 of 11,023 requests refused): 24 bakeries in 13 towns (12 wound up), 3 weavers'
+  and 3 tanneries; heads appointed in 17; the bread mostly Fine (11,429 of 18,615), a fifth Masterwork; the
+  tanneries' boots nearly all seconds (their Leatherworkers new to it); 15 inspirations, and 26 off-form spells (8
+  walk-outs, 7 quarrels, 11 sulks). The trace's `firms` table has each firm's head and pieces by grade, `firm_events`
+  what befell its hands, `persons` each one's make-up.

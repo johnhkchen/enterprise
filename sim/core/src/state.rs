@@ -144,17 +144,23 @@ pub struct People {
     /// Each food's tab of its meals (`people::dine`), points by good.
     #[serde(default)]
     pub meal_owed: Vec<f64>,
-    /// Of each comfort good in its warehouse, how many are of the finer tier: dyed and enchanted, bought of its own
-    /// villagers' selling trades (`lockers.rs`), each worth `fine_quality` plain ones of comfort (`docs/markets-plan.md`
-    /// 6: "each quality tier is its own item"). Never more than the warehouse holds.
+    /// Of each comfort good in its warehouse, how many are of the finer tier: an older save's, moved into `graded` as
+    /// Fine at its first look.
     #[serde(default)]
     pub fine: std::collections::BTreeMap<usize, f64>,
+    /// Of each good in its warehouse, how many are of each grade (`persons::Grade`, by its index; the Plain slot
+    /// unused: a piece not counted is plain): a business's batches (`firms.rs`), and the finer tier bought of its own
+    /// villagers' selling trades, dyed and enchanted (`lockers.rs`: Fine), each worth its grade's times a plain one
+    /// (`docs/markets-plan.md` 6: "each quality tier is its own item"). Never more than the warehouse holds.
+    #[serde(default)]
+    pub graded: std::collections::BTreeMap<usize, [f64; 5]>,
     /// What the finer tier added to each kind of comfort last time, beyond a plain day's (up to a second one): the
     /// mood's, not `comfort_met`'s, which stays the share of the ration met.
     #[serde(default)]
     pub comfort_fine: Vec<f64>,
-    /// What the finer tier of its food (a bakery's bread, `firms.rs`) added to its last meals, beyond plain ones', as
-    /// `comfort_fine`'s: the share of the meal's points of finer pieces times what they're worth beyond plain.
+    /// What the grades of its food (a bakery's bread, `firms.rs`) added to its last meals, beyond plain ones', as
+    /// `comfort_fine`'s: the share of the meal's points of each grade times what it's worth beyond plain (seconds take
+    /// from it), over about a day.
     #[serde(default)]
     pub meal_fine: f64,
     /// The finer pieces' comfort beyond plain ones', banked by kind in emeralds' worth as they're put on and taken as

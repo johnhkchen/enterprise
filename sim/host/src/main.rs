@@ -164,8 +164,11 @@ fn main() {
             by.iter().map(|(k, n)| format!("{n} {k}")).collect::<Vec<_>>().join(", "), r.disputes.len());
         let dt = s.content().day_ticks.max(1);
         for f in s.firms() {
-            println!("firm {} of town {}: {} hands, {:.0} made, {:.1} in its treasury, {} days unpaid, founded day {}", f.name, f.town,
-                f.employees.len(), f.made, f.treasury.to_f64(), f.broke_days, f.founded / dt);
+            let head = f.head.map_or(String::new(), |x| format!(", headed by {}", x.hand));
+            let grades: Vec<String> = enterprise_core::persons::Grade::ALL.iter().filter(|g| f.grades[g.index()] > 0.0)
+                .map(|g| format!("{:.0} {}", f.grades[g.index()], g.name())).collect();
+            println!("firm {} of town {}: {} hands{head}, {:.0} made ({}), {:.1} in its treasury, {} days unpaid, founded day {}",
+                f.name, f.town, f.employees.len(), f.made, grades.join(", "), f.treasury.to_f64(), f.broke_days, f.founded / dt);
         }
         for (f, at) in s.firms_wound_up() {
             println!("firm {} of town {} wound up on day {} (founded day {}, {:.0} made)", f.name, f.town,

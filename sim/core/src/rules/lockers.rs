@@ -103,7 +103,7 @@ pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledg
         lockers.comfort_short.clear();
         lockers.reagents.clear();
         for (g, n) in std::mem::take(&mut lockers.bought_fine) {
-            *people.fine.entry(g).or_insert(0.0) += n;
+            people.graded.entry(g).or_insert([0.0; 5])[crate::persons::Grade::Fine.index()] += n;
         }
     }
 }
