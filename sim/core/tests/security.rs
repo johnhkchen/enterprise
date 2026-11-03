@@ -131,3 +131,44 @@ fn bandits_rob_a_wagon_on_a_lonely_road_and_not_on_a_guarded_one() {
     // (Its first trip went before its watch was kept.)
     assert!(s.watch(farm).robbed <= 1, "its own guarded land: {:?}, {lonely} on the lonely road", s.watch(farm));
 }
+
+#[test]
+fn a_full_protected_town_garrisons_a_hex_beyond_its_rings_and_its_land_grows() {
+    let (mut s, t) = town(40.0, 3000.0);
+    s.content_mut().dials.raid_chance = 0.0;
+    s.content_mut().dials.garrison_protection = 0.0;
+    let home = enterprise_core::Hex::new(0, 0);
+    s.place_town(t, home.center_x(), home.center_z());
+    s.claim_hex(t, home);
+    let land = s.town(t).people.land;
+    s.advance(5 * DAY);
+    let g = s.garrisons();
+    assert!(!g.is_empty() && g.iter().all(|g| g.town == t), "it sent a garrison out: {g:?}");
+    assert_eq!(s.territory().owner(g[0].hex), Some(t), "the hex is its own");
+    assert!(s.town(t).people.land >= land + s.content().dials.garrison_land - 1e-9, "its land holds more beds");
+    assert!(s.cash_book(t, 30).iter().any(|(_, w, n)| w == "garrison" && n.to_f64() < 0.0), "its soldiers paid");
+}
+
+#[test]
+fn a_stronger_garrison_takes_a_weaker_neighbours_hex() {
+    let goods = vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0), Good::new("iron_sword", 1.0, 1)];
+    let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.raid_chance = 0.0;
+    s.content_mut().dials.contest_chance = 1.0;
+    s.content_mut().dials.garrisons_most = 0; // (none sent out: only those posted here)
+    let (a, b) = (s.add_town("Ironhold", 3000.0), s.add_town("Thornby", 3000.0));
+    for (t, q) in [(a, 0), (b, 8)] {
+        s.set_people(t, 20.0, 20.0, 40.0);
+        let h = enterprise_core::Hex::new(q, 0);
+        s.place_town(t, h.center_x(), h.center_z());
+        s.claim_hex(t, h);
+    }
+    s.deliver(a, 2, 20.0); // Ironhold's soldiers armed
+    assert!(s.post_garrison(a, enterprise_core::Hex::new(3, 0)) && s.post_garrison(b, enterprise_core::Hex::new(4, 0)));
+    let land = s.town(b).people.land;
+    s.advance(4 * DAY);
+    assert!(s.armed(a) > s.armed(b), "Ironhold armed: {} against {}", s.armed(a), s.armed(b));
+    assert_eq!(s.territory().owner(enterprise_core::Hex::new(4, 0)), Some(a), "Ironhold took Thornby's hex: {:?}", s.garrisons());
+    assert!(s.town(b).people.land < land, "and its beds");
+    assert!(!s.town(b).people.grief.is_empty(), "Thornby mourns its fallen");
+}

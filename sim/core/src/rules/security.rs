@@ -14,6 +14,7 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((keep.in_set(Step::Review).after(super::taxes::assess).after(super::works::review)
         .before(super::jobs::relocate).before(super::jobs::review),
+        garrison.in_set(Step::Review).after(keep).before(super::jobs::relocate).before(super::jobs::review),
         bandits.in_set(Step::Services).after(super::taxes::congestion)));
 }
 
@@ -180,5 +181,87 @@ pub fn bandits(clock: Res<Clock>, content: Res<Content>, territory: Res<crate::t
         let w = security.towns.entry(route.from_id).or_default();
         w.robbed += 1;
         w.robbed_of += coin + Fixed::floor(worth);
+    }
+}
+
+/// Garrisons, once a day: each is paid (unpaid, it leaves, and its hex and beds go); a garrison beside a neighbour's
+/// weaker one contests it at `contest_chance`; a full, well-protected town sends one out to the free dry hex beside its
+/// holding nearest home, out to `garrison_rings`, up to `garrisons_most`.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn garrison(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, map: Res<crate::map::Map>,
+        mut territory: ResMut<crate::territory::Territory>, mut security: ResMut<Security>, mut ledger: ResMut<Ledger>,
+        mut book: ResMut<CashBook>, seed: Res<Rng>, mut dice: ResMut<Dice>,
+        mut q: Query<(&Town, &mut People, &mut Money, &Trades, Option<&crate::farms::Farm>)>) {
+    let (now, day) = (clock.now, content.day_ticks.max(1));
+    let d = &content.dials;
+    let strength = |terr: &crate::territory::Territory, g: &Garrison| {
+        g.men as f64 * (0.5 + 0.5 * terr.holding(g.town).map_or(0.0, |h| h.armed))
+    };
+    // Garrisons beaten in a contest, by town: their land and their men to mourn, taken after every town has gone.
+    let mut beaten: Vec<(usize, u32)> = Vec::new();
+    for &e in &towns.0 {
+        let Ok((town, ..)) = q.get(e) else { continue };
+        let (t, home) = (town.id, town.hex);
+        // (Kept with the watch's clock: the watch's look a day.)
+        if security.towns.get(&t).and_then(|w| w.kept_at) != Some(now) {
+            continue;
+        }
+        let Ok((_, mut people, mut money, trades, farm)) = q.get_mut(e) else { continue };
+        // Its garrisons paid; unpaid, the last goes home.
+        let men = security.soldiers(t);
+        if men > 0 {
+            let pay = Fixed::floor(men as f64 * d.guard_pay);
+            let paid = pay.min(money.0.at_least_zero());
+            post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), paid,
+                Reason::Other("garrison".into()), now, day);
+            if paid < pay {
+                if let Some(i) = security.garrisons.iter().rposition(|g| g.town == t) {
+                    let g = security.garrisons.remove(i);
+                    territory.cede(g.hex);
+                    people.land = (people.land - d.garrison_land).max(0.0);
+                }
+            }
+        }
+        // A garrison beside a neighbour's weaker one contests it.
+        let mine: Vec<Garrison> = security.garrisons.iter().filter(|g| g.town == t).cloned().collect();
+        for g in &mine {
+            let Some(i) = security.garrisons.iter().position(|o| o.town != t && o.hex.distance(g.hex) == 1
+                    && strength(&territory, o) < strength(&territory, g)) else { continue };
+            if (dice.of(t, &seed).below(1_000_000) as f64) >= d.contest_chance * 1e6 {
+                continue;
+            }
+            let lost = security.garrisons.remove(i);
+            territory.cede(lost.hex);
+            territory.claim(t, lost.hex);
+            security.garrisons.push(Garrison { town: t, hex: lost.hex, men: d.garrison_men, since: now });
+            people.land += d.garrison_land;
+            beaten.push((lost.town, lost.men));
+            break;
+        }
+        // A full, well-protected town sends a garrison out.
+        let protected = security.towns.get(&t).map_or(0.0, |w| w.protection);
+        let spare = money.0 - super::farms::build_reserve(&content, trades, farm);
+        let cost = d.garrison_men as f64 * d.guard_pay * d.watch_days;
+        if people.villagers < people.land - 2.0 || protected < d.garrison_protection || spare.to_f64() < cost
+                || security.garrisons.iter().filter(|g| g.town == t).count() >= d.garrisons_most as usize {
+            continue;
+        }
+        let (Some(home), Some(h)) = (home, territory.holding(t)) else { continue };
+        let site = h.hexes.iter().flat_map(|x| x.neighbors()).filter(|&x| {
+            territory.owner(x).is_none() && x.distance(home) <= d.garrison_rings as i32
+                && map.ground(x).water_share <= crate::map::IMPASSABLE
+        }).min_by_key(|x| (x.distance(home), x.q, x.r));
+        let Some(site) = site else { continue };
+        territory.claim(t, site);
+        security.garrisons.push(Garrison { town: t, hex: site, men: d.garrison_men, since: now });
+        people.land += d.garrison_land;
+    }
+    for (loser, men) in beaten {
+        let Some(&e) = towns.0.get(loser) else { continue };
+        let Ok((_, mut people, ..)) = q.get_mut(e) else { continue };
+        people.land = (people.land - d.garrison_land).max(0.0);
+        for _ in 0..men {
+            crate::army::mourn(&content, &mut people, now);
+        }
     }
 }

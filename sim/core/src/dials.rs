@@ -738,4 +738,13 @@ dials! {
     /// load robbers take (`security.rs`).
     bandit_chance: f64 = 0.004,
     bandit_take: f64 = 0.3,
+    /// Garrisons (`security.rs`): the protection a full town needs to send one out, its soldiers, how far from home,
+    /// how many a town keeps, the beds a garrisoned hex adds to its land, and a garrison's chance a day of contesting a
+    /// weaker neighbour's.
+    garrison_protection: f64 = 0.6,
+    garrison_men: u32 = 2,
+    garrison_rings: u32 = 4,
+    garrisons_most: u32 = 3,
+    garrison_land: f64 = 8.0,
+    contest_chance: f64 = 0.02,
 }

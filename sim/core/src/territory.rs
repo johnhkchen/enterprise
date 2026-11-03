@@ -129,6 +129,16 @@ impl Territory {
         true
     }
 
+    /// A held hex given up (a garrison gone or beaten, `security.rs`): nobody's again, its post too.
+    pub fn cede(&mut self, hex: Hex) -> Option<TownId> {
+        let town = self.owners.remove(&hex)?;
+        if let Some(h) = self.holdings.get_mut(&town) {
+            h.hexes.retain(|&x| x != hex);
+            h.posts.retain(|&x| x != hex);
+        }
+        Some(town)
+    }
+
     /// What the next hex costs a town in culture (`Territory.nextHexCost`).
     pub fn next_hex_cost(&self, town: TownId, culture_per_hex: f64) -> f64 {
         culture_per_hex * self.holdings.get(&town).map_or(1, |h| h.hexes.len().max(1)) as f64

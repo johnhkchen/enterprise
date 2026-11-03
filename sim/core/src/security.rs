@@ -61,15 +61,31 @@ pub struct Watch {
     pub robbed_of: Fixed,
 }
 
-/// Every town's watch.
+/// Soldiers holding a hex beyond a town's rings.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Garrison {
+    pub town: TownId,
+    pub hex: crate::hex::Hex,
+    pub men: u32,
+    pub since: u64,
+}
+
+/// Every town's watch, and the garrisons.
 #[derive(Resource, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Security {
     pub towns: BTreeMap<TownId, Watch>,
+    #[serde(default)]
+    pub garrisons: Vec<Garrison>,
 }
 
 impl Security {
+    /// A town's watchmen and garrisons' soldiers: the guards its kit arms.
     pub fn watchmen(&self, town: TownId) -> usize {
-        self.towns.get(&town).map_or(0, |w| w.watchmen as usize)
+        self.towns.get(&town).map_or(0, |w| w.watchmen as usize) + self.soldiers(town)
+    }
+
+    pub fn soldiers(&self, town: TownId) -> usize {
+        self.garrisons.iter().filter(|g| g.town == town).map(|g| g.men as usize).sum()
     }
 }
 
@@ -104,6 +120,25 @@ pub fn fear(d: &crate::content::Dials, people: &crate::state::People) -> f64 {
 }
 
 impl crate::society::Society {
+    /// Garrisons a hex for a town with the dials' men (a host's command, a test's): its own, and its land holds more.
+    pub fn post_garrison(&mut self, town: TownId, hex: crate::hex::Hex) -> bool {
+        let (now, d) = (self.now(), self.content().dials.clone());
+        if !self.world.resource_mut::<crate::territory::Territory>().claim(town, hex) {
+            return false;
+        }
+        self.world.resource_mut::<Security>().garrisons.push(Garrison { town, hex, men: d.garrison_men, since: now });
+        let e = self.towns[town];
+        if let Some(mut p) = self.world.get_mut::<crate::state::People>(e) {
+            p.land += d.garrison_land;
+        }
+        true
+    }
+
+    /// The garrisons holding land beyond the towns' rings.
+    pub fn garrisons(&self) -> Vec<Garrison> {
+        self.world.resource::<Security>().garrisons.clone()
+    }
+
     /// A town's watch and what befell it.
     pub fn watch(&self, town: TownId) -> Watch {
         self.world.resource::<Security>().towns.get(&town).cloned().unwrap_or_default()

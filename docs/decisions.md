@@ -1408,7 +1408,14 @@ mod's), but no road ever chose it. Then: build them first.
   `rules/security.rs` `bandits`). (Its sweep found a herd beyond its pastures, seed 250's town 11: 96 sheep at their
   room when cows came, the cows breeding into their share while the sheep dwindled slowly, 105 in pastures for 96.
   Now pastures overfull crowd the kinds over their share out at once, each by its part of the excess: `herds.rs`.)
-  Next: garrisons to hold land.
+  Garrisons hold land beyond a town's rings ("Soldiers to hold/contest a territory or garrison to expand into a
+  region"): a town that has filled its land (40 beds), protected at least `garrison_protection` (0.6), sends
+  `garrison_men` (2) soldiers at `guard_pay` each to the free dry hex beside its holding nearest home, out to
+  `garrison_rings` (4), up to `garrisons_most` (3); the hex is its own and its land holds `garrison_land` (8) beds
+  more: security buys growth. Soldiers wear the guards' kit (`Security::watchmen` counts them). Unpaid, a garrison
+  leaves, and its hex and beds go. A garrison beside a neighbour's weaker one (men, by how well armed) contests it at
+  `contest_chance` (0.02) a day and takes the hex and its beds; the loser mourns its men fallen (`army::mourn`).
+  (`rules/security.rs` `garrison`; `Territory::cede`.)
 - **A town draws Lumberjacks for the wood it uses, not for the logs their own trades buy back (John, 2026-11-03:
   "Let's dig into lumberjack hiring. They might just be really good at generating emeralds?"; "Go").** Seed 1717's year
   ended with 363 of 845 villagers Lumberjacks, the poorest earners in the economy (0.38 emeralds a day each against a
