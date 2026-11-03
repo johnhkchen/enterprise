@@ -141,6 +141,8 @@ fn main() {
             |a, w| (a.0 + w.watchmen, a.1 + w.raids, a.2 + w.raided_of.to_f64(), a.3 + w.stolen.to_f64(), a.4 + w.robbed,
                 a.5 + w.robbed_of.to_f64(), a.6 + w.nights));
         println!("security: {watch} watchmen; {raids} raids took {raided:.0}; thieves {stolen:.0}; {robbed} wagons robbed of {robbed_of:.0}; {nights} nights attacked; {} garrisons", sec.garrisons.len());
+        let spoiled: f64 = s.world.resource::<enterprise_core::storage::Storage>().towns.values().map(|t| t.spoiled).sum();
+        println!("storage: {spoiled:.0} emeralds' worth spoiled");
         let (highways, laid) = s.highways();
         println!("king's highways: {:.1} to spend, {laid} hexes laid", highways.to_f64());
         let book = s.world.resource::<enterprise_core::cash_book::CashBook>();

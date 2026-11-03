@@ -64,6 +64,7 @@ pub mod waystations;
 pub mod bonds;
 pub mod taxes;
 pub mod security;
+pub mod storage;
 pub mod sweep;
 pub mod training;
 pub mod workshop;

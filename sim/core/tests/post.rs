@@ -297,6 +297,7 @@ fn forwarding() -> Society {
 #[test]
 fn a_town_books_by_post_and_its_goods_are_collected_on_consignment() {
     let mut s = forwarding();
+    s.content_mut().dials.spoil_fibre = 0.0; // (its leather counted to the hide)
     let (hub, town) = (0, 1);
     run(&mut s, DAY / 2);
     assert_eq!(s.mail().on_the_road_from(hub, Kind::Book, town), 1, "it books with its hub by post");

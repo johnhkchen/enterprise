@@ -67,6 +67,7 @@ crate::saved! {
         bonds: crate::bonds::Bonds = crate::bonds::Bonds::default(),
         taxes: crate::taxes::Taxes = crate::taxes::Taxes::default(),
         security: crate::security::Security = crate::security::Security::default(),
+        storage: crate::storage::Storage = crate::storage::Storage::default(),
     }
     town {
         town: Town,
@@ -141,4 +142,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::bonds::register(schedule);
     crate::rules::taxes::register(schedule);
     crate::rules::security::register(schedule);
+    crate::rules::storage::register(schedule);
 }

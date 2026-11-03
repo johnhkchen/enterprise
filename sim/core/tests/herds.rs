@@ -133,6 +133,18 @@ fn a_fed_flock_grows_and_is_shorn() {
     assert_eq!(led.made[WOOL], stock.0[WOOL]);
 }
 
+#[test]
+fn a_shepherd_shears_no_more_once_the_town_holds_its_fill_of_wool() {
+    // Seed 1717's year: Refuge Pointe held 1,514 wool nobody bought. Unshorn, a sheep grows no more.
+    let c = content();
+    let mut led = ledger(&c);
+    let mut stock = stocked(&c, WHEAT, 64.0);
+    stock.0[WOOL] = c.dials.shear_keep;
+    let mut h = herd_of(&c, "sheep", 3.0);
+    tend(&c, &mut h, SHEPHERD, 4.0, &mut stock, &mut led);
+    assert_eq!(stock.0[WOOL], c.dials.shear_keep, "none shorn");
+}
+
 // parity: HusbandryTests.aHungryFlockDwindles
 #[test]
 fn a_hungry_flock_dwindles() {

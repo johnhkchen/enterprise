@@ -73,4 +73,5 @@ mod waystations;
 mod bonds;
 mod taxes;
 mod security;
+mod storage;
 mod workshop;

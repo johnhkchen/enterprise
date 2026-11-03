@@ -151,6 +151,7 @@ fn paid_farmers_deliver_the_whole_harvest() {
 fn unpaid_farmers_work_on_credit_then_take_their_share() {
     let mut s = farm(0.0);
     s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
+    s.content_mut().dials.spoil_food = 0.0; // (its wheat counted to the sheaf)
     touch_every(&mut s, 10);
     let perday = per_day(&s, WHEAT);
     let cap = farms::CREDIT_DAYS * perday / 20.0 * farms::LABOR_SHARE;

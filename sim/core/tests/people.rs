@@ -156,6 +156,7 @@ fn villagers_eat_the_tastiest_most_and_a_varied_meal_lifts_the_mood() {
     s.content_mut().dials.standing_orders = false;
     let t = s.add_town("Meadowworth", 20.0);
     s.set_people(t, 10.0, 10.0, 10.0);
+    s.content_mut().dials.spoil_keep = 1e9; // (what's eaten counted to the crumb)
     s.deliver(t, BREAD, 100.0);
     s.deliver(t, steak, 100.0);
     s.advance(4 * DAY);

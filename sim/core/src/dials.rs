@@ -747,4 +747,12 @@ dials! {
     garrisons_most: u32 = 3,
     garrison_land: f64 = 8.0,
     contest_chance: f64 = 0.02,
+    /// Spoilage (`storage.rs`): the share a day of what a town holds beyond `spoil_keep` of a good (and what it set
+    /// aside for its forward sales) that goes off: raw meat and fish, other food, and wool, leather and hides.
+    spoil_raw: f64 = 0.05,
+    spoil_food: f64 = 0.02,
+    spoil_fibre: f64 = 0.005,
+    spoil_keep: f64 = 64.0,
+    /// A Shepherd shears while the town holds less wool than this (unshorn, a sheep grows no more).
+    shear_keep: f64 = 256.0,
 }

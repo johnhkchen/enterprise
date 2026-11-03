@@ -299,7 +299,8 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
         }
         // (Eaten whole, forgiving float dust, can leave a hair below nought owed: none owed.)
         herds.owed[k] = due.max(0.0);
-        if let (Some(wool), true) = (a.wool, keepers.shepherd) {
+        // (Unshorn, a sheep grows no more: a Shepherd shears while the town holds less than `shear_keep`.)
+        if let Some(wool) = a.wool.filter(|&w| keepers.shepherd && stock.0[w] < d.shear_keep) {
             produce.push((wool, count * d.wool_per_sheep_day * days));
         }
         // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef).
