@@ -1391,7 +1391,8 @@ mod's), but no road ever chose it. Then: build them first.
   stop it passed `toll_per_stack_hex` (0.004 a stop, 0.006 a waystation, 0.008 an inn) for each stack it carried, out
   (`Wagon::stacks_out`, as it left) and home, over each hex of its path within the stop's road-works reach (the
   stretch it keeps): a full wagon over a stop's five hexes pays about what the flat 0.2 did, an empty one rests free.
-  Next: harbour fees on ships, congestion where roads crowd (a slowdown, the fee to the land's owner), customs between
+  A ship of another town pays the port it lands at `harbour_fee` (0.02) a stack it set out with, out of what it took
+  there ("harbour fees", `rules/taxes.rs` `harbour`, after the realms' customs). Next: congestion where roads crowd (a slowdown, the fee to the land's owner), customs between
   peoples.
 - **Taxes, the third: a town's VAT falls on what its households buy (John, 2026-11-03: "VAT / broad consumption tax:
   broad base, low rates, and self-policing through the invoice chain"; "Towns and crown split").** A town's treasury is

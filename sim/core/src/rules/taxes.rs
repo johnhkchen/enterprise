@@ -6,6 +6,8 @@
 //!   treasury; a town's wagon at the capital pays what its town owes out of its purse. What's collected goes to the
 //!   king's highways.
 //! - **Plan:** a town's wagon to the capital takes what its town owes in its purse.
+//! - **Harbour** (at the far end, once it has sold): a ship landing at a port pays it its fee for each stack it landed,
+//!   out of what it took there.
 
 use bevy_ecs::prelude::*;
 
@@ -14,12 +16,13 @@ use crate::bonds::Bonds;
 use crate::cash_book::{post, CashBook, Side};
 use crate::content::Content;
 use crate::state::*;
-use crate::taxes::{land_rent, land_tax_reason, Taxes};
+use crate::taxes::{harbour_reason, land_rent, land_tax_reason, Taxes};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         assess.in_set(Step::Review).after(super::bonds::highways).before(super::jobs::relocate).before(super::jobs::review),
         collect.in_set(Step::Papers).after(super::bonds::papers).before(super::bills::present),
+        harbour.in_set(Step::Sell).after(super::realms::customs).before(super::harvest::redeem).before(super::cargo::relot),
         plan.in_set(Step::PlanPapers).after(super::bonds::plan).before(super::bills::plan_papers),
     ));
 }
@@ -103,5 +106,26 @@ pub fn plan(content: Res<Content>, towns: Res<Towns>, crown: Res<crate::realms::
         let means = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
         let owed = taxes.owed(route.from_id);
         plan.purse += owed.min((means - plan.purse).at_least_zero());
+    }
+}
+
+/// A ship landing at the far end's port pays it `harbour_fee` for each stack it set out with, out of its purse, keeping
+/// its road food home.
+pub fn harbour(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut money: Query<&mut Money>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(entity).unwrap();
+        if state.arrived != Some(Leg::Out) || route.carrier != crate::map::Carrier::Ship {
+            continue;
+        }
+        let route = *route;
+        let Some(wagon) = state.wagon.as_mut() else { continue };
+        let Ok(mut port) = money.get_mut(route.to) else { continue };
+        let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
+        let due = crate::fixed::Fixed::floor(content.dials.harbour_fee * wagon.stacks_out as f64);
+        let pay = due.min((wagon.purse - keep).at_least_zero());
+        post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut port.0),
+            pay, harbour_reason(), now, day);
     }
 }

@@ -703,4 +703,6 @@ dials! {
     land_tax: f64 = 0.05,
     /// A town's VAT on what its households buy, a share of the price besides (`taxes::vat`).
     vat: f64 = 0.05,
+    /// What a ship of another town pays a port for each stack it lands there (`taxes.rs`).
+    harbour_fee: f64 = 0.02,
 }

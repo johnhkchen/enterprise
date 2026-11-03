@@ -11,6 +11,8 @@
 //!   to its people), so the invoice chain's credits net to nothing inside a town and the tax falls where the chain ends:
 //!   on what its households buy, their comforts from its warehouse and what they buy off a wagon there, `vat` of the
 //!   price besides, to its treasury ([`vat`]). One rate on every good, the households of every town alike.
+//! - **Harbour fees:** a ship of another town landing at a port pays it `harbour_fee` a stack it landed, out of its
+//!   purse, for the quay and the jetty (John: "vessel/harbor fees for ships").
 
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
@@ -60,6 +62,10 @@ pub fn land_rent(content: &Content, map: &crate::map::Map, hex: crate::hex::Hex,
         .unwrap_or(1.0).clamp(0.0, 1.0);
     let dry = (1.0 - g.water_share).clamp(0.0, 1.0);
     content.dials.land_tax * dry * fit * if home { 2.0 } else { 1.0 }
+}
+
+pub fn harbour_reason() -> Reason {
+    Reason::Other("harbour fees".into())
 }
 
 pub fn land_tax_reason() -> Reason {

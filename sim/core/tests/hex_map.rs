@@ -752,3 +752,14 @@ fn fishermen_beyond_the_boats_want_a_berth() {
     s.advance(3 * DAY);
     assert_eq!(s.works(0).berths, 1, "and no more");
 }
+
+#[test]
+fn a_ship_pays_the_far_port_its_harbour_fees_for_what_it_lands() {
+    let (mut s, road) = farm_and_mill_by_sea(false, true);
+    let road = road.unwrap();
+    s.advance(30 * DAY);
+    assert!(s.route(road).trips >= 1, "it sailed");
+    let fees: f64 = s.cash_book(1, 30).iter().filter(|(_, w, _)| w == "harbour fees").map(|(_, _, n)| n.to_f64()).sum();
+    assert!(fees > 0.0, "the mill's port took its fees: {:?}", s.cash_book(1, 30));
+    assert!(s.cash_book(0, 30).iter().all(|(_, w, _)| w != "harbour fees"), "its own port charges it nothing");
+}
