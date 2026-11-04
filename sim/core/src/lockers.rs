@@ -792,7 +792,8 @@ pub fn review(content: &Content, now: u64, roster: &Roster, lockers: &mut Locker
 
 /// Vanilla's buying trades (`VillagerTrades`, `EmeraldForItems`: the good, how many for an emerald, uses, XP), by
 /// trade and the level they're offered at: a villager rolls two of a level's; here it offers them all. The multiplier
-/// is vanilla's 0.05.
+/// is vanilla's 0.05. The smiths take charcoal as coal (John: "smiths should use charcoal like coal"): a town with no
+/// mine has a Lumberjack's charcoal, and with coal its only first trade a smith never rose past a Novice.
 const BUYS: &[(&str, u8, &str, u32, u8, u32)] = &[
     ("farmer", 1, "wheat", 20, 16, 2), ("farmer", 1, "potato", 26, 16, 2), ("farmer", 1, "carrot", 22, 16, 2),
     ("farmer", 1, "beetroot", 15, 16, 2), ("farmer", 2, "pumpkin", 6, 12, 10), ("farmer", 3, "melon", 4, 12, 20),
@@ -815,11 +816,11 @@ const BUYS: &[(&str, u8, &str, u32, u8, u32)] = &[
     ("cleric", 1, "rotten_flesh", 32, 16, 2), ("cleric", 2, "gold_ingot", 3, 12, 10),
     ("cleric", 3, "rabbit_foot", 2, 12, 20), ("cleric", 4, "turtle_scute", 4, 12, 30),
     ("cleric", 4, "glass_bottle", 9, 12, 30), ("cleric", 5, "nether_wart", 22, 12, 30),
-    ("armorer", 1, "coal", 15, 16, 2), ("armorer", 2, "iron_ingot", 4, 12, 10), ("armorer", 3, "lava_bucket", 1, 12, 20),
+    ("armorer", 1, "coal", 15, 16, 2), ("armorer", 1, "charcoal", 15, 16, 2), ("armorer", 2, "iron_ingot", 4, 12, 10), ("armorer", 3, "lava_bucket", 1, 12, 20),
     ("armorer", 3, "diamond", 1, 12, 20),
-    ("weaponsmith", 1, "coal", 15, 16, 2), ("weaponsmith", 2, "iron_ingot", 4, 12, 10),
+    ("weaponsmith", 1, "coal", 15, 16, 2), ("weaponsmith", 1, "charcoal", 15, 16, 2), ("weaponsmith", 2, "iron_ingot", 4, 12, 10),
     ("weaponsmith", 3, "flint", 24, 12, 20), ("weaponsmith", 4, "diamond", 1, 12, 30),
-    ("toolsmith", 1, "coal", 15, 16, 2), ("toolsmith", 2, "iron_ingot", 4, 12, 10), ("toolsmith", 3, "flint", 30, 12, 20),
+    ("toolsmith", 1, "coal", 15, 16, 2), ("toolsmith", 1, "charcoal", 15, 16, 2), ("toolsmith", 2, "iron_ingot", 4, 12, 10), ("toolsmith", 3, "flint", 30, 12, 20),
     ("toolsmith", 4, "diamond", 1, 12, 30),
     ("butcher", 1, "chicken", 14, 16, 2), ("butcher", 1, "porkchop", 7, 16, 2), ("butcher", 1, "rabbit", 4, 16, 2),
     ("butcher", 2, "coal", 15, 16, 2), ("butcher", 3, "mutton", 7, 16, 20), ("butcher", 3, "beef", 10, 16, 20),

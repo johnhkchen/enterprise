@@ -497,3 +497,16 @@ fn a_town_that_ships_with_no_lumberjack_bids_for_crates() {
     assert!((each - 2.0 / 6.0).abs() < 1e-9 && want >= 1.0, "its ceiling at once: {each} each for {want}");
     assert!(s.bid(far, 0).is_none(), "no road out of Far Hill: no bid");
 }
+
+#[test]
+fn the_smiths_take_charcoal_as_coal() {
+    // John: "smiths should use charcoal like coal": a Novice smith buys either, 15 to the emerald for its 2 XP.
+    let c = Content::new(vec![Good::new("coal", 0.1, 64), Good::new("charcoal", 0.1, 64)], DAY);
+    let (coal, charcoal) = (c.good("coal").unwrap(), c.good("charcoal").unwrap());
+    for trade in ["armorer", "weaponsmith", "toolsmith"] {
+        let offers = &c.trades[c.trade(trade).unwrap()].offers;
+        let first = |g: usize| offers.iter().find(|o| o.good == g && !o.sells && o.level == 1).map(|o| (o.count, o.xp));
+        assert_eq!(first(charcoal), Some((15, 2)), "{trade}");
+        assert_eq!(first(charcoal), first(coal), "{trade}");
+    }
+}

@@ -2829,3 +2829,8 @@ John: "Add a barracks building to outfit and train soldiers".
   materials and builders' wages granted from the faction's war chest (`rules/battle.rs`: from outside the society, as
   the crown's mint; "the Horde's war chest" in its cash book), its builders the faction's, whatever Mason it has.
 - **A tie is a coin's toss** (`war::clash`): it had gone to the first army, the Horde, every time (seed 1717's 0 to 0).
+- **The smiths take charcoal as coal** (John: "smiths should use charcoal like coal"; `lockers.rs` `BUYS`, `jobs.rs`
+  `TRADES`): an Armorer's, Weaponsmith's and Toolsmith's first trade buys charcoal 15 to the emerald for 2 XP as it
+  does coal, and a town's charcoal draws them. Seed 1717's year had no coal and 413 charcoal, and all 63 of its smiths
+  Novices: no iron armour, no shields, 11 swords. Its journal replayed with them (parting from the game): Armorers a
+  level 2 on average (the best 5), 45 swords in 7 towns; still no shields or iron armour.

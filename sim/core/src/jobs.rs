@@ -47,9 +47,9 @@ pub const TRADES: [(&str, &[&str]); 14] = [
     ("butcher", &["chicken", "porkchop", "rabbit", "coal", "sweet_berries"]),
     ("leatherworker", &["leather", "flint"]),
     ("mason", &["clay_ball", "stone"]),
-    ("armorer", &["coal", "iron_ingot"]),
-    ("toolsmith", &["coal", "iron_ingot", "flint"]),
-    ("weaponsmith", &["coal", "iron_ingot", "flint"]),
+    ("armorer", &["coal", "charcoal", "iron_ingot"]),
+    ("toolsmith", &["coal", "charcoal", "iron_ingot", "flint"]),
+    ("weaponsmith", &["coal", "charcoal", "iron_ingot", "flint"]),
     ("lumberjack", &["oak_sapling", "spruce_sapling"]),
 ];
 
