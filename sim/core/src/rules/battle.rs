@@ -23,6 +23,7 @@ use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
+        march.in_set(Step::Pay).after(super::army::campaign).before(fight),
         fight.in_set(Step::Pay).after(super::army::campaign).before(super::territory::upkeep),
         procure.in_set(Step::Review).after(super::crown::review).after(super::market::review).before(super::training::lapse),
         campaign.in_set(Step::Pay).after(fight).before(super::territory::upkeep),
@@ -169,7 +170,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     camps: [h.0, a.0], levies: Default::default(), marching: Vec::new(), holder: None, held_since: None,
                     won_by: None, began: now, days: 0, fights: 0, reckoned: None,
                     marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false, town: None,
-                    attacker: None, settled: false };
+                    attacker: None, settled: false, field: false };
                 // Each side's towns near it are levied; their levies march once its towns have had time to arm.
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, _, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
@@ -182,7 +183,8 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             }
         }
     }
-    for b in battles.battles.iter_mut().filter(|b| b.won_by.is_none() && b.reckoned != Some(today)) {
+    let (list, squads, next_squad) = (&mut battles.battles, &mut battles.squads, &mut battles.next_squad);
+    for (bi, b) in list.iter_mut().enumerate().filter(|(_, b)| b.won_by.is_none() && b.reckoned != Some(today)) {
         b.reckoned = Some(today);
         let hex = b.hex;
         // There: those marching join their side; those walking home are home.
@@ -241,7 +243,9 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             for side in 0..2 {
                 for &(t, n) in &b.levies[side].clone() {
                     let serving = b.armies[side].soldiers.iter().filter(|s| s.home == t).count()
-                        + b.marching.iter().filter(|m| m.side == side && m.recruit.home == t).count();
+                        + b.marching.iter().filter(|m| m.side == side && m.recruit.home == t).count()
+                        + squads.iter().filter(|q| q.side == side && q.home == t && !q.homeward && q.goal == Some(hex))
+                            .map(|q| q.soldiers.len()).sum::<usize>();
                     let Some(e) = entity(t) else { continue };
                     let kitted = barracks(e, &works);
                     let Ok((mut people, Some(mut roster), _)) = homes.get_mut(e) else { continue };
@@ -252,14 +256,25 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                             let (stock, kits) = camp.as_mut().filter(|_| kitted)?;
                             Some(crate::army::outfit(&content, ledger, stock, kits, Some(&mut people.graded)))
                         };
-                        b.marching.extend(raise(&content, &mut roster, t, town_hex(t), hex, side, n - serving, now, &mut kit));
+                        let raised = raise(&content, &mut roster, t, town_hex(t), hex, side, n - serving, now, &mut kit);
+                        // A town's levy for the war for the region marches as a squad, hex by hex (`march`).
+                        if b.town.is_some() {
+                            let soldiers = raised.into_iter().map(|m| crate::army::soldier_of(m.recruit, now)).collect();
+                            *next_squad += 1;
+                            let id = *next_squad;
+                            squads.push(squad(id, side, t, false, soldiers, town_hex(t).unwrap_or(hex), Some(hex)));
+                        } else {
+                            b.marching.extend(raised);
+                        }
                     }
                 }
             }
         }
         // They meet; or a side with no one there leaves the hex to the other.
-        let every = d.skirmish_days as u64;
+        // (Squads met on the march fight it out day by day.)
+        let every = if b.field { 1 } else { d.skirmish_days as u64 };
         let mut fell: Vec<Soldier> = Vec::new();
+        let mut fell_back: Option<usize> = None;
         if every > 0 && b.days % every == 0 {
             let [x, y] = &mut b.armies;
             let holder = match (x.soldiers.is_empty(), y.soldiers.is_empty()) {
@@ -281,6 +296,10 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     b.fights += 1;
                     walk_home(x, rx, &town_hex, hex, now);
                     walk_home(y, ry, &town_hex, hex, now);
+                    // (Met on the march, the beaten fall back home.)
+                    if b.field {
+                        fell_back = Some(if x_won { 1 } else { 0 });
+                    }
                     Some(if x_won { 0 } else { 1 })
                 }
                 (false, true) => Some(0),
@@ -290,6 +309,30 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             if holder != b.holder {
                 b.holder = holder;
                 b.held_since = holder.map(|_| now);
+            }
+        }
+        if let Some(side) = fell_back {
+            let soldiers = std::mem::take(&mut b.armies[side].soldiers);
+            let (theirs, loose): (Vec<Soldier>, Vec<Soldier>) = soldiers.into_iter()
+                .partition(|s| s.squad.is_some_and(|id| squads.iter().any(|q| q.id == id)));
+            walk_home(&mut b.armies[side], loose, &town_hex, hex, now);
+            for s in theirs {
+                if let Some(q) = squads.iter_mut().find(|q| Some(q.id) == s.squad) {
+                    q.soldiers.push(s);
+                }
+            }
+            for q in squads.iter_mut().filter(|q| q.battle == Some(bi) && q.side == side) {
+                q.battle = None;
+                q.hex = hex;
+                if !q.capital {
+                    q.homeward = true;
+                    q.goal = town_hex(q.home);
+                } else if let Some(camp) = town_hex(q.home) {
+                    // (A capital's two hexes back toward its camp, to wait for the campaign's next.)
+                    let back = Hex::line(hex, camp);
+                    q.hex = back[back.len().saturating_sub(1).min(2)];
+                    q.goal = None;
+                }
             }
         }
         // The fight's dead, gone from their towns for good.
@@ -308,11 +351,50 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             (Some(_), Some(a)) if b.holder == Some(a) => d.raze_hold_days,
             _ => d.battle_hold_days,
         };
-        if b.holder.is_some() && b.held_days(now, day) as f64 >= hold {
+        // (Squads met on the march: over when one side has no one left there.)
+        let field_over = b.field && b.marched && (b.armies[0].soldiers.is_empty() || b.armies[1].soldiers.is_empty());
+        if field_over {
+            b.holder = if !b.armies[0].soldiers.is_empty() { Some(0) } else if !b.armies[1].soldiers.is_empty() { Some(1) }
+                else { b.holder.or(Some(0)) };
+        }
+        if b.holder.is_some() && (field_over || b.held_days(now, day) as f64 >= hold) {
             b.won_by = b.holder.map(|s| b.factions[s]);
             for side in 0..2 {
                 let soldiers = std::mem::take(&mut b.armies[side].soldiers);
-                walk_home(&mut b.armies[side], soldiers, &town_hex, hex, now);
+                // A squad's soldiers back to it, on the hex: a town's levy home after a town's battle, on its way
+                // after one on the march; a capital's waiting where it stands for the campaign's next.
+                let (theirs, loose): (Vec<Soldier>, Vec<Soldier>) = soldiers.into_iter()
+                    .partition(|s| s.squad.is_some_and(|id| squads.iter().any(|q| q.id == id)));
+                walk_home(&mut b.armies[side], loose, &town_hex, hex, now);
+                for s in theirs {
+                    if let Some(q) = squads.iter_mut().find(|q| Some(q.id) == s.squad) {
+                        q.soldiers.push(s);
+                    }
+                }
+            }
+            // Those on their way to it turn back: a town's home, a capital's to wait for the campaign's next.
+            if !b.field {
+                for q in squads.iter_mut().filter(|q| q.battle.is_none() && !q.homeward && q.goal == Some(hex)) {
+                    if q.capital {
+                        q.goal = None;
+                    } else {
+                        q.homeward = true;
+                        q.goal = town_hex(q.home);
+                    }
+                }
+            }
+            for q in squads.iter_mut().filter(|q| q.battle == Some(bi)) {
+                q.battle = None;
+                q.hex = hex;
+                if b.field {
+                    continue;
+                }
+                if q.capital {
+                    q.goal = None;
+                } else {
+                    q.homeward = true;
+                    q.goal = town_hex(q.home);
+                }
             }
             let marching = std::mem::take(&mut b.marching);
             for m in marching {
@@ -333,6 +415,171 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 }
             }
         }
+    }
+}
+
+/// A squad of `soldiers` (each marked as its) for `side` at `hex`, bound for `goal`.
+fn squad(id: u32, side: usize, home: TownId, capital: bool, mut soldiers: Vec<Soldier>, hex: Hex, goal: Option<Hex>)
+        -> crate::battle::Squad {
+    for s in &mut soldiers {
+        s.squad = Some(id);
+    }
+    crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None }
+}
+
+/// A town's hex.
+fn town_hex_of(world: &World, t: TownId) -> Option<Hex> {
+    world.resource::<Towns>().0.get(t).and_then(|&e| world.get::<Town>(e)).and_then(|x| x.hex)
+}
+
+/// A capital's soldiers into the field at `hex`, bound for `goal`, in squads of `capital_squad`.
+fn muster_capital(battles: &mut Battles, d: &crate::dials::Dials, side: usize, camp: TownId, soldiers: Vec<Soldier>,
+        hex: Hex, goal: Option<Hex>) {
+    let size = (d.capital_squad.max(1.0) as usize).max(1);
+    for chunk in soldiers.chunks(size) {
+        battles.next_squad += 1;
+        let id = battles.next_squad;
+        battles.squads.push(squad(id, side, camp, true, chunk.to_vec(), hex, goal));
+    }
+}
+
+/// A side's capital soldiers in the field, marching or fighting.
+fn capital_count(battles: &Battles, side: usize) -> u32 {
+    battles.squads.iter().filter(|q| q.capital && q.side == side).map(|q| q.size(&battles.battles)).sum::<usize>() as u32
+}
+
+/// A side's capital squads not in a battle bound for `goal`.
+fn send_capital(battles: &mut Battles, side: usize, goal: Hex) {
+    for q in battles.squads.iter_mut().filter(|q| q.capital && q.side == side && q.battle.is_none()) {
+        q.goal = Some(goal);
+    }
+}
+
+/// A side's capital soldiers, unpaid, gone home: off the hexes and out of the battles.
+fn dismiss_capital(battles: &mut Battles, side: usize) {
+    battles.squads.retain(|q| !(q.capital && q.side == side));
+    for b in battles.battles.iter_mut().filter(|b| b.won_by.is_none()) {
+        b.armies[side].soldiers.retain(|s| !s.from_capital);
+    }
+}
+
+/// The war's squads march, once a day (`docs/war-plan.md`, squads on the hexes; John: "hex-based squad movement"):
+/// each not in a battle goes `squad_hexes_per_day` hexes along the line to its goal. Where it stands, a battle going
+/// on there it joins on its side; a hostile squad on the march on its hex or the next, they fight there (a field
+/// battle, each side's camp its town nearest). Home, its hands are home.
+pub fn march(world: &mut World) {
+    let content = world.resource::<Content>().clone();
+    let d = &content.dials;
+    let (now, day) = (world.resource::<Clock>().now, content.day_ticks.max(1));
+    let today = now / day;
+    if world.resource::<Battles>().squads.is_empty() || world.resource::<Battles>().squads_moved == Some(today) {
+        return;
+    }
+    let factions = [Faction::Horde, Faction::Alliance];
+    let towns_of = [faction_towns(world, factions[0]), faction_towns(world, factions[1])];
+    let towns = world.resource::<Towns>().0.clone();
+    let homes: Vec<Option<Hex>> = towns.iter().map(|&e| world.get::<Town>(e).and_then(|x| x.hex)).collect();
+    let pace = d.squad_hexes_per_day.max(1.0) as usize;
+    let mut home: Vec<(TownId, Vec<crate::roster::Hand>)> = Vec::new();
+    {
+        let mut battles = world.resource_mut::<Battles>();
+        let b = &mut *battles;
+        b.squads_moved = Some(today);
+        let ids: Vec<u32> = b.squads.iter().map(|q| q.id).collect();
+        for id in ids {
+            let Some(k) = b.squads.iter().position(|q| q.id == id) else { continue };
+            if b.squads[k].battle.is_some() {
+                continue;
+            }
+            for step in 0..=pace {
+                let (side, at, homeward, goal) = { let q = &b.squads[k]; (q.side, q.hex, q.homeward, q.goal) };
+                if b.squads[k].soldiers.is_empty() {
+                    break;
+                }
+                if !homeward {
+                    if let Some(i) = b.battles.iter().position(|x| x.won_by.is_none() && x.hex == at) {
+                        join(b, k, i);
+                        break;
+                    }
+                    // (A squad `overrun_odds` the smaller steps aside: no stand to make.)
+                    let n = b.squads[k].soldiers.len() as f64;
+                    let met = b.squads.iter().position(|e| e.side != side && e.battle.is_none() && !e.homeward
+                        && !e.soldiers.is_empty() && e.hex.distance(at) <= 1
+                        && (e.soldiers.len() as f64).max(n) < d.overrun_odds * (e.soldiers.len() as f64).min(n));
+                    if let Some(e) = met {
+                        let hex = at;
+                        let camps = [0, 1].map(|s| nearest(&towns_of[s], hex).map_or(b.squads[k].home, |x| x.0));
+                        b.battles.push(Battle { hex, factions, armies: Default::default(), camps, levies: Default::default(),
+                            marching: Vec::new(), holder: None, held_since: None, won_by: None, began: now, days: 0,
+                            fights: 0, reckoned: None, marches: now, marched: false, town: None, attacker: None,
+                            settled: false, field: true });
+                        let i = b.battles.len() - 1;
+                        b.squads[e].hex = hex;
+                        join(b, k, i);
+                        join(b, e, i);
+                        break;
+                    }
+                }
+                let Some(goal) = goal else { break };
+                if at == goal {
+                    // (A town's squad bound for a battle that's over goes home.)
+                    if !homeward && !b.squads[k].capital {
+                        b.squads[k].homeward = true;
+                        b.squads[k].goal = homes.get(b.squads[k].home).copied().flatten();
+                    }
+                    break;
+                }
+                if step == pace {
+                    break;
+                }
+                let next = Hex::line(at, goal)[1];
+                b.squads[k].hex = next;
+            }
+        }
+        // Squads of one town (or one capital's) marching together, one squad.
+        let mut i = 0;
+        while i < b.squads.len() {
+            let (id, key) = { let q = &b.squads[i]; (q.id, (q.side, q.home, q.capital, q.hex, q.goal, q.homeward)) };
+            let mate = b.squads.iter().position(|o| o.id != id && o.battle.is_none() && b.squads[i].battle.is_none()
+                && (o.side, o.home, o.capital, o.hex, o.goal, o.homeward) == key && o.id < id);
+            if let Some(m) = mate {
+                let mut moving = std::mem::take(&mut b.squads[i].soldiers);
+                let into = b.squads[m].id;
+                for s in &mut moving {
+                    s.squad = Some(into);
+                }
+                b.squads[m].soldiers.extend(moving);
+                b.squads.remove(i);
+                continue;
+            }
+            i += 1;
+        }
+        // Home: its hands at home again.
+        b.squads.retain_mut(|q| {
+            let at_home = q.homeward && homes.get(q.home).copied().flatten() == Some(q.hex);
+            if at_home || q.soldiers.is_empty() && q.battle.is_none() {
+                home.push((q.home, q.soldiers.drain(..).filter_map(|s| s.hand).collect()));
+                return false;
+            }
+            true
+        });
+    }
+    for (t, hands) in home {
+        if let Some(mut roster) = towns.get(t).and_then(|&e| world.get_mut::<Roster>(e)) {
+            crate::squad::release(&mut roster, &hands);
+        }
+    }
+}
+
+/// A squad's soldiers into battle `i`'s army on its side, there.
+fn join(b: &mut Battles, k: usize, i: usize) {
+    let q = &mut b.squads[k];
+    q.battle = Some(i);
+    q.hex = b.battles[i].hex;
+    let army = &mut b.battles[i].armies[q.side];
+    for s in q.soldiers.drain(..) {
+        army.records.entry(s.home).or_default().raised += 1;
+        army.soldiers.push(s);
     }
 }
 
@@ -558,7 +805,7 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     let now = world.resource::<Clock>().now;
     Battle { hex, factions, armies: Default::default(), camps, levies, marching: Vec::new(), holder: None,
         held_since: None, won_by: None, began: now, days: 0, fights: 0, reckoned: None, marches, marched: false,
-        town: Some(target), attacker: Some(side), settled: false }
+        town: Some(target), attacker: Some(side), settled: false, field: false }
 }
 
 /// Theramore's marines, Journeymen at arms kitted in Fine iron (John: "a larger reinforcement"), or Orgrimmar's
@@ -722,28 +969,28 @@ pub fn campaign(world: &mut World) {
         c.sailed = Some(now);
         c.marines = d.expedition_size.max(0.0) as u32;
         if let Some(i) = current {
-            let camp = world.resource::<Battles>().battles[i].camps[1];
+            let (camp, goal) = { let b = &world.resource::<Battles>().battles[i]; (b.camps[1], b.hex) };
             let marines = capital_soldiers(&content, c.marines, camp, true, now);
-            world.resource_mut::<Battles>().battles[i].armies[1].soldiers.extend(marines);
+            let at = town_hex_of(world, camp).unwrap_or(goal);
+            muster_capital(&mut world.resource_mut::<Battles>(), d, 1, camp, marines, at, Some(goal));
         }
     }
     // The capitals' soldiers in the field: counted, and paid of their chests; Theramore dry, it withdraws.
-    if let Some(i) = current {
-        let b = world.resource::<Battles>().battles[i].clone();
-        let of = |side: usize| b.armies[side].soldiers.iter().filter(|s| s.from_capital).count() as u32;
-        if b.marched {
-            c.marines = of(1);
-            c.mercenaries = of(0);
+    if current.is_some() {
+        let of = |side: usize| capital_count(world.resource::<Battles>(), side);
+        let (marines, mercenaries) = (of(1), of(0));
+        if c.landed {
+            c.marines = marines;
+            c.mercenaries = mercenaries;
         }
         let mut battles = world.resource_mut::<Battles>();
-        for (side, f) in [(1, Faction::Alliance), (0, Faction::Horde)] {
-            let n = of(side);
+        for (side, f, n) in [(1, Faction::Alliance, marines), (0, Faction::Horde, mercenaries)] {
             if n == 0 {
                 continue;
             }
             let want = crate::fixed::Fixed::ceil(n as f64 * d.capital_soldier_pay);
             if battles.draw(d, f, want, today) < want {
-                battles.battles[i].armies[side].soldiers.retain(|s| !s.from_capital);
+                dismiss_capital(&mut battles, side);
                 if f == Faction::Alliance {
                     c.withdrew = Some(now);
                     c.marines = 0;
@@ -753,20 +1000,28 @@ pub fn campaign(world: &mut World) {
             }
         }
     }
+    // The capitals' squads with nowhere to go, to the battle going on.
+    if let Some(i) = current {
+        let goal = world.resource::<Battles>().battles[i].hex;
+        let mut battles = world.resource_mut::<Battles>();
+        for q in battles.squads.iter_mut().filter(|q| q.capital && q.battle.is_none() && q.goal.is_none()) {
+            q.goal = Some(goal);
+        }
+    }
     // Theramore makes its expedition up in the field too, when its ships come: every `convoy_days` at most (John: "pin
     // the Alliance down and attrit them": its losses cost its chest; "limit reinforcement frequency").
     let convoy = (d.convoy_days.max(1.0) * day as f64) as u64;
     let ships_due = |c: &Campaign| c.sailed.is_none_or(|s| now >= s + convoy);
     if let (Some(i), true, None) = (current, c.landed, c.withdrew) {
-        let b = &world.resource::<Battles>().battles[i];
-        let there = b.armies[1].soldiers.iter().filter(|s| s.from_capital).count() as u32;
+        let (marched, camp, goal) = { let b = &world.resource::<Battles>().battles[i]; (b.marched, b.camps[1], b.hex) };
+        let there = capital_count(world.resource::<Battles>(), 1);
         let short = (d.expedition_size.max(0.0) as u32).saturating_sub(there);
-        if b.marched && short > 0 && ships_due(&c) {
+        if marched && short > 0 && ships_due(&c) {
             let sent = send_marines(world, d, short, today);
             c.sailed = Some(now);
-            let mut battles = world.resource_mut::<Battles>();
-            let camp = battles.battles[i].camps[1];
-            battles.battles[i].armies[1].soldiers.extend(capital_soldiers(&content, sent, camp, true, now));
+            let at = town_hex_of(world, camp).unwrap_or(goal);
+            let marines = capital_soldiers(&content, sent, camp, true, now);
+            muster_capital(&mut world.resource_mut::<Battles>(), d, 1, camp, marines, at, Some(goal));
             c.marines = there + sent;
         }
     }
@@ -783,9 +1038,10 @@ pub fn campaign(world: &mut World) {
         let cost = band as f64 * d.capital_soldier_pay * d.convoy_days.max(1.0);
         let left = world.resource::<Battles>().chest_left(d, Faction::Horde);
         if desperate && band > 0 && left >= cost && c.hired.is_none_or(|h| now >= h + gap) {
-            let camp = world.resource::<Battles>().battles[i].camps[0];
+            let (camp, goal) = { let b = &world.resource::<Battles>().battles[i]; (b.camps[0], b.hex) };
             let mercs = capital_soldiers(&content, band, camp, false, now);
-            world.resource_mut::<Battles>().battles[i].armies[0].soldiers.extend(mercs);
+            let at = town_hex_of(world, camp).unwrap_or(goal);
+            muster_capital(&mut world.resource_mut::<Battles>(), d, 0, camp, mercs, at, Some(goal));
             c.hired = Some(now);
             c.mercenaries += band;
         }
@@ -859,16 +1115,23 @@ pub fn campaign(world: &mut World) {
             let mut battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day);
             // The capitals' soldiers go with their side: Theramore's made up to its expedition again when its ships
             // come, while it can pay them.
+            let goal = battle.hex;
             if c.landed && c.withdrew.is_none() {
                 let short = (d.expedition_size.max(0.0) as u32).saturating_sub(c.marines);
                 if short > 0 && ships_due(&c) {
-                    c.marines += send_marines(world, d, short, today);
+                    let sent = send_marines(world, d, short, today);
+                    c.marines += sent;
                     c.sailed = Some(now);
+                    let camp = battle.camps[1];
+                    let at = town_hex_of(world, camp).unwrap_or(goal);
+                    let marines = capital_soldiers(&content, sent, camp, true, now);
+                    muster_capital(&mut world.resource_mut::<Battles>(), d, 1, camp, marines, at, Some(goal));
                 }
-                battle.armies[1].soldiers.extend(capital_soldiers(&content, c.marines, battle.camps[1], true, now));
             }
-            battle.armies[0].soldiers.extend(capital_soldiers(&content, c.mercenaries, battle.camps[0], false, now));
-            world.resource_mut::<Battles>().battles.push(battle);
+            let mut battles = world.resource_mut::<Battles>();
+            send_capital(&mut battles, 1, goal);
+            send_capital(&mut battles, 0, goal);
+            battles.battles.push(battle);
         }
     }
     world.resource_mut::<Battles>().campaign = Some(c);

@@ -110,6 +110,9 @@ pub struct Battle {
     pub attacker: Option<usize>,
     #[serde(default)]
     pub settled: bool,
+    /// A battle where squads on the march met (`Squad`): over when one side has no one left on its hex.
+    #[serde(default)]
+    pub field: bool,
 }
 
 impl Battle {
@@ -142,6 +145,32 @@ pub struct Campaign {
     /// When Theramore's last ships came with marines (each `convoy_days` at most).
     #[serde(default)]
     pub sailed: Option<u64>,
+}
+
+/// A squad of the war for the region (`docs/war-plan.md`, squads on the hexes; John: "hex-based squad movement"): a
+/// town's levy marching from home, or a capital's soldiers (Theramore's marines, Orgrimmar's mercenaries; their home
+/// their camp). Its soldiers are its own while it marches; in a battle they're its side's army's, each marked with
+/// the squad's id, and `battle` is that battle. It goes `squad_hexes_per_day` a day toward its goal, and home once
+/// it's done.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Squad {
+    pub id: u32,
+    pub side: usize,
+    pub home: TownId,
+    pub capital: bool,
+    pub soldiers: Vec<crate::army::Soldier>,
+    pub hex: Hex,
+    pub goal: Option<Hex>,
+    pub homeward: bool,
+    pub battle: Option<usize>,
+}
+
+impl Squad {
+    /// Its soldiers, marching or in its battle's army.
+    pub fn size(&self, battles: &[Battle]) -> usize {
+        self.soldiers.len() + self.battle.and_then(|i| battles.get(i))
+            .map_or(0, |b| b.armies[self.side].soldiers.iter().filter(|s| s.squad == Some(self.id)).count())
+    }
 }
 
 /// The battles for hexes, and whether `battle_day`'s was seeded.
@@ -177,6 +206,13 @@ pub struct Battles {
     pub owed: Vec<(TownId, Faction, crate::fixed::Fixed)>,
     #[serde(default)]
     pub paid_today: std::collections::BTreeMap<Faction, (u64, crate::fixed::Fixed)>,
+    /// The war's squads on the hexes, and the next one's id (`docs/war-plan.md`, squads on the hexes).
+    #[serde(default)]
+    pub squads: Vec<Squad>,
+    #[serde(default)]
+    pub next_squad: u32,
+    #[serde(default)]
+    pub squads_moved: Option<u64>,
 }
 
 impl Battles {

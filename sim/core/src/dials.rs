@@ -394,6 +394,8 @@ dials! {
     /// numerical advantage to pin the Alliance down"): its attack on the Alliance's base levies `pin_levy` of every
     /// Horde town's residents, made whenever that levy is `pin_odds` times the Alliance's soldiers or more. The capitals'
     /// soldiers come once every `convoy_days` at most: Theramore's ships with marines, Orgrimmar's mercenary bands.
+    /// The war's squads (`battle::Squad`) march `squad_hexes_per_day`, the capitals' in squads of `capital_squad`;
+    /// hostile squads on the march meet on one hex or the next unless one is `overrun_odds` the other or more.
     /// Each side's score in a battle is times its numbers over the enemy's to the `numbers_weight` (0: numbers count
     /// only by their sum). Each fight of a battle kills `combat_losses` of each side's soldiers by the enemy's share of
     /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
@@ -413,6 +415,9 @@ dials! {
     pin_odds: f64 = 1.5,
     raze_hold_days: f64 = 5.0,
     convoy_days: f64 = 30.0,
+    squad_hexes_per_day: f64 = 4.0,
+    capital_squad: f64 = 20.0,
+    overrun_odds: f64 = 3.0,
     numbers_weight: f64 = 0.0,
     combat_losses: f64 = 0.15,
     combat_skill: f64 = 1.0,

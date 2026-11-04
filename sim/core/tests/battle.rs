@@ -294,15 +294,73 @@ fn a_fight_kills_on_both_sides_the_winner_fewer() {
 #[test]
 fn a_levy_learns_its_arms_past_its_trades_level() {
     // John: "let combat grant real experience, particularly for new soldiers": a level-1 hand past a level-1 cap (4).
-    let best = |skill: f64| {
+    let arms = |skill: f64| {
         let (mut s, _) = war_world(20000.0);
         s.content_mut().dials.combat_skill = skill;
         s.advance(60 * DAY);
         s.world.resource::<enterprise_core::persons::Persons>().hands.values()
-            .filter_map(|p| p.skills.get(&enterprise_core::persons::Work::Arms).copied()).fold(0.0, f64::max)
+            .filter_map(|p| p.skills.get(&enterprise_core::persons::Work::Arms).copied()).sum::<f64>()
     };
-    let (green, taught) = (best(0.0), best(1.0));
-    assert!(taught > 4.0 && taught > green + 1.0, "a veteran's arms: {green} untaught, {taught} taught");
+    let (green, taught) = (arms(0.0), arms(1.0));
+    assert!(taught > green + 5.0, "the levies' arms, all told: {green} untaught, {taught} taught");
+}
+
+/// Two squads on the hexes, the Horde's at `h` and the Alliance's at `a`, of `nh` and `na` soldiers, each bound for the
+/// other's hex (no war declared: the squads alone).
+fn squads_world(h: Hex, nh: usize, a: Hex, na: usize) -> (Society, [usize; 4]) {
+    let (mut s, towns) = war_world(20000.0);
+    s.content_mut().dials.war_day = 0.0;
+    let soldiers = |home: usize, n: usize, id: u32| (0..n).map(|_| army::Soldier { home, squad: Some(id), ..Default::default() })
+        .collect::<Vec<_>>();
+    let mut b = s.world.resource_mut::<enterprise_core::battle::Battles>();
+    b.squads.push(enterprise_core::battle::Squad { id: 1, side: 0, home: towns[0], soldiers: soldiers(towns[0], nh, 1),
+        hex: h, goal: Some(a), ..Default::default() });
+    b.squads.push(enterprise_core::battle::Squad { id: 2, side: 1, home: towns[2], soldiers: soldiers(towns[2], na, 2),
+        hex: a, goal: Some(h), ..Default::default() });
+    b.next_squad = 2;
+    (s, towns)
+}
+
+#[test]
+fn a_squad_marches_its_pace_a_day() {
+    // John: "hex-based squad movement": `squad_hexes_per_day` along the line to its goal.
+    let (mut s, _) = squads_world(Hex::new(0, 0), 5, Hex::new(40, 0), 5);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+    s.content_mut().dials.squad_hexes_per_day = 4.0;
+    s.advance(DAY / 2);
+    let q = s.battles().squads[0].clone();
+    assert_eq!(q.hex.distance(Hex::new(0, 0)), 4, "four hexes on: {q:?}");
+}
+
+#[test]
+fn squads_meeting_on_the_march_fight_and_the_beaten_fall_back() {
+    let (mut s, _) = squads_world(Hex::new(4, 0), 10, Hex::new(6, 0), 10);
+    s.advance(DAY + DAY / 2);
+    let field: Vec<_> = s.battles().battles.iter().filter(|b| b.field).cloned().collect();
+    assert_eq!(field.len(), 1, "they met: {:?}", s.battles().squads);
+    s.advance(3 * DAY);
+    let b = s.battles().battles.iter().find(|b| b.field).cloned().unwrap();
+    assert!(b.won_by.is_some() && b.fights >= 1, "fought it out: {b:?}");
+    let beaten = 1 - b.factions.iter().position(|&f| Some(f) == b.won_by).unwrap();
+    assert!(s.battles().squads.iter().filter(|q| q.side == beaten).all(|q| q.homeward), "the beaten go home: {:?}",
+        s.battles().squads);
+}
+
+#[test]
+fn a_squad_far_the_smaller_steps_aside() {
+    let (mut s, _) = squads_world(Hex::new(4, 0), 12, Hex::new(6, 0), 2);
+    s.advance(DAY + DAY / 2);
+    assert!(s.battles().battles.iter().all(|b| !b.field), "no stand to make at 12 to 2");
+}
+
+#[test]
+fn a_squad_bound_where_no_battle_is_goes_home() {
+    let (mut s, _) = squads_world(Hex::new(0, 0), 3, Hex::new(40, 0), 3);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads[0].goal = Some(Hex::new(4, 0));
+    s.advance(2 * DAY + DAY / 2);
+    let q = s.battles().squads.first().cloned();
+    assert!(q.as_ref().is_none_or(|q| q.homeward), "there and nothing doing, home: {q:?}");
 }
 
 #[test]

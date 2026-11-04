@@ -343,6 +343,16 @@ pub struct Soldier {
     /// Sent by its faction's capital off the map (Theramore's marines, Orgrimmar's mercenaries), paid of its chest.
     #[serde(default)]
     pub from_capital: bool,
+    /// The squad it marches with (`battle::Squad`), in the war for the region.
+    #[serde(default)]
+    pub squad: Option<u32>,
+}
+
+/// A recruit as a soldier, in the kit it left home in.
+pub fn soldier_of(recruit: Recruit, now: u64) -> Soldier {
+    let kit = recruit.kit.unwrap_or_default();
+    Soldier { home: recruit.home, hand: recruit.hand, enlisted: now, levy: recruit.levy, pay: recruit.pay,
+        weapon: kit.weapon, armour: kit.armour, shield: kit.shield, ..Default::default() }
 }
 
 /// A recruit waiting at the capital for the front (`Army.barracks`): its town, the hand, when it came, its levy and pay.
@@ -474,9 +484,7 @@ impl Army {
     /// A recruit joins the army (`Army.enlist`): its town counts it raised.
     pub fn enlist(&mut self, recruit: Recruit, now: u64) {
         self.records.entry(recruit.home).or_default().raised += 1;
-        let kit = recruit.kit.unwrap_or_default();
-        self.soldiers.push(Soldier { home: recruit.home, hand: recruit.hand, enlisted: now, levy: recruit.levy,
-            pay: recruit.pay, weapon: kit.weapon, armour: kit.armour, shield: kit.shield, ..Default::default() });
+        self.soldiers.push(soldier_of(recruit, now));
     }
 
     /// Up to `n` waiting recruits leave the barracks for the front, the first come first (`Army.embark`).

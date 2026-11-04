@@ -74,7 +74,7 @@ land as squads; squads on one hex fight as one); the Horde's moves: **raid the w
 back, mass at a chokepoint, fortify and surround**; **core only** for now (the trace and the map show squads; the
 game shows battles as it does).
 
-1. **Squads that march.** A squad: its side, its home (a town, or a capital's convoy), its soldiers, its hex, its goal
+1. **Squads that march** (done, 2026-11-05). A squad: its side, its home (a town, or a capital's convoy), its soldiers, its hex, its goal
    and its road there (`map` ways, the terrain's cost), `squad_hexes_per_day`. Hostile squads on one hex fight
    (`war::clash_lifted`, the squads of a side there as one army); a town's hex held by its attackers with none of
    its defenders on it `raze_hold_days` is razed. The two-army battle becomes the squads on its hex.

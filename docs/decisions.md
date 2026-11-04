@@ -3036,3 +3036,25 @@ to the winning side".
 - **Replayed** (war from day 180, numbers off): six Horde towns razed, 16 left; the Horde's strike at the port beaten
   off; Theramore 15,197 left. The Horde's levies learned little (6.9 a soldier to 7.4 late): drawn afresh from 20
   towns, and the veterans the ones who fall.
+
+## Society: squads on the hexes, slice 1 (2026-11-05)
+
+John: "let's use hex-based squad movement"; "Town squads"; "Core only for now" (`docs/war-plan.md`, squads on the
+hexes).
+
+- **A squad** (`battle::Squad`): each levied town's soldiers march from home as one, each soldier marked with its
+  squad; Theramore's marines and Orgrimmar's mercenaries come in squads of `capital_squad` (20) at their camp. A
+  squad goes `squad_hexes_per_day` (4) along the line to its goal (`rules::battle::march`, once a day before the
+  fighting); on a hex with a battle going on it joins its side; squads of one town marching together merge.
+- **Met on the march** (a hostile squad on its hex or the next), they fight there: a field battle (`Battle::field`),
+  fought every day, the beaten falling back (a town's home; a capital's two hexes toward its camp, waiting for the
+  campaign's next), over when one side has no one left. A squad `overrun_odds` (3) the other's size or more passes it
+  by: Horde squads of one to five holding 20 marines a day at a time kept them from their battles (122 field battles
+  in one replay, the town they marched on attacked with four).
+- **A battle over**, its squads take their soldiers back: a town's go home, a capital's wait where they stand for the
+  campaign's next; squads still on their way turn back. The capitals' soldiers are counted and paid in their squads;
+  the campaign sends its idle ones to the battle going on.
+- **The trace** has `squads` by day (side, home, capital, soldiers, hex, goal, homeward, battle).
+- **Replayed** (war from day 180): the Alliance razed one Horde town and beat off the Horde at its port once; worn
+  from 46 marines to 15 in 27 days with its ships not due, it lost the port 309 to 313 on day 300, its last town: the
+  Horde's. Theramore 20,628 left unspent. The councils (slices 2 and 3) are next.

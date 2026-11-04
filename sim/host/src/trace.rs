@@ -104,6 +104,8 @@ create table battles (day integer, battle integer, q integer, r integer, holder 
 create table war (day integer, base integer, landed integer, marines integer, mercenaries integer, razed integer,
     refugees integer, lost integer, withdrew integer, won_by text, horde_towns integer, alliance_towns integer);
 create table razed (day integer, town integer, by_faction text);
+create table squads (day integer, squad integer, side text, home integer, capital integer, soldiers integer, q integer,
+    r integer, goal_q integer, goal_r integer, homeward integer, battle integer);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
     won integer, routed integer);
 create table chests (day integer, capital text, spent real, left_over real, dry integer);
@@ -332,6 +334,14 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, h.id, h.members.len(),
                 enterprise_core::households::earners(&roster, &h, &employed), h.purse.to_f64(), st.name(), fields]).map_err(sql)?;
         }
+    }
+    // The war's squads on the hexes (`battle::Squad`).
+    let all = s.battles();
+    for q in &all.squads {
+        let side = if q.side == 0 { "the Horde" } else { "the Alliance" };
+        tx.execute("insert into squads values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", params![day, q.id, side,
+            q.home, q.capital, q.size(&all.battles), q.hex.q, q.hex.r, q.goal.map(|g| g.q), q.goal.map(|g| g.r), q.homeward,
+            q.battle]).map_err(sql)?;
     }
     // The battles for hexes (`battle.rs`), and their fights today.
     let dt = s.content().day_ticks.max(1);
