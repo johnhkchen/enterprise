@@ -598,3 +598,21 @@ fn settlers_carry_half_their_homes_empty_crates() {
     let n = s.world.resource::<enterprise_core::state::Towns>().0[new];
     assert_eq!(s.world.get::<enterprise_core::cargo::Shipments>(n).unwrap().empties, 8, "the new town's to ship in");
 }
+
+#[test]
+fn a_new_town_is_named_from_its_founders_peoples_list() {
+    use enterprise_core::settlers::SETTLEMENTS;
+    let mut s = enterprise_core::Society::new(enterprise_core::Content::new(vec![], 24_000));
+    let orgrim = s.add_town("Durotar", 0.0);
+    s.set_people_of(orgrim, "orc");
+    let nowhere = s.add_town("Nowhere", 0.0);
+    assert_eq!(s.settlement_name(orgrim, 1), "Razor Hill");
+    s.add_town("Razor Hill", 0.0);
+    assert_eq!(s.settlement_name(orgrim, 2), "the Crossroads", "the next of its list no town has");
+    assert_eq!(s.settlement_name(nowhere, 3), "Brill", "a town of no people told: Lordaeron's");
+    // The capitals off the map are no town's of the region; no name is two peoples'.
+    let all: Vec<&str> = SETTLEMENTS.iter().flat_map(|(_, l)| l.iter().copied()).collect();
+    assert!(!all.contains(&"Theramore") && !all.contains(&"Orgrimmar"));
+    let unique: std::collections::BTreeSet<&str> = all.iter().copied().collect();
+    assert_eq!(unique.len(), all.len());
+}

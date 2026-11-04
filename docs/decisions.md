@@ -2852,3 +2852,14 @@ for comforts and its trades' inputs, so its smiths, however skilled, made none f
   barracks (from day 40) and held 5 iron chestplates, 5 helmets and 5 shields (none before), no swords; their Armorers
   a level 4 on average; the fights scored about 9 a soldier (about 1 before), the Horde's 5 to the Alliance's 2 winning
   all seven.
+
+## Society: settlements named by their people (2026-11-04)
+
+John: "We'll want name lists to be expanded to handle the different races' settlements. Let's say Theramore is
+reserved as the distant Alliance capital." Slice 1 of `docs/war-plan.md`.
+
+- **Thirty names for each people** (Stormwind, Lordaeron, Dalaran, dwarves, night elves, orcs, tauren, goblins), no
+  name two peoples': the core's `settlers.rs` `SETTLEMENTS` and the mod's `Names.java` alike. The mod names a market
+  from its town's people once the land has told them (its first survey), Lordaeron's till then; the core names a
+  settlers' town from its founders' people.
+- **Theramore and Orgrimmar are no town's of the region:** the factions' capitals, off the map.

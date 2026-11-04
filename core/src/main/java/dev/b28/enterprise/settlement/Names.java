@@ -99,26 +99,96 @@ public final class Names extends SavedData {
     }
 
     /**
-     * The settlements' names, for now (John: "let's use WoW human settlement names"): the human towns and villages of
-     * the Eastern Kingdoms, each given once.
+     * The settlements' names by their people (John: "We'll want name lists to be expanded to handle the different
+     * races' settlements"), each given once; a town of no people the land has told yet takes Lordaeron's. Theramore and
+     * Orgrimmar are the factions' capitals, off the map: no town of the region is named for them. As the core's
+     * {@code settlers.rs} {@code SETTLEMENTS}.
      */
-    static final List<String> SETTLEMENTS = List.of("Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill",
-            "Southshore", "Tarren Mill", "Ambermill", "Hillsbrad", "Stromgarde", "Refuge Pointe", "Thelsamar",
-            "Menethil Harbor", "Northshire", "Raven Hill", "Andorhal", "Darrowshire", "Hearthglen", "Pyrewood",
-            "Corin's Crossing", "Brill", "Durnholde", "Nethergarde", "Theramore", "Eastvale", "Brightwood",
-            "Westbrook", "Jerod's Landing", "Morgan's Vigil", "Sorrow Hill", "Felstone", "Dalson's Tears");
+    static final Map<String, List<String>> SETTLEMENTS = Map.of(
+            "stormwind",
+            List.of(
+                    "Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill", "Northshire", "Eastvale",
+                    "Brightwood", "Westbrook", "Raven Hill", "Jerod's Landing", "Morgan's Vigil", "Nethergarde",
+                    "Sorrow Hill", "Stonewatch", "Three Corners", "Alther's Mill", "Saldean's Farm", "Tower of Azora",
+                    "Redridge", "Elwynn Falls", "Crystal Lake", "Westfall", "Gold Coast", "Jasperlode", "Fargodeep",
+                    "Stonefield", "Brackwell", "Addle's Stead", "Lion's Pride"),
+            "lordaeron",
+            List.of(
+                    "Brill", "Tarren Mill", "Southshore", "Hillsbrad", "Hearthglen", "Andorhal", "Darrowshire",
+                    "Corin's Crossing", "Felstone", "Dalson's Tears", "Durnholde", "Stratholme", "Caer Darrow",
+                    "Light's Hope", "Tyr's Hand", "Agamand Mills", "Solliden", "Brightwater", "Garren's Haunt",
+                    "Chillwind", "Gahrron's Withering", "Ruins of Lordaeron", "Northdale", "Eastweald", "Eastwall",
+                    "Crown Guard", "Blackwood", "Mardenholde", "Thondroril", "Terrordale"),
+            "dalaran",
+            List.of(
+                    "Ambermill", "Pyrewood", "Strahnbrad", "Lordamere", "Violet Hold", "Krasus' Landing",
+                    "Alterac Fields", "Sofera's Naze", "Gallows' Corner", "Fenris Isle", "Malden's Orchard",
+                    "Olsen's Farthing", "Silverpine", "Chillwind Point", "Arcanum's Rest", "Kirin Var",
+                    "Antonidas' Reach", "Azurecrest", "Spellweave", "Moonrise Hollow", "Starwatch", "Glimmerdeep",
+                    "Runewood", "Violetmere", "Shimmerfield", "Tidewatch", "Lumen Hill", "Ashbury", "Silvermoon Ford",
+                    "Aegwynn's Rest"),
+            "dwarf",
+            List.of(
+                    "Kharanos", "Thelsamar", "Menethil Harbor", "Anvilmar", "Gol'Bolar", "Brewnall", "Dun Algaz",
+                    "Dun Modr", "Dun Garok", "Dun Agrath", "Dun Mandarr", "Dun Baldar", "Aerie Peak", "Thandol Span",
+                    "Steelgrill's Depot", "Misty Pine", "Ironband's Camp", "Amberstill", "Shimmer Ridge",
+                    "Thorium Point", "Kelsey's Rest", "Bael'dun", "Stonewrought", "Mistyreed", "Grim Batol",
+                    "Deepforge", "Anvilhold", "Coldridge", "Hammerstone", "Bronzebeard Hold"),
+            "nightelf",
+            List.of(
+                    "Dolanaar", "Aldrassil", "Auberdine", "Astranaar", "Lor'danel", "Feathermoon", "Nijel's Point",
+                    "Talonbranch Glade", "Starfall", "Ban'ethil", "Shadowglen", "Rut'theran", "Maestra's Post",
+                    "Forest Song", "Silverwind Refuge", "Raynewood", "Thalanaar", "Nighthaven", "Emerald Sanctuary",
+                    "Mystral Lake", "Ameth'Aran", "Bashal'Aran", "Mathystra", "Moonwell Glade", "Elune's Reach",
+                    "Shan'do's Rest", "Whisperwind", "Starbreeze", "Oracle Glade", "Teldrassil Vale"),
+            "orc",
+            List.of(
+                    "Razor Hill", "the Crossroads", "Splintertree Post", "Kargath", "Hammerfall", "Stonard",
+                    "Grom'gol", "Zoram'gar", "Valormok", "Bloodvenom Post", "Thrallmar", "Garadar", "Mok'Nathal",
+                    "Brackenwall", "Frostwolf", "Drygulch", "Bladespire", "Dragonmaw Gates", "Kargathia",
+                    "Durotar's Watch", "Grommash's Rest", "Blackrock Spire", "Warsong Hold", "Shadowmoon",
+                    "Bleeding Hollow", "Thunderlord Camp", "Burning Blade", "Skullsplitter", "Dranosh's Rest",
+                    "Ironwall"),
+            "tauren",
+            List.of(
+                    "Bloodhoof Village", "Camp Narache", "Camp Taurajo", "Camp Mojache", "Freewind Post",
+                    "Sun Rock Retreat", "Spirit Rise", "Red Cloud Mesa", "Winterhoof Well", "Thunderhorn",
+                    "Desolation Hold", "Westreach Summit", "Ragetotem", "Mesa of the Rising Sun", "Grimtotem Post",
+                    "Stonetalon Peak", "Feralas Hold", "Mulgore Plains", "Red Rocks", "Brambleblade", "Bael Modan",
+                    "Highmountain", "Skyhorn", "Earthmother's Rest", "Cairne's Watch", "Rivermane", "Dawnhoof",
+                    "Windfury Ridge", "Longhoof", "Tallgrass"),
+            "goblin",
+            List.of(
+                    "Ratchet", "Booty Bay", "Gadgetzan", "Everlook", "Steamwheedle Port", "Bilgewater Harbor",
+                    "Mudsprocket", "Area 52", "Bootlegger Outpost", "Gallywix Landing", "Sparkwater Port",
+                    "Mirage Raceway", "Lost Rigger Cove", "Rustbolt", "Fuselight", "Kajaro Field", "Bilgewater Port",
+                    "Coinfall", "Profit Point", "Cogspin", "Greasewick", "Copperdrift", "Tidemoney", "Kaboom Bay",
+                    "Shipwreck Shore", "Trade Prince's Rest", "Venture Bay", "Slagtown", "Gearwhistle", "Gilded Wharf"));
 
-    /** A name of {@link #SETTLEMENTS}, by its place, one no market has; numbered once they're all taken. */
+    /**
+     * A name of its people's {@link #SETTLEMENTS}, by its place, one no market has; numbered once they're all taken.
+     */
     String invent(MinecraftServer server, GlobalPos desk) {
         Set<String> taken = new HashSet<>(names.values());
+        List<String> list = SETTLEMENTS.getOrDefault(peopleOf(server, desk), SETTLEMENTS.get(LORDAERON));
         long h = mix(desk.pos().getX() * 31L + desk.pos().getZ() * 1_000_003L);
-        for (int i = 0; i < SETTLEMENTS.size(); i++) {
-            String name = SETTLEMENTS.get((int) Math.floorMod(h + i, (long) SETTLEMENTS.size()));
+        for (int i = 0; i < list.size(); i++) {
+            String name = list.get((int) Math.floorMod(h + i, (long) list.size()));
             if (!taken.contains(name)) {
                 return name;
             }
         }
-        return SETTLEMENTS.get((int) Math.floorMod(h, (long) SETTLEMENTS.size())) + " " + (names.size() + 1);
+        return list.get((int) Math.floorMod(h, (long) list.size())) + " " + (names.size() + 1);
+    }
+
+    private static final String LORDAERON = "lordaeron";
+
+    /** The people of the desk's town, if the land has told them yet (its first survey: {@code Kingdoms}). */
+    private static String peopleOf(MinecraftServer server, GlobalPos desk) {
+        var host = dev.b28.enterprise.binding.CoreHost.of(server);
+        Long town = host == null ? null : host.points().of(dev.b28.enterprise.binding.adapters.PointsAdapter.Kind.DESK).get(desk);
+        var kingdoms = dev.b28.enterprise.territory.Kingdoms.get(server);
+        return town != null && kingdoms.has(town) ? kingdoms.of(town) : LORDAERON;
     }
 
     /** SplitMix64: neighbouring positions get unrelated words. */

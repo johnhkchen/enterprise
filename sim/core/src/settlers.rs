@@ -335,7 +335,7 @@ impl Society {
                 if self.world.get::<crate::lockers::Lockers>(self.towns[party.from]).is_some_and(|l| l.placed.is_some()) {
                     self.host_places_lockers(v);
                     self.world.resource_mut::<Settlers>().unbuilt.push(v);
-                    let name = self.settlement_name(party.id);
+                    let name = self.settlement_name(party.from, party.id);
                     if let Some(mut t) = self.world.get_mut::<crate::state::Town>(self.towns[v]) {
                         t.name = name;
                     }
@@ -343,7 +343,7 @@ impl Society {
                 v
             }
             _ => {
-                let t = self.add_town(&self.settlement_name(party.id), 0.0);
+                let t = self.add_town(&self.settlement_name(party.from, party.id), 0.0);
                 self.place_town(t, party.target.center_x(), party.target.center_z());
                 // (On open ground no village's crates stand: it has only those its settlers carried.)
                 if let Some(mut store) = self.world.get_mut::<crate::cargo::Shipments>(self.towns[t]) {
@@ -423,19 +423,70 @@ impl Society {
     }
 }
 
-/// Names for the towns settlers found, for now (John: "let's use WoW human settlement names"): as the host's
-/// (`settlement/Names.java` `SETTLEMENTS`), the first no town has.
-pub const SETTLEMENTS: [&str; 32] = ["Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill", "Southshore",
-    "Tarren Mill", "Ambermill", "Hillsbrad", "Stromgarde", "Refuge Pointe", "Thelsamar", "Menethil Harbor", "Northshire",
-    "Raven Hill", "Andorhal", "Darrowshire", "Hearthglen", "Pyrewood", "Corin's Crossing", "Brill", "Durnholde",
-    "Nethergarde", "Theramore", "Eastvale", "Brightwood", "Westbrook", "Jerod's Landing", "Morgan's Vigil", "Sorrow Hill",
-    "Felstone", "Dalson's Tears"];
+/// Names for the towns settlers found, by their people (John: "We'll want name lists to be expanded to handle the
+/// different races' settlements"; as the host's `settlement/Names.java` `SETTLEMENTS`): the first of its people's
+/// list no town has. Theramore and Orgrimmar are the factions' capitals, off the map: no town of the region is named
+/// for them (`docs/war-plan.md`).
+pub const SETTLEMENTS: [(&str, &[&str]); 8] = [
+    ("stormwind", &[
+        "Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill", "Northshire", "Eastvale", "Brightwood",
+        "Westbrook", "Raven Hill", "Jerod's Landing", "Morgan's Vigil", "Nethergarde", "Sorrow Hill", "Stonewatch",
+        "Three Corners", "Alther's Mill", "Saldean's Farm", "Tower of Azora", "Redridge", "Elwynn Falls",
+        "Crystal Lake", "Westfall", "Gold Coast", "Jasperlode", "Fargodeep", "Stonefield", "Brackwell",
+        "Addle's Stead", "Lion's Pride"]),
+    ("lordaeron", &[
+        "Brill", "Tarren Mill", "Southshore", "Hillsbrad", "Hearthglen", "Andorhal", "Darrowshire",
+        "Corin's Crossing", "Felstone", "Dalson's Tears", "Durnholde", "Stratholme", "Caer Darrow", "Light's Hope",
+        "Tyr's Hand", "Agamand Mills", "Solliden", "Brightwater", "Garren's Haunt", "Chillwind",
+        "Gahrron's Withering", "Ruins of Lordaeron", "Northdale", "Eastweald", "Eastwall", "Crown Guard", "Blackwood",
+        "Mardenholde", "Thondroril", "Terrordale"]),
+    ("dalaran", &[
+        "Ambermill", "Pyrewood", "Strahnbrad", "Lordamere", "Violet Hold", "Krasus' Landing", "Alterac Fields",
+        "Sofera's Naze", "Gallows' Corner", "Fenris Isle", "Malden's Orchard", "Olsen's Farthing", "Silverpine",
+        "Chillwind Point", "Arcanum's Rest", "Kirin Var", "Antonidas' Reach", "Azurecrest", "Spellweave",
+        "Moonrise Hollow", "Starwatch", "Glimmerdeep", "Runewood", "Violetmere", "Shimmerfield", "Tidewatch",
+        "Lumen Hill", "Ashbury", "Silvermoon Ford", "Aegwynn's Rest"]),
+    ("dwarf", &[
+        "Kharanos", "Thelsamar", "Menethil Harbor", "Anvilmar", "Gol'Bolar", "Brewnall", "Dun Algaz", "Dun Modr",
+        "Dun Garok", "Dun Agrath", "Dun Mandarr", "Dun Baldar", "Aerie Peak", "Thandol Span", "Steelgrill's Depot",
+        "Misty Pine", "Ironband's Camp", "Amberstill", "Shimmer Ridge", "Thorium Point", "Kelsey's Rest", "Bael'dun",
+        "Stonewrought", "Mistyreed", "Grim Batol", "Deepforge", "Anvilhold", "Coldridge", "Hammerstone",
+        "Bronzebeard Hold"]),
+    ("nightelf", &[
+        "Dolanaar", "Aldrassil", "Auberdine", "Astranaar", "Lor'danel", "Feathermoon", "Nijel's Point",
+        "Talonbranch Glade", "Starfall", "Ban'ethil", "Shadowglen", "Rut'theran", "Maestra's Post", "Forest Song",
+        "Silverwind Refuge", "Raynewood", "Thalanaar", "Nighthaven", "Emerald Sanctuary", "Mystral Lake",
+        "Ameth'Aran", "Bashal'Aran", "Mathystra", "Moonwell Glade", "Elune's Reach", "Shan'do's Rest", "Whisperwind",
+        "Starbreeze", "Oracle Glade", "Teldrassil Vale"]),
+    ("orc", &[
+        "Razor Hill", "the Crossroads", "Splintertree Post", "Kargath", "Hammerfall", "Stonard", "Grom'gol",
+        "Zoram'gar", "Valormok", "Bloodvenom Post", "Thrallmar", "Garadar", "Mok'Nathal", "Brackenwall", "Frostwolf",
+        "Drygulch", "Bladespire", "Dragonmaw Gates", "Kargathia", "Durotar's Watch", "Grommash's Rest",
+        "Blackrock Spire", "Warsong Hold", "Shadowmoon", "Bleeding Hollow", "Thunderlord Camp", "Burning Blade",
+        "Skullsplitter", "Dranosh's Rest", "Ironwall"]),
+    ("tauren", &[
+        "Bloodhoof Village", "Camp Narache", "Camp Taurajo", "Camp Mojache", "Freewind Post", "Sun Rock Retreat",
+        "Spirit Rise", "Red Cloud Mesa", "Winterhoof Well", "Thunderhorn", "Desolation Hold", "Westreach Summit",
+        "Ragetotem", "Mesa of the Rising Sun", "Grimtotem Post", "Stonetalon Peak", "Feralas Hold", "Mulgore Plains",
+        "Red Rocks", "Brambleblade", "Bael Modan", "Highmountain", "Skyhorn", "Earthmother's Rest", "Cairne's Watch",
+        "Rivermane", "Dawnhoof", "Windfury Ridge", "Longhoof", "Tallgrass"]),
+    ("goblin", &[
+        "Ratchet", "Booty Bay", "Gadgetzan", "Everlook", "Steamwheedle Port", "Bilgewater Harbor", "Mudsprocket",
+        "Area 52", "Bootlegger Outpost", "Gallywix Landing", "Sparkwater Port", "Mirage Raceway", "Lost Rigger Cove",
+        "Rustbolt", "Fuselight", "Kajaro Field", "Bilgewater Port", "Coinfall", "Profit Point", "Cogspin",
+        "Greasewick", "Copperdrift", "Tidemoney", "Kaboom Bay", "Shipwreck Shore", "Trade Prince's Rest",
+        "Venture Bay", "Slagtown", "Gearwhistle", "Gilded Wharf"]),
+];
 
 impl Society {
-    /// A name for a town settlers found: the first of [`SETTLEMENTS`] no town has, else "Newfound" and the party's.
-    pub fn settlement_name(&self, party: u32) -> String {
+    /// A name for a town settlers of town `from` found: the first of its people's [`SETTLEMENTS`] no town has (a town
+    /// of no people the host has told, Lordaeron's), else "Newfound" and the party's.
+    pub fn settlement_name(&self, from: usize, party: u32) -> String {
         let taken: std::collections::BTreeSet<String> = (0..self.town_count()).map(|t| self.town(t).name).collect();
-        SETTLEMENTS.iter().find(|n| !taken.contains(**n)).map_or_else(|| format!("Newfound {party}"), |n| n.to_string())
+        let people = self.world.resource::<crate::taxes::Taxes>().peoples.get(&from)
+            .map(|p| p.rsplit(':').next().unwrap_or(p).to_ascii_lowercase().replace(['_', ' '], ""));
+        let list = SETTLEMENTS.iter().find(|(k, _)| people.as_deref() == Some(*k)).unwrap_or(&SETTLEMENTS[1]).1;
+        list.iter().find(|n| !taken.contains(**n)).map_or_else(|| format!("Newfound {party}"), |n| n.to_string())
     }
 }
 
