@@ -49,7 +49,7 @@ Habits (twelve to start; cut as they prove dull):
 | Perfectionist | More fundamentals | Makes less |
 | Steady hand | Never makes seconds | Rarely inspired |
 | Experimenter | Its grades spread wide (masterworks and seconds) | Its grades spread wide |
-| Tinkerer | The stations it works break down less | (with stations: slice 3) |
+| Tinkerer | The station it works breaks down half as often | None yet |
 | Mentor | As head: its crew learn twice as fast | Makes less itself |
 | Taskmaster | As head: its crew make a quarter more | Its crew's spirits fall |
 | Beloved | As head: its crew's spirits rise | Soft on poor work: less morale |
@@ -143,5 +143,9 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    gets there, under the House's name with half its reputation, its head by the House's mandate, and its takings ride
    home with the House's wagons. Slice 3 done but for masters moving between towns (the host's villagers).
 4. **Stations and chains** (moved up from 3, industry's heart and "capital investment for higher quality"): a
-   process's station, its throughput and grade ceiling; multi-step chains (ore to steel).
+   process's station, its throughput and grade ceiling; multi-step chains (ore to steel). Stations done: each step
+   works at a station, its first holding its pieces to Fine, a second letting them be masterworks, each tier a quarter
+   faster and its kind's capital again; it breaks down 2% of days a tier (half where a Tinkerer works it), repaired
+   the next day at a tenth of its price; a business saves for and buys the next tier where it pays for itself in 60
+   days. The iron chain next.
 5. **War**: a skirmish as a task against a target with a twist, on the same engine.

@@ -235,7 +235,7 @@ impl Habit {
             Habit::Perfectionist => "+4 fundamentals. Makes a quarter fewer batches.",
             Habit::SteadyHand => "Never makes seconds. Inspired half as often.",
             Habit::Experimenter => "Its grades spread twice as wide: more masterworks, and more seconds.",
-            Habit::Tinkerer => "The stations it works will break down less (once businesses have stations).",
+            Habit::Tinkerer => "The station it works breaks down half as often.",
             Habit::Mentor => "As head, its crew learn twice as fast. Makes a quarter fewer batches itself.",
             Habit::Taskmaster => "As head, its crew make a quarter more. Their spirits fall for it.",
             Habit::Beloved => "As head, its crew's spirits rise. Soft on poor work: 0.1 less morale.",
@@ -331,6 +331,10 @@ pub enum Event {
     Mastered(Knack),
     /// Ruined a batch (Glass hands).
     Ruined,
+    /// Its step's station broke down: nothing made at it until it's repaired.
+    BrokeDown(Work),
+    /// Its business bought its step a better station, of this tier.
+    Upgraded(Work, u8),
 }
 
 impl Event {
@@ -344,6 +348,8 @@ impl Event {
             Event::Appointed => "appointed head".into(),
             Event::Mastered(k) => format!("mastered: {}", k.name()),
             Event::Ruined => "ruined a batch".into(),
+            Event::BrokeDown(w) => format!("its {} station broke down", w.name()),
+            Event::Upgraded(w, t) => format!("a tier {t} {} station", w.name()),
         }
     }
 
@@ -358,6 +364,8 @@ impl Event {
             Event::Appointed => "Appointed head by the owners: it hires and commands the crew, at half again the pay.",
             Event::Mastered(_) => "Became a Master, and found its knack.",
             Event::Ruined => "Ruined a batch: its materials lost, nothing made.",
+            Event::BrokeDown(_) => "The station broke down: nothing made at it until it's repaired, the next day, at a tenth of its price.",
+            Event::Upgraded(..) => "A better station: a second tier lets its pieces be masterworks, and each tier works a quarter faster.",
         }
     }
 }

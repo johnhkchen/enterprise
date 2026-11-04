@@ -92,7 +92,7 @@ create table farm_towns (day integer, town integer, focus text, fields_planted i
 create table stock (day integer, town integer, good text, count real);
 create table households (day integer, town integer, household integer, members integer, earners integer, purse real, standing text, fields integer);
 create table firms (day integer, town integer, firm integer, kind text, owners text, hands integer, wages real, made real, treasury real, broke_days integer,
-    head integer, seconds real, plain real, good real, fine real, masterwork real, suppliers text, reputation real, house text, branch_of integer);
+    head integer, seconds real, plain real, good real, fine real, masterwork real, suppliers text, reputation real, house text, branch_of integer, stations text);
 create table firms_closed (firm integer, town integer, kind text, founded integer, closed integer, made real);
 create table firm_events (firm integer, town integer, day integer, hand integer, event text);
 create table persons (hand integer, habits text, talents text, skills text, spirits real, knack text);
@@ -298,9 +298,10 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             let wages: f64 = f.employees.iter().map(|e| e.1.to_f64()).sum();
             let g = f.grades;
             let suppliers: Vec<String> = f.suppliers.iter().map(|(id, n)| format!("{id}: {n}")).collect();
-            tx.execute("insert into firms values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
+            tx.execute("insert into firms values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
                 params![day, t, f.id, f.name, format!("{:?}", f.owners), f.employees.len(), wages, f.made, f.treasury.to_f64(),
-                f.broke_days, f.head.map(|x| x.hand), g[0], g[1], g[2], g[3], g[4], suppliers.join(", "), f.reputation, f.house, f.branch_of]).map_err(sql)?;
+                f.broke_days, f.head.map(|x| x.hand), g[0], g[1], g[2], g[3], g[4], suppliers.join(", "), f.reputation, f.house, f.branch_of,
+                f.stations.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(",")]).map_err(sql)?;
         }
         for (h, (_, st)) in s.households(t).into_iter().zip(standings) {
             let fields = register.held_by(enterprise_core::charters::Party::Household(h.id))

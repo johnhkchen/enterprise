@@ -219,9 +219,11 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             firm.eaten = 0.0;
             let hire_for = (firm.used * 1.25 / c.out).ceil().max(1.0);
             // Its hands: as many as that takes, one at least while it's open; the last taken on let go first.
+            // (At its last step's station's pace.)
             let paced = |firm: &Firm, persons: &Persons, id: HandId| {
                 let head = firm.head.and_then(|h| persons.hands.get(&h.hand).map(|m| (h.hand, m)));
-                ours(id).zip(persons.hands.get(&id)).map_or(0.0, |(x, m)| pace(d, x, m, head))
+                let speed = crate::firms::throughput(d, firm.station(kind.steps.len() - 1));
+                ours(id).zip(persons.hands.get(&id)).map_or(0.0, |(x, m)| pace(d, x, m, head) * speed)
             };
             let mut capacity: f64 = firm.employees.iter().map(|e| paced(firm, persons, e.0)).sum();
             while firm.employees.len() > 1 && capacity - paced(firm, persons, firm.employees.last().unwrap().0) >= hire_for {
@@ -322,10 +324,13 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                 done.push(firm.id);
                 continue;
             }
+            let short_handed = capacity < hire_for && firm.employees.len() as f64 >= most;
+            let saving = stations(&content, kind, firm, persons, &bids, offer, short_handed.then_some((hire_for, capacity)),
+                &mut ledger, &mut book, &mut money.0, now);
             // Beyond the days of wages it keeps (and what it's sending), its takings are its owners': a branch's, its
             // House's, due for the House's next wagon to call.
             let bill: Fixed = firm.employees.iter().map(|e| e.1).sum();
-            let mut keep = Fixed::ceil(bill.to_f64() * d.firm_working_days) + firm.pledged;
+            let mut keep = Fixed::ceil(bill.to_f64() * d.firm_working_days) + firm.pledged + saving;
             // (A House keeps back a branch's capital and half again its working days at home's wages, saving for one: a
             // town down its roads may pay more.)
             if firm.house.is_some() && branch.is_none() {
@@ -410,6 +415,89 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
     }
     let routes: Vec<(usize, usize, usize, u64)> = routes.iter().map(|r| (r.seq, r.from_id, r.to_id, r.travel_ticks)).collect();
     branches(&content, &kinds, firms, persons, &all, &mut ledger, &mut book, &mut q, &towns.0, &routes, now);
+}
+
+/// A business's stations, once a day (`docs/firms-plan.md` slice 4): one broken yesterday is repaired, at
+/// `station_repair_share` of its price, paid to its town (whose hands mend it); each breaks down `station_breakdown`
+/// of days for each tier (half where a Tinkerer works it); and the business buys a step's next tier, up to
+/// `station_tier_most`, where it has the money to spare beyond its working days and it would pay for itself in
+/// `station_payback_days`: a second for the masterworks its first held back, a third (its last step's) for the
+/// batches it's short of at its most hands. What it saves for one that would pay but it can't yet afford, its owners
+/// are paid only beyond.
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn stations(content: &Content, kind: &Kind, firm: &mut Firm, persons: &Persons, bids: &BTreeMap<GoodId, f64>,
+        offer: Fixed, short: Option<(f64, f64)>, ledger: &mut Ledger, book: &mut CashBook, treasury: &mut Fixed,
+        now: u64) -> Fixed {
+    let d = &content.dials;
+    let day = content.day_ticks.max(1);
+    let today = now / day;
+    let n = kind.steps.len();
+    firm.stations.resize(n, 1);
+    firm.broken.resize(n, false);
+    firm.held_back.resize(n, 0.0);
+    firm.held_today.resize(n, 0.0);
+    let t = firm.town;
+    // Its hands at each step (as at its work: where each brings most).
+    let mut saving = Fixed::ZERO;
+    let at: Vec<(HandId, usize)> = firm.employees.iter()
+        .filter_map(|e| persons.hands.get(&e.0).map(|m| (e.0, best_step(content, kind, m).1))).collect();
+    for s in 0..n {
+        let tier = firm.station(s);
+        let work = kind.steps[s].work;
+        let cost = crate::firms::station_price(kind, tier);
+        let hand = at.iter().find(|a| a.1 == s).map(|a| a.0).or(firm.head.map(|h| h.hand))
+            .or(firm.employees.first().map(|e| e.0));
+        if firm.broken[s] {
+            let repair = Fixed::ceil(cost * d.station_repair_share).min(firm.treasury.at_least_zero());
+            post(ledger, book, Side::firm(firm.id, &mut firm.treasury), Side::treasury(t, treasury), repair,
+                Reason::Other("station repaired".into()), now, day);
+            firm.broken[s] = false;
+        }
+        firm.held_back[s] += (firm.held_today[s] - firm.held_back[s]) * 0.2;
+        firm.held_today[s] = 0.0;
+        let tinkered = at.iter().any(|a| a.1 == s && persons.hands.get(&a.0).is_some_and(|m| m.has(Habit::Tinkerer)));
+        let p = d.station_breakdown * tier as f64 * if tinkered { 0.5 } else { 1.0 };
+        if at.iter().any(|a| a.1 == s) && roll(firm.id as u64 * 8 + s as u64, today, 61) < p {
+            firm.broken[s] = true;
+            if let Some(h) = hand {
+                firm.note(today, h, Event::BrokeDown(work));
+            }
+            continue;
+        }
+        // Its next tier, if it would pay for itself.
+        if (tier as f64) >= d.station_tier_most {
+            continue;
+        }
+        let next = crate::firms::station_price(kind, tier + 1);
+        let bill: Fixed = firm.employees.iter().map(|e| e.1).sum();
+        let spare = firm.treasury - firm.pledged - Fixed::ceil(bill.to_f64() * d.firm_working_days) - Fixed::ceil(offer.to_f64());
+        let output = kind.steps[s].output;
+        let gain = match short {
+            _ if tier < 2 => firm.held_back[s] * (price(content, bids, output, Grade::Masterwork)
+                - price(content, bids, output, Grade::Fine)),
+            // (A batch a day more for each its hands make at this station's pace, as far as it's short.)
+            Some((wanted, capacity)) if s + 1 == n => {
+                let more = (wanted - capacity).min(capacity * d.station_throughput / crate::firms::throughput(d, tier));
+                more * added(content, bids, &kind.conversion, Grade::Fine).max(0.0)
+            }
+            _ => 0.0,
+        };
+        if gain * d.station_payback_days < next {
+            continue;
+        }
+        if spare.to_f64() >= next {
+            post(ledger, book, Side::firm(firm.id, &mut firm.treasury), Side::treasury(t, treasury), Fixed::ceil(next),
+                Reason::Other("station bought".into()), now, day);
+            firm.stations[s] = tier + 1;
+            if let Some(h) = hand {
+                firm.note(today, h, Event::Upgraded(work, tier + 1));
+            }
+        } else {
+            saving = saving.max(Fixed::ceil(next));
+        }
+    }
+    saving
 }
 
 /// A town's businesses' bids for their materials (`firms::bids`).
@@ -676,7 +764,11 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
         crew[i].1 = last;
     }
     firm.progress.resize(kind.steps.len(), 0.0);
-    let capacity: Vec<f64> = (0..=last).map(|s| crew.iter().filter(|c| c.1 == s).map(|c| c.2).sum()).collect();
+    // (Each step at its station's pace; none at a broken one's.)
+    let capacity: Vec<f64> = (0..=last).map(|s| if firm.is_broken(s) { 0.0 } else {
+        crew.iter().filter(|c| c.1 == s).map(|c| c.2).sum::<f64>() * crate::firms::throughput(d, firm.station(s))
+    }).collect();
+    firm.held_today.resize(kind.steps.len(), 0.0);
     for (p, &c) in firm.progress.iter_mut().zip(&capacity) {
         *p = (*p + c * since).min(c.max(1.0));
     }
@@ -783,6 +875,12 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
             }
             if k == Some(Knack::RabbitsFoot) && c.inputs.iter().any(|i| content.goods[i.0].name.ends_with("rabbit_hide")) {
                 grade = grade.up();
+            }
+            // (No better than its station lets it be: what it held back, noted.)
+            let top = crate::firms::ceiling(firm.station(s));
+            if grade > top {
+                firm.held_today[s] += c.out;
+                grade = top;
             }
             let ruined = k == Some(Knack::GlassHands) && m.batches % 10 == 9;
             let scrapped = !ruined && grade == Grade::Seconds && k == Some(Knack::ScrapArtist);

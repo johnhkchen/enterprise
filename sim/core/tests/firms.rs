@@ -454,3 +454,59 @@ fn a_house_sends_its_capital_by_wagon_for_a_branch_down_its_road_whose_takings_r
         .filter(|(_, w, _)| w == "branch takings").map(|(_, _, e)| e.to_f64()).sum();
     assert!(home_takings > 0.0, "its takings rode home");
 }
+
+/// A master bakery's year's start: `days` of a town of 60 with five Master farmers and wheat each day, its dials as set.
+fn master_bakery(s: &mut Society, days: u64) -> usize {
+    s.content_mut().dials.hand_wage = 0.01;
+    let t = town_of(s, "Stormwind", 60, (0.0, 0.0), &["farmer", "farmer", "farmer", "farmer", "farmer", "merchant"], 5, 600.0);
+    for _ in 0..days {
+        s.deliver(t, WHEAT, 200.0);
+        run(s, 1);
+    }
+    t
+}
+
+#[test]
+fn a_first_station_holds_pieces_to_fine_and_a_second_lets_masters_make_masterworks() {
+    use enterprise_core::persons::Event;
+    // Only first stations: Masters' bread no better than Fine, what it held back counted.
+    let mut s = society();
+    s.content_mut().dials.station_tier_most = 1.0;
+    s.content_mut().dials.station_breakdown = 0.0;
+    master_bakery(&mut s, 12);
+    let f = s.firms().into_iter().next().expect("a bakery");
+    assert_eq!(f.grades[Grade::Masterwork.index()], 0.0, "{:?}", f.grades);
+    assert!(f.held_back[0] > 0.0 && f.grades[Grade::Fine.index()] > 0.0, "{:?} {:?}", f.held_back, f.grades);
+    // With a second to buy: it buys it, and its Masters make masterworks.
+    let mut s = society();
+    s.content_mut().dials.station_breakdown = 0.0;
+    s.content_mut().dials.station_payback_days = 10_000.0;
+    master_bakery(&mut s, 50);
+    let f = s.firms().into_iter().next().expect("a bakery");
+    assert!(f.station(0) >= 2 && f.events.iter().any(|e| matches!(e.2, Event::Upgraded(Work::Baking, 2))), "{f:?}");
+    assert!(f.grades[Grade::Masterwork.index()] > 0.0, "{:?}", f.grades);
+    let bought: f64 = s.account_book(Account::Firm(f.id), 400).iter().filter(|(_, w, _)| w == "station bought")
+        .map(|(_, _, e)| -e.to_f64()).sum();
+    assert!(bought >= 60.0, "a second station: its capital twice: {bought}");
+}
+
+#[test]
+fn a_broken_station_makes_nothing_until_it_is_repaired_and_its_town_mends_it() {
+    use enterprise_core::persons::Event;
+    let mut s = society();
+    s.content_mut().dials.station_breakdown = 1.0;
+    s.content_mut().dials.station_tier_most = 1.0;
+    master_bakery(&mut s, 6);
+    let f = s.firms().into_iter().next().expect("a bakery");
+    assert!(f.events.iter().any(|e| matches!(e.2, Event::BrokeDown(Work::Baking))), "{:?}", f.events);
+    let repaired: f64 = s.account_book(Account::Firm(f.id), 400).iter().filter(|(_, w, _)| w == "station repaired")
+        .map(|(_, _, e)| -e.to_f64()).sum();
+    assert!(repaired > 0.0);
+    // Broken every day once it's worked a day: next to nothing made beside a sound one's.
+    let mut sound = society();
+    sound.content_mut().dials.station_breakdown = 0.0;
+    sound.content_mut().dials.station_tier_most = 1.0;
+    master_bakery(&mut sound, 6);
+    let g = sound.firms().into_iter().next().unwrap();
+    assert!(f.made * 2.0 < g.made, "{} broken, {} sound", f.made, g.made);
+}

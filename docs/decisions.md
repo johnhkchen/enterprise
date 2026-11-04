@@ -2692,3 +2692,26 @@ Slice 3's last part (John: "Rides the wagon"). Nothing crosses distance without 
   four branches from day 317, in towns 11, 0, 21 and 7, each its 40 emeralds of capital to the town; by day 361 they
   had made 3,531 carpets. The House of Vane (town 3's weavers) and of Wren (its bootmaker), Houses from days 303 and
   333, sent none: they hadn't saved enough by the year's end. The trace's `firms` has `branch_of`.
+
+## Society: stations (2026-11-04)
+
+Slice 4 of `docs/firms-plan.md`, its first part (John: "Slice 4"; step 3's "Allow capital investments for higher
+quality goods"): capital buys the ceiling, masters reach it.
+
+- **A station a step:** each of a business's steps works at a station of a tier (`Firm::stations`, a first where none
+  is said). A first holds its pieces to Fine (`firms::ceiling`): a Master's masterwork comes out Fine, and what it held
+  back is counted (`Firm::held_back`, a day's on average). A second or better lets them be masterworks; each tier past
+  the first works `station_throughput` (a quarter) faster, the hands it hires counted at its pace.
+- **Breakdowns:** a station breaks down `station_breakdown` (2%) of days for each tier, half where a Tinkerer works it
+  (the habit now works); broken, its step makes nothing until it's repaired, the next day, at `station_repair_share`
+  (a tenth) of its price, paid to its town, whose hands mend it.
+- **Buying:** a station's next tier costs its kind's capital for each tier (`firms::station_price`), paid to its town
+  (which builds it; in the game a Create machine). A business buys it, up to `station_tier_most` (3), where it would
+  pay for itself in `station_payback_days` (60): a second for the masterworks its first held back, a third (its last
+  step's) for the batches it's short of at its most hands. One that would pay but it can't yet afford, it saves for:
+  its owners are paid only beyond it.
+- **Seed 1717's year, replayed** (20 of 11,023 requests refused: the world went otherwise again): the House of Vane,
+  town 3's weavers, bought a second loom and then a third, and the weavers' carpets came to 2,325 masterworks of
+  16,014; no bakery's ovens: a masterwork loaf adds a twelfth of an emerald over a Fine one, so none would pay for
+  itself, and the year's bread is Fine at best (10,326 of 12,360). 22 breakdowns. The trace's `firms` has each
+  business's stations' tiers.

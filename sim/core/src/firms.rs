@@ -163,6 +163,21 @@ pub fn price(content: &Content, bids: &BTreeMap<GoodId, f64>, g: GoodId, grade: 
     (value * grade.worth(&content.dials)).max(if grade > Grade::Plain { bid } else { 0.0 })
 }
 
+/// The best grade a station of this tier lets a piece be: a first one's Fine, a second's or better a masterwork.
+pub fn ceiling(tier: u8) -> Grade {
+    if tier >= 2 { Grade::Masterwork } else { Grade::Fine }
+}
+
+/// How much faster a station of this tier works than a first one.
+pub fn throughput(d: &crate::content::Dials, tier: u8) -> f64 {
+    1.0 + d.station_throughput * (tier.max(1) - 1) as f64
+}
+
+/// What a station of this tier costs a kind of business (its capital for each tier).
+pub fn station_price(kind: &Kind, tier: u8) -> f64 {
+    kind.capital * tier as f64
+}
+
 /// What a batch at `grade` is worth less its inputs, in emeralds: what a hand's batch adds.
 pub fn added(content: &Content, bids: &BTreeMap<GoodId, f64>, c: &Conversion, grade: Grade) -> f64 {
     c.out * price(content, bids, c.output, grade) - crate::workshop::inputs_worth(content, c)
@@ -231,6 +246,17 @@ pub struct Firm {
     /// A branch's takings beyond its working days, for its House: sent home with the House's next wagon to call.
     #[serde(default)]
     pub due: Fixed,
+    /// Its steps' stations, by step: each one's tier (none said: the first), whether it's broken (it works again once
+    /// repaired, the next day), and the pieces a day its station held back from a better grade (on average, a fifth
+    /// of the way to each day's), and since its last reckoning.
+    #[serde(default)]
+    pub stations: Vec<u8>,
+    #[serde(default)]
+    pub broken: Vec<bool>,
+    #[serde(default)]
+    pub held_back: Vec<f64>,
+    #[serde(default)]
+    pub held_today: Vec<f64>,
     /// Its head, past `firm_hands_unled` hands: one of them, by mandate (`charters.rs`).
     #[serde(default)]
     pub head: Option<Head>,
@@ -269,6 +295,15 @@ impl Firm {
             return 0.0;
         }
         (d.house_draw_most * self.reputation / (4.0 * d.house_reputation.max(1e-9))).clamp(0.0, d.house_draw_most)
+    }
+
+    /// Its station's tier at step `s` (1, the first, where none is said).
+    pub fn station(&self, s: usize) -> u8 {
+        self.stations.get(s).copied().unwrap_or(1).max(1)
+    }
+
+    pub fn is_broken(&self, s: usize) -> bool {
+        self.broken.get(s).copied().unwrap_or(false)
     }
 
     /// The business it has bought most of its materials of.

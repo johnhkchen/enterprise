@@ -349,6 +349,17 @@ dials! {
     /// Of the hands newly of a House's trade in its town, at most this share come with a talent for its work, by its
     /// reputation (its draw: a half at four times `house_reputation`).
     house_draw_most: f64 = 0.5,
+    /// Stations (`docs/firms-plan.md` slice 4): a business's step works at a station of a tier, up to this; its first
+    /// holds its pieces to Fine, a second or better lets them be masterworks. Each tier past the first works this much
+    /// faster, costs its kind's capital again for each tier, and breaks down this share of days for each tier (half a
+    /// Tinkerer's), its repair this share of its price.
+    station_tier_most: f64 = 3.0,
+    station_throughput: f64 = 0.25,
+    station_breakdown: f64 = 0.02,
+    station_repair_share: f64 = 0.1,
+    /// A business buys a station's next tier when it would pay for itself in this many days (the masterworks its
+    /// hands are held back from; at its most hands, the batches it's short of).
+    station_payback_days: f64 = 60.0,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its
