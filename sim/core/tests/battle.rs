@@ -89,6 +89,8 @@ fn a_town_at_war_builds_a_barracks_which_drills_its_idle_hands_and_kits_out_thos
     assert!(s.built(orgrimmar, Kind::Barracks));
     s.advance(2 * DAY);
     assert!(s.works(orgrimmar).at_war && s.works(stormwind).at_war, "both levied for the battle");
+    // Stormwind's barracks is going up the day it went to war, the Alliance paying its materials and builders' wages.
+    assert!(s.works(stormwind).has_started(Kind::Barracks), "{:?}", s.works(stormwind).projects);
     // Its levy came in its Fine swords, out of its warehouse; Stormwind's bare (at the hex, its camp's kit: none).
     let b = s.battles().battles[0].clone();
     let fine = |side: usize| b.armies[side].soldiers.iter()

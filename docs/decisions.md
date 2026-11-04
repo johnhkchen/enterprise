@@ -2824,3 +2824,8 @@ John: "Add a barracks building to outfit and train soldiers".
 - **In the game,** its structure is the people's war kit's `barracks` slot (the orcs', dwarves', goblins'; the tauren's
   braves' lodge), else the mod's plain hall of its size (`Buildings.BARRACKS`, a fallback the Java rules don't
   build by): Stormwind, Lordaeron, Dalaran and the night elves have no barracks kit yet (the studio's).
+- **Its faction pays** (John: "factions pay"; seed 1717's year: the five towns levied had 1 to 13 emeralds and
+  mostly a level-1 Mason, and none built one): the day a town of a faction goes to war its barracks is started, its
+  materials and builders' wages granted from the faction's war chest (`rules/battle.rs`: from outside the society, as
+  the crown's mint; "the Horde's war chest" in its cash book), its builders the faction's, whatever Mason it has.
+- **A tie is a coin's toss** (`war::clash`): it had gone to the first army, the Horde, every time (seed 1717's 0 to 0).

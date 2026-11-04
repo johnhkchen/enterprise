@@ -318,7 +318,8 @@ pub fn clash(content: &Content, a: &mut Army, b: &mut Army, persons: &mut Person
     }
     let twist = Twist::ALL[((roll(no, 1, 71) * 4.0) as usize).min(3)];
     let (fa, fb) = (fight(content, a, persons, twist, 2 * no, now), fight(content, b, persons, twist, 2 * no + 1, now));
-    let a_won = fa.score >= fb.score;
+    // (A tie, by the toss of a coin: never the first army's.)
+    let a_won = fa.score > fb.score || fa.score == fb.score && roll(no, 2, 71) < 0.5;
     let day = now / content.day_ticks.max(1);
     let (na, nb) = (a.soldiers.len() as u32, b.soldiers.len() as u32);
     let (ha, ra) = after(content, a, persons, &fa, a_won, twist, now);

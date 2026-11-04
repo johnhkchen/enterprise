@@ -10,6 +10,7 @@ use super::Step;
 use crate::army::{blocks_between, bury, levy_order, mourn, travel_ticks, Army, Recruit, Soldier, Walker};
 use crate::battle::{Battle, Battles, Faction, Marching};
 use crate::content::Content;
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::contracts::Book;
 use crate::hex::Hex;
 use crate::kit::Kits;
@@ -86,7 +87,8 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
         taxes: Res<crate::taxes::Taxes>, territory: Res<crate::territory::Territory>, map: Res<crate::map::Map>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<Book>, mut persons: ResMut<crate::persons::Persons>,
         mut charters: ResMut<crate::charters::Charters>, places: Query<&Town>, mut camps: Query<(&mut Stock, &mut Kits)>,
-        mut homes: Homes, crown: Res<Army>, mut works: Query<&mut crate::works::Works>) {
+        mut homes: Homes, crown: Res<Army>,
+        (mut works, mut purses, mut cash): (Query<&mut crate::works::Works>, Query<&mut Money>, ResMut<CashBook>)) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let today = now / day;
     let d = &content.dials;
@@ -104,6 +106,22 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             let Ok(mut w) = works.get_mut(e) else { continue };
             if w.at_war != (levied || serving) {
                 w.at_war = levied || serving;
+            }
+            // Its faction pays for its barracks (John: "factions pay"): the hall's materials and its builders' wages,
+            // from the faction's war chest (from outside the society, as the crown's mint); its builders the faction's,
+            // whatever Mason the town has.
+            let faction = taxes.peoples.get(&t.id).and_then(|p| Faction::of(p));
+            if let (true, Some(faction), false) = (w.at_war, faction, w.has_started(crate::works::Kind::Barracks)) {
+                let kind = crate::works::Kind::Barracks;
+                if let (Ok((stock, _)), Ok(mut money)) = (camps.get(e), purses.get_mut(e)) {
+                    let grant = crate::fixed::Fixed::ceil(crate::works::cost(&content, &stock.0, kind));
+                    let materials = crate::fixed::Fixed::ceil(crate::works::materials(&content, &stock.0, kind));
+                    let chest = Reason::Other(format!("{}'s war chest", faction.name()));
+                    post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t.id, &mut money.0), grant, chest, now, day);
+                    post(&mut ledger, &mut cash, Side::treasury(t.id, &mut money.0), Side::outside(), materials,
+                        Reason::Other("a barracks".into()), now, day);
+                    w.start(crate::works::What::Hall(kind), kind.blocks());
+                }
             }
             if w.built(crate::works::Kind::Barracks) {
                 if let Ok((_, Some(roster), _)) = homes.get(e) {
