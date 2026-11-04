@@ -139,6 +139,9 @@ pub struct Campaign {
     /// The day it was last reckoned (once a day).
     #[serde(default)]
     pub reckoned: Option<u64>,
+    /// When Theramore's last ships came with marines (each `convoy_days` at most).
+    #[serde(default)]
+    pub sailed: Option<u64>,
 }
 
 /// The battles for hexes, and whether `battle_day`'s was seeded.

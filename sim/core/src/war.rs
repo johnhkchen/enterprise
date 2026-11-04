@@ -252,10 +252,15 @@ fn after(content: &Content, army: &mut Army, persons: &mut Persons, fought: &Fou
         if Some(h) == hero {
             m.inspired_until = Some(now + d.skirmish_days as u64 * day);
         }
-        let gain = 5.0 * d.skill_per_batch * if m.gifted(work) { 1.5 } else { 1.0 }
-            * if m.has(Habit::Ambitious) { 1.5 } else { 1.0 } * if mentor { 2.0 } else { 1.0 };
+        // (Experience at arms, whatever its trade's level: the newest learn most; John: "let combat grant real
+        // experience, particularly for new soldiers".)
+        let _ = level;
+        let master = skill_cap(5);
+        let lift = if m.gifted(work) { 1.5 } else { 1.0 } * if m.has(Habit::Ambitious) { 1.5 } else { 1.0 }
+            * if mentor { 2.0 } else { 1.0 };
         let skill = m.skills.entry(work).or_insert(0.0);
-        *skill = (*skill + gain).min(skill_cap(level).max(*skill));
+        let gain = d.combat_skill * ((master - *skill) / master).max(0.0) * lift;
+        *skill = (*skill + gain).min(master.max(*skill));
     }
     // Routed: lost with its morale broken (no Peacemaker serving), its soldiers in low spirits, never a Steady hand.
     let peace = army.soldiers.iter().any(|s| id(s).and_then(|h| persons.hands.get(&h)).is_some_and(|m| m.knack == Some(Knack::Peacemaker)));

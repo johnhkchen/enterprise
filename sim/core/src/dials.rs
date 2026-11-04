@@ -392,7 +392,12 @@ dials! {
     /// far; they fight `home_ground_lift` the better at home, `walls_lift` more behind a whole wall and
     /// `watchtower_lift` more with a watchtower. The Horde pins the Alliance at its camp (John: "using its local
     /// numerical advantage to pin the Alliance down"): its attack on the Alliance's base levies `pin_levy` of every
-    /// Horde town's residents, made whenever that levy is `pin_odds` times the Alliance's soldiers or more.
+    /// Horde town's residents, made whenever that levy is `pin_odds` times the Alliance's soldiers or more. The capitals'
+    /// soldiers come once every `convoy_days` at most: Theramore's ships with marines, Orgrimmar's mercenary bands.
+    /// Each side's score in a battle is times its numbers over the enemy's to the `numbers_weight` (0: numbers count
+    /// only by their sum). Each fight of a battle kills `combat_losses` of each side's soldiers by the enemy's share of
+    /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
+    /// skill (`skill_cap` 5), whatever its trade's level.
     war_day: f64 = 0.0,
     expedition_size: f64 = 50.0,
     capital_soldier_pay: f64 = 1.0,
@@ -407,6 +412,10 @@ dials! {
     pin_levy: f64 = 0.2,
     pin_odds: f64 = 1.5,
     raze_hold_days: f64 = 5.0,
+    convoy_days: f64 = 30.0,
+    numbers_weight: f64 = 0.0,
+    combat_losses: f64 = 0.15,
+    combat_skill: f64 = 1.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival

@@ -275,6 +275,54 @@ fn theramore_pays_for_each_marine_it_sends_to_make_its_expedition_up() {
 }
 
 #[test]
+fn a_fight_kills_on_both_sides_the_winner_fewer() {
+    // John: "more realistic partial damage to the winning side".
+    let fallen = |losses: f64| {
+        let (mut s, _) = war_world(20000.0);
+        s.content_mut().dials.combat_losses = losses;
+        s.advance(30 * DAY);
+        let b = s.battles().battles.iter().find(|b| b.town.is_some()).cloned().expect("the first battle");
+        let dead = |side: usize| b.armies[side].records.values().map(|r| r.fallen).sum::<u32>();
+        (dead(0), dead(1), b.fights)
+    };
+    let (horde0, alliance0, _) = fallen(0.0);
+    let (horde, alliance, fights) = fallen(0.5);
+    assert!(fights >= 2, "fought: {fights}");
+    assert!(horde > horde0 && alliance > alliance0, "both sides lose more: horde {horde0}->{horde}, alliance {alliance0}->{alliance}");
+}
+
+#[test]
+fn a_levy_learns_its_arms_past_its_trades_level() {
+    // John: "let combat grant real experience, particularly for new soldiers": a level-1 hand past a level-1 cap (4).
+    let best = |skill: f64| {
+        let (mut s, _) = war_world(20000.0);
+        s.content_mut().dials.combat_skill = skill;
+        s.advance(60 * DAY);
+        s.world.resource::<enterprise_core::persons::Persons>().hands.values()
+            .filter_map(|p| p.skills.get(&enterprise_core::persons::Work::Arms).copied()).fold(0.0, f64::max)
+    };
+    let (green, taught) = (best(0.0), best(1.0));
+    assert!(taught > 4.0 && taught > green + 1.0, "a veteran's arms: {green} untaught, {taught} taught");
+}
+
+#[test]
+fn theramores_ships_come_once_every_convoy_days() {
+    // John: "limit reinforcement frequency": its marines made up when its ships come, every `convoy_days` at most.
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.convoy_days = 20.0;
+    let mut sailed = vec![];
+    for day in 1..=150 {
+        s.advance(day * DAY);
+        let c = s.battles().campaign.clone();
+        if let Some(day) = c.and_then(|c| c.sailed).filter(|d| sailed.last() != Some(d)) {
+            sailed.push(day);
+        }
+    }
+    assert!(sailed.len() >= 2, "ships came again: {sailed:?}");
+    assert!(sailed.windows(2).all(|w| w[1] - w[0] >= 20 * DAY), "20 days apart at least: {sailed:?}");
+}
+
+#[test]
 fn the_horde_outnumbering_the_alliance_strikes_at_its_camp_with_every_town() {
     let (mut s, [razor, senjin, port, _]) = war_world(20000.0);
     s.content_mut().dials.pin_odds = 0.1;

@@ -3011,3 +3011,28 @@ battles; Theramore wins only if its chest holds out). Replays of seed 1717's yea
 - **Replayed** (war from day 180): six Horde towns razed by the year's end, 15 left, the Horde's two strikes at the
   port beaten off; Theramore 12,492 left, about 1,500 short of the 15 more at its pace, so a pin or a lost battle more
   decides it. From day 90 (a smaller Horde), 20 of 21 razed with 3,738 left by the journal's end.
+
+## Society: convoys, fights that cost both sides, and soldiers who learn (2026-11-05)
+
+John: "Let's limit reinforcement frequency and also see if we're overly penalizing the horde's mass numbers
+strategy"; "let combat grant real experience, particularly for new soldiers, and apply more realistic partial damage
+to the winning side".
+
+- **The capitals' soldiers come by convoy** (`convoy_days` 30, `Campaign::sailed`): Theramore's marines are made up
+  only when its ships come, in the field or for a new battle; Orgrimmar's mercenary bands come as often. Before, the
+  marines were made up every 10 days and at every battle: the expedition was always whole.
+- **A fight kills on both sides** (`rules::battle::casualties`): `combat_losses` (0.15) of each side's soldiers by the
+  enemy's share of the two scores, the winner fewer; who falls by each soldier's draw; buried and mourned at home as
+  the camp's fallen are. Before, only the loser lost soldiers in a fight (its routed).
+- **Soldiers learn at arms whatever their trade's level** (`war::after`): `combat_skill` (1) a fight, times how far
+  the soldier is from a master's 20, so a new levy at 3 gains about 0.85 and a veteran at 16 a fifth. Before, a fight
+  gave 0.1 and a level-1 hand stopped at 4.
+- **Numbers aren't penalized by the sum; quality is.** A fight's score is each soldier's sum, so numbers count in
+  full; but a marine (a Journeyman at arms, 9, in Fine iron) brings about 15 to a Horde levy's 6.6 (skill 3, iron
+  sword, helmet and chestplate; unarmed, 0). Seed 1717's Horde fielded 60 to 70 to the Alliance's 45 and fought like
+  28 marines. `numbers_weight` (0, off) puts a side's numbers over the enemy's to that power on its score (1: the
+  square law): replayed, 0.3 gave the Horde 16 of 23 fights and the war, 0.5 likewise. Left off till the armies move
+  by hexes (next), which changes what numbers do.
+- **Replayed** (war from day 180, numbers off): six Horde towns razed, 16 left; the Horde's strike at the port beaten
+  off; Theramore 15,197 left. The Horde's levies learned little (6.9 a soldier to 7.4 late): drawn afresh from 20
+  towns, and the veterans the ones who fall.
