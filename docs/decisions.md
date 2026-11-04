@@ -2954,3 +2954,21 @@ making its expedition up for nothing, and Orgrimmar's chest dry on the war's sec
   in the war (was 7,387). Orgrimmar's chest still ran dry, on day 190: this journal's year-one battle spent 5,813 of
   it, and its 22 towns, every one now levied, buy their levies' kit at once. The Horde's strikes back, with a tenth of
   its towns near the port and no edge, lose.
+
+## Society: the Horde pins the Alliance at its camp (2026-11-04)
+
+John: "1" (the Horde's council pinning the Alliance's camp, `docs/war-plan.md` slice 5: "using its local numerical
+advantage to pin the Alliance down and attrit them").
+
+- **The Horde strikes at the Alliance's camp** (its base while it stands, else its town nearest) when it beat off an
+  attack, as before, and now also whenever its towns' levy outnumbers the Alliance's soldiers (Theramore's expedition
+  and its towns' levies) `pin_odds` (1.5) to one, unless its own last strike was beaten off: then the Alliance strikes.
+- **Its strike levies `pin_levy` (0.2) of every Horde town's residents**, however far, as its defence does. The camp's
+  defenders have their edge at home; beaten off, the strike has still held the Alliance there `battle_hold_days`.
+- **Theramore makes its expedition up in the field, every `battle_reinforce_days`**, as the battle's levies are, each
+  marine `marine_cost`: without it a long siege wore its marines from 36 to 17 and the Horde razed the port, its last
+  town, winning with 14,800 of Theramore's emeralds unspent.
+- **Replayed** (seed 1717's year, war from day 180): the Alliance razed its first Horde town; the Horde, 60 to 88 to
+  its 40, besieged the port for 118 days and was beaten off; the Alliance's next attack was on at the year's end. One
+  town razed in the war. Theramore spent 10,782 in it (was 8,459), about 70 a day: its chest's 7,291 left would last
+  about a hundred days more. Orgrimmar's chest still ran dry on day 190 (this journal's year-one battle).

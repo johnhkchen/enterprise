@@ -61,8 +61,9 @@ run up and war phase in year 2."
 
 Slices 0 to 5 are in (`docs/decisions.md`: settlers' garrisons, names by people, the capitals' war chests, the war for
 the region). The Horde's fight (`docs/decisions.md`, the Horde puts up a fight): every town of a town's defenders levied, their
-edge at home and behind walls, marines made up at a cost, Orgrimmar's mercenaries after a losing streak. Still to do:
-the mod's side of a ruin, the Horde pinning the Alliance's camp, the run-up's procurement paced to its chest.
+edge at home and behind walls, marines made up at a cost, Orgrimmar's mercenaries after a losing streak. The Horde pins the Alliance at its camp whenever it outnumbers it,
+and Theramore makes its marines up in the field at a cost. Still to do: the mod's side of a ruin, the run-up's
+procurement paced to its chest.
 
 ## Checks, sized to what they test
 

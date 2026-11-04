@@ -384,7 +384,9 @@ dials! {
     /// `raze_hold_days` by its attackers is razed, its people refugees to their faction's nearest town within
     /// `refugee_reach` hexes. A town's defenders are `defence_levy` of the residents of every town of its side, however
     /// far; they fight `home_ground_lift` the better at home, `walls_lift` more behind a whole wall and
-    /// `watchtower_lift` more with a watchtower.
+    /// `watchtower_lift` more with a watchtower. The Horde pins the Alliance at its camp (John: "using its local
+    /// numerical advantage to pin the Alliance down"): its attack on the Alliance's base levies `pin_levy` of every
+    /// Horde town's residents, made whenever that levy is `pin_odds` times the Alliance's soldiers or more.
     war_day: f64 = 0.0,
     expedition_size: f64 = 40.0,
     capital_soldier_pay: f64 = 1.0,
@@ -396,6 +398,8 @@ dials! {
     home_ground_lift: f64 = 0.2,
     walls_lift: f64 = 0.2,
     watchtower_lift: f64 = 0.1,
+    pin_levy: f64 = 0.2,
+    pin_odds: f64 = 1.5,
     raze_hold_days: f64 = 10.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's

@@ -459,8 +459,8 @@ fn nearest(of: &[(TownId, Hex)], to: Hex) -> Option<(TownId, Hex)> {
 
 /// A battle of the war for a town: `attacker`'s towns near it against the town's own and theirs, the attackers' towns
 /// within `battle_reach` of it levied `battle_levy` of their residents, every town of the defenders' `defence_levy`
-/// (John: "using its local numerical advantage"); its attackers camped at `camp`, its defenders in the town itself;
-/// they march at `marches`.
+/// (John: "using its local numerical advantage"), and the Horde's every town `pin_levy` when it attacks; its attackers
+/// camped at `camp`, its defenders in the town itself; they march at `marches`.
 fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attacker: Faction, camp: TownId,
         marches: u64) -> Battle {
     let factions = [Faction::Horde, Faction::Alliance];
@@ -470,11 +470,12 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     let towns = world.resource::<Towns>().0.clone();
     let mut levies: [Vec<(TownId, usize)>; 2] = Default::default();
     for (s, &f) in factions.iter().enumerate() {
-        let defends = s != side;
+        let (defends, pins) = (s != side, s == side && f == Faction::Horde);
         for (t, h) in faction_towns(world, f) {
-            if defends || h.distance(hex) as f64 <= content.dials.battle_reach {
+            if defends || pins || h.distance(hex) as f64 <= content.dials.battle_reach {
                 if let Some(roster) = world.get::<Roster>(towns[t]) {
-                    let share = if defends { content.dials.defence_levy } else { content.dials.battle_levy };
+                    let d = &content.dials;
+                    let share = if defends { d.defence_levy } else if pins { d.pin_levy } else { d.battle_levy };
                     levies[s].push((t, levy_at(roster, share)));
                 }
             }
@@ -495,6 +496,18 @@ fn capital_soldiers(content: &Content, n: u32, camp: TownId, kitted: bool, now: 
     (0..n).map(|_| Soldier { home: camp, enlisted: now, weapon: piece("iron_sword"),
         armour: [piece("iron_helmet"), piece("iron_chestplate"), None, None], shield: piece("shield"), from_capital: true,
         ..Default::default() }).collect()
+}
+
+/// `short` marines Theramore sends to make its expedition up, each costing it `marine_cost`, as many as its chest can
+/// pay. Returns how many it sent.
+fn send_marines(world: &mut World, d: &crate::dials::Dials, short: u32, today: u64) -> u32 {
+    if short == 0 || d.marine_cost <= 0.0 {
+        return short;
+    }
+    let mut battles = world.resource_mut::<Battles>();
+    let sent = short.min((battles.chest_left(d, Faction::Alliance) / d.marine_cost).floor().max(0.0) as u32);
+    battles.draw(d, Faction::Alliance, crate::fixed::Fixed::ceil(sent as f64 * d.marine_cost), today);
+    sent
 }
 
 /// A town razed (`docs/war-plan.md` slice 4; John: "fight over a town's hex and raze it, which would create refugees
@@ -592,8 +605,9 @@ fn refugees(world: &mut World, content: &Content, t: TownId, refuge: Option<Town
 /// withdraws: its marines sail home), its expedition made up again for each battle; Orgrimmar sends its mercenaries
 /// at a last stand; a town its attackers held is
 /// razed; a side with no towns left has lost, as has the Alliance once Theramore withdrew; and with no battle on, the
-/// next: an attack beaten off, its defenders strike back at the attackers' town nearest; else the Alliance strikes the
-/// Horde town nearest its base.
+/// next: the Horde strikes at the Alliance's camp (its base) when it beat off an attack, or when its towns outnumber
+/// the Alliance `pin_odds` to one and its own last strike wasn't beaten off; else the Alliance strikes the Horde town
+/// nearest its base.
 pub fn campaign(world: &mut World) {
     let content = world.resource::<Content>().clone();
     let d = &content.dials;
@@ -664,6 +678,21 @@ pub fn campaign(world: &mut World) {
             }
         }
     }
+    // Theramore makes its expedition up in the field too, as the battle's levies are, every `battle_reinforce_days`
+    // (John: "pin the Alliance down and attrit them": its losses cost its chest).
+    if let (Some(i), true, None) = (current, c.landed, c.withdrew) {
+        let b = &world.resource::<Battles>().battles[i];
+        let every = d.battle_reinforce_days.max(0.0) as u64;
+        if b.marched && every > 0 && b.days > 0 && b.days % every == 0 {
+            let there = b.armies[1].soldiers.iter().filter(|s| s.from_capital).count() as u32;
+            let short = (d.expedition_size.max(0.0) as u32).saturating_sub(there);
+            let sent = send_marines(world, d, short, today);
+            let mut battles = world.resource_mut::<Battles>();
+            let camp = battles.battles[i].camps[1];
+            battles.battles[i].armies[1].soldiers.extend(capital_soldiers(&content, sent, camp, true, now));
+            c.marines = there + sent;
+        }
+    }
     // Orgrimmar's mercenaries at a last stand, or its last `horde_losing_streak` battles lost, a band every
     // `battle_reinforce_days`.
     let horde_n = faction_towns(world, Faction::Horde).len();
@@ -723,17 +752,28 @@ pub fn campaign(world: &mut World) {
         let last = world.resource::<Battles>().battles.iter().rev().find(|b| b.town.is_some()).cloned();
         let beaten_off = last.as_ref().and_then(|b| Some((b.factions[b.attacker?], b.won_by?, b.hex)))
             .filter(|(att, won, _)| att != won);
-        let (attacker, from) = match beaten_off {
-            // Beaten off, its defenders strike back at the attackers' town nearest.
-            Some((att, won, hex)) if att == Faction::Alliance => (won, hex),
-            _ => {
-                let base = c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b))
-                    .and_then(|b| world.get::<Town>(towns[b])?.hex);
-                (Faction::Alliance, base.or(last.map(|b| b.hex)).unwrap_or(alliance[0].1))
-            }
+        let base = c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b))
+            .and_then(|b| Some((b, world.get::<Town>(towns[b])?.hex?)));
+        // The Horde pins the Alliance at its camp (John: "pin the Alliance down and attrit them"): it strikes back at
+        // an attack beaten off, and strikes whenever its towns' levy outnumbers the Alliance `pin_odds` to one, but
+        // after its own strike beaten off, the Alliance strikes.
+        let pin: usize = horde.iter().filter_map(|&(t, _)| world.get::<Roster>(towns[t]))
+            .map(|r| levy_at(r, d.pin_levy)).sum();
+        let theirs: usize = c.marines.max(if c.withdrew.is_none() { d.expedition_size.max(0.0) as u32 } else { 0 }) as usize
+            + alliance.iter().filter_map(|&(t, _)| world.get::<Roster>(towns[t])).map(|r| levy_of(&content, r)).sum::<usize>();
+        let outnumbers = pin as f64 >= d.pin_odds * theirs.max(1) as f64;
+        let horde_beaten = beaten_off.is_some_and(|(att, ..)| att == Faction::Horde);
+        let horde_strikes = beaten_off.is_some_and(|(att, ..)| att == Faction::Alliance) || !horde_beaten && outnumbers;
+        let (attacker, target) = if horde_strikes {
+            // At the Alliance's camp, its base while it stands; else its town nearest.
+            let from = beaten_off.map(|b| b.2).or(last.as_ref().map(|b| b.hex)).unwrap_or(horde[0].1);
+            (Faction::Horde, base.or_else(|| nearest(&alliance, from)))
+        } else {
+            let from = base.map(|b| b.1).or(last.as_ref().map(|b| b.hex)).unwrap_or(alliance[0].1);
+            (Faction::Alliance, nearest(&horde, from))
         };
-        let (targets, own) = if attacker == Faction::Alliance { (&horde, &alliance) } else { (&alliance, &horde) };
-        if let (Some((target, hex)), true) = (nearest(targets, from), !own.is_empty()) {
+        let own = if attacker == Faction::Alliance { &alliance } else { &horde };
+        if let (Some((target, hex)), true) = (target, !own.is_empty()) {
             let camp = if attacker == Faction::Alliance {
                 c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b)).unwrap_or(nearest(own, hex).expect("towns").0)
             } else {
@@ -742,18 +782,9 @@ pub fn campaign(world: &mut World) {
             let mut battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day);
             // The capitals' soldiers go with their side: Theramore's made up to its expedition again, while it can
             // pay them.
-            // Each marine sent to make it up costs Theramore `marine_cost`, as far as its chest goes.
             if c.landed && c.withdrew.is_none() {
                 let short = (d.expedition_size.max(0.0) as u32).saturating_sub(c.marines);
-                if short > 0 && d.marine_cost > 0.0 {
-                    let mut battles = world.resource_mut::<Battles>();
-                    let left = battles.chest_left(d, Faction::Alliance);
-                    let sent = short.min((left / d.marine_cost).floor().max(0.0) as u32);
-                    battles.draw(d, Faction::Alliance, crate::fixed::Fixed::ceil(sent as f64 * d.marine_cost), today);
-                    c.marines += sent;
-                } else {
-                    c.marines += short;
-                }
+                c.marines += send_marines(world, d, short, today);
                 battle.armies[1].soldiers.extend(capital_soldiers(&content, c.marines, battle.camps[1], true, now));
             }
             battle.armies[0].soldiers.extend(capital_soldiers(&content, c.mercenaries, battle.camps[0], false, now));

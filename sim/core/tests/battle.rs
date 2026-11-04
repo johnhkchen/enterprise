@@ -273,3 +273,34 @@ fn theramore_pays_for_each_marine_it_sends_to_make_its_expedition_up() {
     assert!(c.razed.len() >= 1, "{c:?}");
     assert!(paid > free, "marines made up cost Theramore: {paid} against {free}");
 }
+
+#[test]
+fn the_horde_outnumbering_the_alliance_strikes_at_its_camp_with_every_town() {
+    let (mut s, [razor, senjin, port, _]) = war_world(20000.0);
+    s.content_mut().dials.pin_odds = 0.1;
+    s.advance(150 * DAY);
+    let towns: Vec<_> = s.battles().battles.iter().filter(|b| b.town.is_some()).cloned().collect();
+    assert_eq!((towns[0].town, towns[0].attacker), (Some(razor), Some(1)), "the Alliance strikes first");
+    let pin = towns.iter().find(|b| b.attacker == Some(0)).expect("the Horde strikes back");
+    assert_eq!(pin.town, Some(port), "at the Alliance's camp, its base");
+    let levied: Vec<usize> = pin.levies[0].iter().map(|l| l.0).collect();
+    assert!(levied.contains(&senjin) || s.battles().ruins.contains(&senjin), "every Horde town levied: {levied:?}");
+    if let Some(next) = towns.iter().skip_while(|b| !std::ptr::eq(*b, pin)).nth(1) {
+        if pin.won_by == Some(Faction::Alliance) {
+            assert_eq!(next.attacker, Some(1), "its strike beaten off, the Alliance strikes");
+        }
+    }
+}
+
+#[test]
+fn the_horde_outnumbered_waits_to_be_struck() {
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.pin_odds = 100.0;
+    s.advance(120 * DAY);
+    let towns: Vec<_> = s.battles().battles.iter().filter(|b| b.town.is_some()).cloned().collect();
+    assert!(towns.len() >= 2);
+    for w in towns.windows(2) {
+        let beaten_off = w[0].attacker == Some(1) && w[0].won_by == Some(Faction::Horde);
+        assert_eq!(w[1].attacker, Some(if beaten_off { 0 } else { 1 }), "{:?}", towns.iter().map(|b| (b.town, b.attacker, b.won_by)).collect::<Vec<_>>());
+    }
+}
