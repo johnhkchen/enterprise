@@ -66,6 +66,35 @@ and Theramore makes its marines up in the field at a cost. The capitals pay thei
 keeping a reserve for their soldiers. Theramore can win, hard-won: a ruin still counts against the town limit
 (the Horde refounded every town razed), 50 marines, razed after 5 days held, a chest of 28,000. Still to do: the mod's side of a ruin.
 
+## Squads on the hexes (2026-11-05)
+
+John: "let's use hex-based squad movement. I imagine there's strategies that can be enacted against the deathball
+strategy of the marines." Settled: **town squads** (each town's levy a squad marching from home; Theramore's marines
+land as squads; squads on one hex fight as one); the Horde's moves: **raid the weak, cut supply, skirmish and fall
+back, mass at a chokepoint, fortify and surround**; **core only** for now (the trace and the map show squads; the
+game shows battles as it does).
+
+1. **Squads that march.** A squad: its side, its home (a town, or a capital's convoy), its soldiers, its hex, its goal
+   and its road there (`map` ways, the terrain's cost), `squad_hexes_per_day`. Hostile squads on one hex fight
+   (`war::clash_lifted`, the squads of a side there as one army); a town's hex held by its attackers with none of
+   its defenders on it `raze_hold_days` is razed. The two-army battle becomes the squads on its hex.
+2. **The Alliance's council.** Its marines march as one (the deathball) on the Horde town it can take soonest; its
+   towns' squads hold home.
+3. **The Horde's council**, each day each free squad given a goal:
+   - **Skirmish and fall back:** a squad facing worse than `skirmish_odds` steps back a hex toward home, not fighting;
+     on good odds or ground it fights.
+   - **Mass at a chokepoint:** the squads gather on the hex of the marines' road where the ground favours defenders
+     (a river crossing, a hill, a forest), ahead of them.
+   - **Raid the weak:** a squad strikes an Alliance town the marines are `raid_days` or more from, with few at home:
+     the deathball turns back or the town falls.
+   - **Cut supply:** squads astride the road from the marines to their base: an army cut off draws no food or kit
+     from its camp (it goes hungry: `Army.unfed`).
+   - **Fortify and surround:** a town's defenders behind walls hold (`defence_lift`); squads on `surround_sides` of
+     the six hexes round the marines cut them off on every side, their spirits falling each day.
+4. **Ground in a fight:** a hill, forest or river crossing lifts the side holding it.
+5. **The trace and the map:** `squads` by day (side, home, hex, soldiers, goal); the war map's frames show them.
+6. **Tuned by replays:** `numbers_weight`, `skirmish_odds`, the convoys, against seed 1717's year.
+
 ## Checks, sized to what they test
 
 Unit tests for each slice; the study host's world for the councils (a few dozen days); one lane of seed 1717 only
