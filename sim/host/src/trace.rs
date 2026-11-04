@@ -103,6 +103,7 @@ create table battles (day integer, battle integer, q integer, r integer, holder 
     horde integer, alliance integer, marching integer, fights integer);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
     won integer, routed integer);
+create table chests (day integer, capital text, spent real, left_over real, dry integer);
 create table frontier (day integer, from_town integer, q integer, r integer, rival integer, escort integer, watch integer,
     won integer);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
@@ -340,6 +341,14 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
                 tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![day, i,
                     b.factions[side].name(), k.soldiers, k.twist.name(), k.score, k.target, k.won, k.routed]).map_err(sql)?;
             }
+        }
+    }
+    // Each faction's capital's war chest (`battle.rs`), once a battle's been seeded.
+    if s.battles().seeded {
+        for f in enterprise_core::battle::Faction::BOTH {
+            let b = s.battles();
+            tx.execute("insert into chests values (?1, ?2, ?3, ?4, ?5)", params![day, f.capital(),
+                b.spent.get(&f).map_or(0.0, |x| x.to_f64()), b.chest_left(&s.content().dials, f), b.dry.get(&f)]).map_err(sql)?;
         }
     }
     // The frontier's skirmishes for claims today (`settlers.rs`).

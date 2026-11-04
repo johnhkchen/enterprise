@@ -119,9 +119,13 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             if let (true, Some(faction), false) = (w.at_war, faction, w.has_started(crate::works::Kind::Barracks)) {
                 let kind = crate::works::Kind::Barracks;
                 if let (Ok((stock, _)), Ok(mut money)) = (camps.get(e), purses.get_mut(e)) {
-                    let grant = crate::fixed::Fixed::ceil(crate::works::cost(&content, &stock.0, kind));
+                    let cost = crate::fixed::Fixed::ceil(crate::works::cost(&content, &stock.0, kind));
+                    let grant = battles.draw(d, faction, cost, today);
+                    if grant < cost {
+                        continue; // its capital's chest dry: no more barracks of its paying
+                    }
                     let materials = crate::fixed::Fixed::ceil(crate::works::materials(&content, &stock.0, kind));
-                    let chest = Reason::Other(format!("{}'s war chest", faction.name()));
+                    let chest = Reason::Other(format!("{}'s war chest", faction.capital()));
                     post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t.id, &mut money.0), grant, chest, now, day);
                     post(&mut ledger, &mut cash, Side::treasury(t.id, &mut money.0), Side::outside(), materials,
                         Reason::Other("a barracks".into()), now, day);
@@ -382,14 +386,17 @@ pub fn procure(world: &mut World) {
     *world.resource_mut::<Tenders>() = tenders;
     let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
     let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());
+    let mut battles = std::mem::take(&mut *world.resource_mut::<Battles>());
     for (&(t, _, faction, _), &(_, owes)) in buyers.iter().zip(&owed) {
         let Some(mut money) = world.get_mut::<Money>(towns[t]) else { continue };
         let short = crate::fixed::Fixed::ceil(owes - money.0.to_f64());
-        if short > crate::fixed::Fixed::ZERO {
-            post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), short,
-                Reason::Other(format!("{}'s war chest", faction.name())), now, day);
+        let grant = battles.draw(d, faction, short, today);
+        if grant > crate::fixed::Fixed::ZERO {
+            post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), grant,
+                Reason::Other(format!("{}'s war chest", faction.capital())), now, day);
         }
     }
+    *world.resource_mut::<Battles>() = battles;
     *world.resource_mut::<Ledger>() = ledger;
     *world.resource_mut::<CashBook>() = cash;
 }

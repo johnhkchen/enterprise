@@ -371,6 +371,11 @@ dials! {
     /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle. Its levies
     /// march `battle_mobilise_days` after it's seeded: till then its towns build barracks and procure their kit.
     battle_day: f64 = 0.0,
+    /// Each faction's war chest at its capital off the map, in emeralds (`docs/war-plan.md` slice 2): Theramore's for
+    /// the Alliance, Orgrimmar's for the Horde. Its region's public spending on the war (barracks, procurement) draws
+    /// on it; spent, it pays no more.
+    war_chest_alliance: f64 = 20000.0,
+    war_chest_horde: f64 = 6000.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival
     /// faction's town that keeps a watch, its escort skirmishes that watch for the claim, and beaten turns home (none

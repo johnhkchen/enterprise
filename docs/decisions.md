@@ -2882,3 +2882,16 @@ then guards"; "Frontier claims". Slice 0 of `docs/war-plan.md`.
   trace has each (`frontier`). Seed 1717's factions stand far apart: of 18 claims in its year, the nearest rival town
   was 6 to 43 hexes off (none within the 5 first tried); its new town lost to a rival after founding is razing's
   (slice 4).
+
+## Society: the capitals' war chests (2026-11-04)
+
+John: "both sides will get a backing capital (Orgrimmar, Theramore) with its own mercenary and war chest ...
+Theramore ... has limited spend before it must strategically withdraw. Orgrimmar's ability to send help is more
+limited". Slice 2 of `docs/war-plan.md`.
+
+- **Each faction's capital off the map keeps a war chest** (`Faction::capital`, `Faction::chest`: Theramore's
+  `war_chest_alliance`, 20,000 emeralds; Orgrimmar's `war_chest_horde`, 6,000). Its region's public spending on the
+  war draws on it (`Battles::draw`): the barracks it pays for, and what its towns owe on the kit and smiths they
+  procure; posted as "Theramore's war chest" or "Orgrimmar's". Spent, it pays no more, and the day it ran dry is kept
+  (`Battles::dry`): Theramore's withdrawal (slice 3) and the war's end (slice 5) read it.
+- The trace has each chest by day (`chests`).

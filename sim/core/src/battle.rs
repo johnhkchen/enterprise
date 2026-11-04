@@ -47,6 +47,25 @@ impl Faction {
             Faction::Alliance => "the Alliance",
         }
     }
+
+    /// Its capital off the map, whose war chest backs it (John: "both sides will get a backing capital (Orgrimmar,
+    /// Theramore) with its own mercenary and war chest").
+    pub fn capital(self) -> &'static str {
+        match self {
+            Faction::Horde => "Orgrimmar",
+            Faction::Alliance => "Theramore",
+        }
+    }
+
+    /// Its war chest, in emeralds (a dial).
+    pub fn chest(self, d: &crate::Dials) -> f64 {
+        match self {
+            Faction::Horde => d.war_chest_horde,
+            Faction::Alliance => d.war_chest_alliance,
+        }
+    }
+
+    pub const BOTH: [Faction; 2] = [Faction::Horde, Faction::Alliance];
 }
 
 /// A recruit on its way to the battle: there, it's a soldier of its side.
@@ -102,9 +121,33 @@ pub struct Battles {
     /// The day its towns last procured their levies' kit (`rules/battle.rs` `procure`).
     #[serde(default)]
     pub procured: Option<u64>,
+    /// What each faction's capital has spent of its war chest (`Faction::chest`), and the day it ran dry.
+    #[serde(default)]
+    pub spent: std::collections::BTreeMap<Faction, crate::fixed::Fixed>,
+    #[serde(default)]
+    pub dry: std::collections::BTreeMap<Faction, u64>,
 }
 
 impl Battles {
+    /// What a faction's capital will pay of `want` out of its war chest, what's left of it at most, counted spent; the
+    /// day it's spent, it's dry.
+    pub fn draw(&mut self, d: &crate::Dials, faction: Faction, want: crate::fixed::Fixed, day: u64) -> crate::fixed::Fixed {
+        use crate::fixed::Fixed;
+        let spent = self.spent.entry(faction).or_default();
+        let left = (Fixed::floor(faction.chest(d)) - *spent).at_least_zero();
+        let paid = want.at_least_zero().min(left);
+        *spent += paid;
+        if paid < want && !self.dry.contains_key(&faction) {
+            self.dry.insert(faction, day);
+        }
+        paid
+    }
+
+    /// What's left of a faction's war chest.
+    pub fn chest_left(&self, d: &crate::Dials, faction: Faction) -> f64 {
+        (faction.chest(d) - self.spent.get(&faction).map_or(0.0, |s| s.to_f64())).max(0.0)
+    }
+
     /// May a town of this faction found a town on `hex`? Not on a hex fought for until a side has held it
     /// `battle_hold_days`; then only the side that did.
     pub fn may_settle(&self, hex: Hex, faction: Option<Faction>) -> bool {

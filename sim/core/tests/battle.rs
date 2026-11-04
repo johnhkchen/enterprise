@@ -137,3 +137,24 @@ fn a_battles_towns_arm_on_the_crowns_behalf_before_their_levies_march() {
     let b = s.battles().battles[0].clone();
     assert!(b.marched && (b.armies[0].soldiers.len() + b.marching.iter().filter(|m| m.side == 0).count()) > 0, "{b:?}");
 }
+
+#[test]
+fn a_factions_war_spending_draws_on_its_capitals_chest_till_its_dry() {
+    use enterprise_core::works::Kind;
+    let mut s = Society::new(content());
+    s.content_mut().dials.battle_day = 1.0;
+    s.content_mut().dials.battle_levy = 0.25;
+    // Orgrimmar's chest ample; Theramore's too little for a barracks.
+    s.content_mut().dials.war_chest_horde = 5000.0;
+    s.content_mut().dials.war_chest_alliance = 10.0;
+    let orgrimmar = town(&mut s, "Durotar", "orc", 0, 0, 20, 0.0, None);
+    let stormwind = town(&mut s, "Stormwind", "stormwind", 12, 0, 20, 0.0, None);
+    s.advance(5 * DAY);
+    assert!(s.works(orgrimmar).has_started(Kind::Barracks), "the Horde's paid for");
+    assert!(!s.works(stormwind).has_started(Kind::Barracks), "Theramore's chest too little");
+    let b = s.battles();
+    let d = &s.content().dials;
+    assert!(b.chest_left(d, Faction::Horde) < 5000.0, "Orgrimmar's spent on it");
+    assert!(b.chest_left(d, Faction::Alliance) <= 10.0 && b.dry.contains_key(&Faction::Alliance), "Theramore's ran dry");
+    assert_eq!((Faction::Horde.capital(), Faction::Alliance.capital()), ("Orgrimmar", "Theramore"));
+}
