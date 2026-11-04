@@ -2623,3 +2623,25 @@ tooltips"):
   15,893); the weavers' carpets 7,713 masterworks of 20,862. 17 hands became Masters and found their knacks (Glass
   hands ruined 51 batches); heads in 10 businesses; 16 inspirations, 12 sulks, 10 quarrels, 4 walk-outs. The trace's
   `firms` has each business's suppliers, `persons` each hand's knack.
+
+## Society: reputation and Houses (2026-11-04)
+
+Slice 3 of `docs/firms-plan.md`, its first part (John: "Slice 3"); grades carried by wagon, then branches, follow:
+
+- **Reputation:** each piece a business sells its town earns it its worth beyond a plain one's, in emeralds (a Fine
+  bread a twelfth of an emerald; a seconds boot takes a whole emerald from it), and its name fades `reputation_fade`
+  (1%) a day: what it has earned in the last hundred days or so.
+- **Houses:** past `house_reputation` (200) a business is a House, with a name drawn from its id that no other House
+  has (`persons::house_name`: the House of Garrick). A House's pieces sell at a tenth more for each
+  `house_reputation` it holds, up to `house_premium_most` (0.3), its name's premium (`Firm::premium`).
+- **Draw:** of the hands newly of a House's trade in its town, a share (`Firm::draw`: a half at four times
+  `house_reputation`, `house_draw_most`) come with a talent for its work, as those who come seeking work at a House
+  do. Hands moving between towns to it wait on the host: the core's roster is the game's villagers.
+- **Patron** (the eleventh knack): its pieces sold in its home town earn twice the reputation. **Showman** (its habit
+  now works): its pieces earn half again the reputation, and each of its off-form spells costs its business a
+  twentieth of its name.
+- **Seed 1717's year, replayed** (23 of 11,023 requests refused): five Houses by day 361, the first on day 278: the
+  weavers of towns 1, 3 and 2 (Houses of Fenwick, Vane and Yardley, 434, 423 and 281), town 1's tannery (Whitlock, 358)
+  and its bootmaker (Lark, 244), the House chain of the year. Bread earns little name (a Fine loaf a twelfth of an
+  emerald): no bakery is a House. The bootmakers that make seconds are well below nothing (-109 to -125). The trace's
+  `firms` has each business's reputation and its House's name.

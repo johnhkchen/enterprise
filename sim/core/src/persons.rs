@@ -141,12 +141,14 @@ pub enum Knack {
     TheRegular,
     /// No quarrels in its shop: its crew sulk instead.
     Peacemaker,
+    /// Its pieces sold in its home town earn its business twice the reputation.
+    Patron,
 }
 
 impl Knack {
-    pub const ALL: [Knack; 10] = [Knack::HouseStyle, Knack::SupplyWhisperer, Knack::Copycat, Knack::Unbroken,
+    pub const ALL: [Knack; 11] = [Knack::HouseStyle, Knack::SupplyWhisperer, Knack::Copycat, Knack::Unbroken,
         Knack::SecondProof, Knack::GlassHands, Knack::ScrapArtist, Knack::RabbitsFoot, Knack::TheRegular,
-        Knack::Peacemaker];
+        Knack::Peacemaker, Knack::Patron];
 
     pub fn name(self) -> &'static str {
         match self {
@@ -160,6 +162,7 @@ impl Knack {
             Knack::RabbitsFoot => "rabbit's foot",
             Knack::TheRegular => "the regular",
             Knack::Peacemaker => "peacemaker",
+            Knack::Patron => "patron",
         }
     }
 
@@ -176,6 +179,7 @@ impl Knack {
             Knack::RabbitsFoot => "Whatever it makes of rabbit hide comes out a grade higher.",
             Knack::TheRegular => "+0.05 morale for each day in a row its town has bought of its business, up to +0.5.",
             Knack::Peacemaker => "No quarrels in its shop: whoever would quarrel sulks instead.",
+            Knack::Patron => "Its pieces sold in its home town earn its business twice the reputation.",
         }
     }
 }
@@ -236,7 +240,7 @@ impl Habit {
             Habit::Taskmaster => "As head, its crew make a quarter more. Their spirits fall for it.",
             Habit::Beloved => "As head, its crew's spirits rise. Soft on poor work: 0.1 less morale.",
             Habit::KinMinded => "As head, its kin among the crew are in better spirits. Takes on kin before the more skilled.",
-            Habit::Showman => "Its business's name will spread faster, and its off-form spells be talked of (once businesses have names).",
+            Habit::Showman => "Its pieces earn its business half again the reputation. Its off-form spells are talked of: each costs a twentieth of its business's name.",
             Habit::Hothead => "Inspired twice as often. Off form half again as often, and quarrels twice as often.",
             Habit::Ambitious => "Learns half again as fast. Ten days in low spirits, it leaves.",
             Habit::Homebody => "Never walks out. Won't run a branch (once businesses have branches).",
@@ -295,6 +299,18 @@ pub const GLOSSARY: [(&str, &str); 16] = [
     ("Draw", "The part of its reputation that brings masters seeking work."),
     ("House", "A business whose reputation has made it a name: the House of Garrick."),
 ];
+
+/// A House's name, drawn from its business's id (a household's name, as the town would know it), the first in its
+/// drawn order no other House has (`taken`).
+pub fn house_name(id: u64, taken: &[String]) -> String {
+    const NAMES: [&str; 32] = ["Garrick", "Ashby", "Thorne", "Marlow", "Hale", "Wren", "Corbin", "Fenwick", "Holt",
+        "Brannock", "Pell", "Lisle", "Aldous", "Ferris", "Kettering", "Moss", "Radcliffe", "Sallow", "Tarrant", "Vane",
+        "Whitlock", "Yardley", "Bramble", "Cobb", "Draycott", "Ember", "Gale", "Harrow", "Ives", "Lark", "Oakes", "Penn"];
+    let start = ((roll(id, 0, 41) * NAMES.len() as f64) as usize).min(NAMES.len() - 1);
+    (0..NAMES.len()).map(|i| format!("House of {}", NAMES[(start + i) % NAMES.len()]))
+        .find(|n| !taken.contains(n))
+        .unwrap_or_else(|| format!("House of {} {}", NAMES[start], taken.len()))
+}
 
 /// What befalls a hand of a business, and its business's record of it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

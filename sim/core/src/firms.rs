@@ -181,6 +181,8 @@ pub struct Firm {
     pub employees: Vec<(HandId, Fixed)>,
     /// What it makes: its output good, by name.
     pub recipe: Option<String>,
+    /// What its name does for it (`docs/firms-plan.md` slice 3): earned by its pieces' grades, a little of it fading
+    /// each day. Past `house_reputation` it's a House.
     pub reputation: f64,
     pub founded: u64,
     /// The days running it hasn't paid its hands in full (it's wound up after `firm_broke_days`).
@@ -217,6 +219,9 @@ pub struct Firm {
     pub sold: f64,
     #[serde(default)]
     pub regular: u32,
+    /// Its name as a House, once its reputation made it one (a name, once made, it keeps).
+    #[serde(default)]
+    pub house: Option<String>,
     /// Its head, past `firm_hands_unled` hands: one of them, by mandate (`charters.rs`).
     #[serde(default)]
     pub head: Option<Head>,
@@ -238,6 +243,23 @@ pub struct Head {
 impl Firm {
     pub fn output(&self, content: &Content) -> Option<GoodId> {
         self.recipe.as_deref().and_then(|r| content.good(r))
+    }
+
+    /// What more its pieces sell for, its name's premium: a tenth for each `house_reputation`, up to
+    /// `house_premium_most`, a House's.
+    pub fn premium(&self, d: &crate::content::Dials) -> f64 {
+        if self.house.is_none() {
+            return 0.0;
+        }
+        (0.1 * self.reputation / d.house_reputation.max(1e-9)).clamp(0.0, d.house_premium_most)
+    }
+
+    /// The share of the hands newly of its trade in its town that come with a talent for its work: its draw.
+    pub fn draw(&self, d: &crate::content::Dials) -> f64 {
+        if self.house.is_none() {
+            return 0.0;
+        }
+        (d.house_draw_most * self.reputation / (4.0 * d.house_reputation.max(1e-9))).clamp(0.0, d.house_draw_most)
     }
 
     /// The business it has bought most of its materials of.

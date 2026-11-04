@@ -377,3 +377,43 @@ fn a_business_bids_for_a_graded_material_what_its_grade_adds_to_its_own_pieces()
     assert_eq!(price(&c, &bid, leather, Grade::Seconds), 1.0 / 6.0 * 0.75);
     assert_eq!(price(&c, &Default::default(), leather, Grade::Fine), 1.0 / 6.0 * Grade::Fine.worth(&c.dials));
 }
+
+#[test]
+fn fine_work_makes_a_business_a_house_with_a_name_whose_pieces_sell_at_a_premium() {
+    let mut s = society();
+    s.content_mut().dials.house_reputation = 2.0;
+    let t = busy_bakery(&mut s, 12);
+    let f = s.firms().into_iter().find(|f| f.town == t).expect("a bakery");
+    assert!(f.reputation >= 2.0, "{}", f.reputation);
+    let name = f.house.clone().expect("a House");
+    assert!(name.starts_with("House of "), "{name}");
+    assert_eq!(name, enterprise_core::persons::house_name(f.id as u64, &[]));
+    assert_ne!(enterprise_core::persons::house_name(f.id as u64, std::slice::from_ref(&name)), name, "no name twice");
+    let d = &s.content().dials;
+    assert!(f.premium(d) > 0.0 && f.premium(d) <= d.house_premium_most);
+    // Without its name, no premium and no draw.
+    let plain = enterprise_core::firms::Firm { reputation: 1000.0, ..Default::default() };
+    assert_eq!((plain.premium(d), plain.draw(d)), (0.0, 0.0));
+    // A House's draw: a half of the hands new to its trade gifted at four times the reputation that made it one.
+    let house = |r: f64| enterprise_core::firms::Firm { reputation: r * d.house_reputation, house: Some(name.clone()),
+        ..Default::default() };
+    assert_eq!((house(1.0).draw(d), house(4.0).draw(d), house(9.0).draw(d)), (0.125, 0.5, 0.5));
+    assert!((house(1.0).premium(d) - 0.1).abs() < 1e-12 && house(9.0).premium(d) == d.house_premium_most);
+}
+
+#[test]
+fn seconds_cost_a_business_its_name() {
+    let mut s = society();
+    s.content_mut().dials.hand_wage = 0.001;
+    // (Seconds' worth, a quarter less than plain: bread made seconds takes from its name.)
+    s.content_mut().dials.grade_spread = 0.0;
+    let t = town_of(&mut s, "Stormwind", 44, (0.0, 0.0), &["farmer", "merchant"], 2, 200.0);
+    for _ in 0..6 {
+        s.deliver(t, WHEAT, 120.0);
+        run(&mut s, 1);
+    }
+    let f = s.firms().into_iter().next().expect("a bakery");
+    let made: f64 = f.grades.iter().sum();
+    let worth: f64 = Grade::ALL.iter().map(|g| f.grades[g.index()] * (g.worth(&s.content().dials) - 1.0)).sum();
+    assert!(made > 0.0 && (f.reputation < 0.0) == (worth < 0.0), "{} {:?}", f.reputation, f.grades);
+}

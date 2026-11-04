@@ -127,6 +127,9 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
     all.sort();
     all.dedup();
     // Each business's knack a Copycat buying of it copies: its most skilled Master's, not a Copycat's own.
+    // The Houses' names, none twice.
+    let mut houses: Vec<String> = firms.firms.iter().chain(firms.wound_up.iter().map(|w| &w.0))
+        .filter_map(|f| f.house.clone()).collect();
     let mut masters: BTreeMap<FirmId, Knack> = BTreeMap::new();
     for f in &firms.firms {
         let work = kinds.iter().find(|k| k.name == f.name).map(|k| k.work);
@@ -163,6 +166,20 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                 *needs.entry(g).or_insert(0.0) += 2.0 * f.used / kind.conversion.out.max(1e-9) * n;
             }
         }
+        // A House's draw: of the hands newly of its trade in its town (none of its businesses has looked at yet), its
+        // draw's share come with a talent for its work, as those who come seeking work at a House do.
+        for f in firms.firms.iter().filter(|f| f.town == t && f.house.is_some()) {
+            let Some(kind) = kinds.iter().find(|k| k.name == f.name) else { continue };
+            let share = f.draw(d);
+            let new: Vec<&Hand> = roster.hands.iter().filter(|x| x.trade == kind.trade && x.baby_until.is_none()
+                && !persons.hands.contains_key(&x.id)).collect();
+            for x in new {
+                let m = person(persons, x, &all);
+                if roll(x.id as u64, 0, 51) < share && !m.gifted(kind.work) {
+                    m.talents.push(crate::persons::Talent::Work(kind.work));
+                }
+            }
+        }
         let mut done = Vec::new();
         for firm in firms.firms.iter_mut().filter(|f| f.town == t) {
             let Some(kind) = kinds.iter().find(|k| k.name == firm.name) else { continue };
@@ -190,6 +207,12 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             spirits(kind, firm, persons, &all, &ours, homes, copied, now, today, day);
             firm.regular = if firm.sold > 0.0 { firm.regular + 1 } else { 0 };
             firm.sold = 0.0;
+            // Its name fades a little each day; made great enough, it's a House.
+            firm.reputation *= 1.0 - d.reputation_fade;
+            if firm.house.is_none() && firm.reputation >= d.house_reputation {
+                firm.house = Some(crate::persons::house_name(firm.id as u64, &houses));
+                houses.extend(firm.house.clone());
+            }
             // What its town wanted of what it makes since yesterday, its average moved a fifth of the way: it hires
             // for a quarter more than that (a batch at least), not for the whole of the town's stock at once.
             firm.used += (firm.eaten - firm.used) * 0.2;
@@ -474,7 +497,7 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
     // go; an earlier one what the next would work of its output beyond the graded pieces its town holds.
     let mut target = vec![0.0; kind.steps.len()];
     let out_last = kind.steps[last].recipes.iter().map(|c| c.out).fold(f64::INFINITY, f64::min);
-    let best = price(content, bids, output, Grade::Masterwork);
+    let best = price(content, bids, output, Grade::Masterwork) * (1.0 + firm.premium(d));
     let affords = (money.0.at_least_zero().to_f64() / (out_last * best).max(1e-9)).floor();
     target[last] = (wanted / out_last - 1e-9).ceil().max(0.0).min(affords).min(firm.progress[last].floor());
     for s in (0..last).rev() {
@@ -487,6 +510,7 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
     let mut pool: BTreeMap<GoodId, [f64; 5]> = BTreeMap::new();
     let mut made = [0.0; 5];
     let mut cost = 0.0;
+    let mut fame = 0.0;
     for s in 0..=last {
         let step = &kind.steps[s];
         let ing = materials_of(content, step);
@@ -590,17 +614,26 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
                 pool.entry(step.output).or_insert([0.0; 5])[grade.index()] += c.out;
             } else {
                 made[grade.index()] += c.out;
+                // Its name, by what its pieces are worth beyond plain ones (seconds take from it): twice a Patron's, sold
+                // in its home town; half again a Showman's.
+                let m = persons.hands.get(&id).unwrap();
+                fame += c.out * content.goods[step.output].value * (grade.worth(d) - 1.0)
+                    * if k == Some(Knack::Patron) { 2.0 } else { 1.0 } * if m.has(Habit::Showman) { 1.5 } else { 1.0 };
             }
         }
     }
-    // What its own earlier steps made beyond what the next worked is sold to the town with the rest.
+    firm.reputation += fame;
+    // What its own earlier steps made beyond what the next worked is sold to the town with the rest; what it makes,
+    // a House's, at its name's premium.
     let mut sales = 0.0;
+    let premium = firm.premium(d);
     for (g, of) in pool.iter().chain(std::iter::once((&output, &made))) {
         let graded = people.graded.entry(*g).or_insert([0.0; 5]);
         for gr in Grade::COUNTED {
             graded[gr.index()] += of[gr.index()];
         }
-        sales += Grade::ALL.iter().map(|gr| of[gr.index()] * price(content, bids, *g, *gr)).sum::<f64>();
+        let lift = if *g == output { 1.0 + premium } else { 1.0 };
+        sales += Grade::ALL.iter().map(|gr| of[gr.index()] * price(content, bids, *g, *gr) * lift).sum::<f64>();
     }
     people.graded.retain(|_, of| of.iter().any(|x| *x > 0.0));
     for (a, b) in firm.grades.iter_mut().zip(made) {
@@ -670,6 +703,10 @@ fn spirits<'r>(kind: &Kind, firm: &mut Firm, persons: &mut Persons, all: &[Strin
         }
         let p = (0.4 - m.spirits).max(0.0) * 0.5 * if hot { 1.5 } else { 1.0 };
         if roll(id as u64, today, 22) < p {
+            // (A Showman's off-form spells are talked of.)
+            if m.has(Habit::Showman) {
+                firm.reputation -= 0.05 * firm.reputation.abs();
+            }
             let others: Vec<HandId> = crew.iter().copied().filter(|&o| o != id).collect();
             let walk = if m.has(Habit::Homebody) { 0.0 } else { 1.0 };
             let quarrel = if others.is_empty() || peace { 0.0 } else if hot { 2.0 } else { 1.0 };

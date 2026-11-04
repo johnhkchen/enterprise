@@ -54,12 +54,12 @@ Habits (twelve to start; cut as they prove dull):
 | Taskmaster | As head: its crew make a quarter more | Its crew's spirits fall |
 | Beloved | As head: its crew's spirits rise | Soft on poor work: less morale |
 | Kin-minded | As head: its kin among the crew in better spirits | Takes on kin before the more skilled |
-| Showman | Its business's reputation spreads faster | Its off-form spells are public |
+| Showman | Its pieces earn its business half again the reputation | Its off-form spells are talked of: each costs a twentieth of its name |
 | Hothead | Inspired twice as often | Quarrels twice as often |
 | Ambitious | Learns half again as fast | Long in low spirits, it leaves |
 | Homebody | Never walks out | Won't run a branch |
 
-Knacks (a first ten, slice 2; the tooltip a player reads is `Knack::tooltip`, and a test keeps this table to them):
+Knacks (a first ten, slice 2, and Patron with reputation, slice 3; the tooltip a player reads is `Knack::tooltip`, and a test keeps this table to them):
 
 | Knack | The rule it bends |
 |---|---|
@@ -73,8 +73,8 @@ Knacks (a first ten, slice 2; the tooltip a player reads is `Knack::tooltip`, an
 | Rabbit's Foot | Whatever it makes of rabbit hide comes out a grade higher |
 | The Regular | +0.05 morale for each day in a row its town has bought of its business, up to +0.5 |
 | Peacemaker | No quarrels in its shop: whoever would quarrel sulks instead |
+| Patron | Its pieces sold in its home town earn its business twice the reputation (slice 3) |
 
-Patron (reputation twice over for pieces sold in its home town) waits on reputation, slice 3; Peacemaker stands in.
 A hand finds its knack the day it's a Master in a business (drawn from its id, `persons::knack_of`).
 
 ## One engine: a person's task
@@ -133,7 +133,10 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    (its suppliers, `Firm::suppliers`), at what a grade of it adds to their own pieces if more than its grade's worth
    (John: "Buyer bids its gain", `firms::bids`). Each batch spends its hands' pace (slice 1 never did: a business made all its
    town wanted at each look).
-3. **Houses**: reputation and draw; grades carried by wagon; masters coming seeking work; branches.
+3. **Houses**: reputation and draw; grades carried by wagon; masters coming seeking work; branches. Reputation,
+   Houses, their premium and draw done (2026-11-04): a piece sold earns its worth beyond a plain one's, fading 1% a
+   day; at 200 a business is a House with a name; its pieces sell at up to 0.3 more; the hands newly of its trade in
+   its town come gifted at its draw. Grades by wagon and branches next.
 4. **Stations and chains** (moved up from 3, industry's heart and "capital investment for higher quality"): a
    process's station, its throughput and grade ceiling; multi-step chains (ore to steel).
 5. **War**: a skirmish as a task against a target with a twist, on the same engine.

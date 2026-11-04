@@ -339,6 +339,16 @@ dials! {
     /// The skill a hand gains at a process a batch it makes (half again with a talent for it, or Ambitious; twice under a
     /// Mentor), up to its rank's cap (`makers::skill_cap`).
     skill_per_batch: f64 = 0.02,
+    /// A business's reputation fades this share a day (`docs/firms-plan.md` slice 3): what it has earned in the last
+    /// hundred days or so, its name.
+    reputation_fade: f64 = 0.01,
+    /// The reputation that makes a business a House, with its name; its pieces then sell at a premium of a tenth for
+    /// each this much reputation, up to `house_premium_most`.
+    house_reputation: f64 = 200.0,
+    house_premium_most: f64 = 0.3,
+    /// Of the hands newly of a House's trade in its town, at most this share come with a talent for its work, by its
+    /// reputation (its draw: a half at four times `house_reputation`).
+    house_draw_most: f64 = 0.5,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its
