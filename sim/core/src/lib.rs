@@ -70,6 +70,7 @@ pub mod property;
 pub mod firms;
 pub mod persons;
 pub mod war;
+pub mod battle;
 pub mod charters;
 pub mod sweep;
 pub mod training;

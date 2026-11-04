@@ -282,6 +282,19 @@ pub fn end_report(st: &mut Study, tr: &Tracker, days: u64) -> String {
                 if k.routed > 0 { format!(", {} routed", k.routed) } else { String::new() });
         }
     }
+    // The battles for hexes (`battle.rs`).
+    let dt = s.content().day_ticks.max(1);
+    for b in &s.battles().battles {
+        let _ = writeln!(o, "\n== A battle for hex ({}, {}) from day {}: {} fights; {}; held {} days by {}", b.hex.q, b.hex.r,
+            b.began / dt, b.fights, b.won_by.map_or("not yet won".to_string(), |f| format!("won by {}", f.name())),
+            b.held_days(s.now(), dt), b.holder.map_or("no one", |h| b.factions[h].name()));
+        for (side, army) in b.armies.iter().enumerate() {
+            let (fallen, deserted): (u32, u32) = army.records.values().fold((0, 0), |a, r| (a.0 + r.fallen, a.1 + r.deserted));
+            let won = army.skirmishes.iter().filter(|k| k.won).count();
+            let _ = writeln!(o, "{:>18}: {} at the hex, {} walking home; fallen {fallen}, deserted or routed {deserted}; of the \
+                last {} fights won {won}", b.factions[side].name(), army.soldiers.len(), army.walking.len(), army.skirmishes.len());
+        }
+    }
     for t in st.realms.iter().copied().chain(st.overseas) {
         if let Some(r) = s.realm(t) {
             let _ = writeln!(o, "{:>18}: realm made {:.0} goods, paid {:.1} em of customs", s.town(t).name, r.goods_made, r.customs_paid);

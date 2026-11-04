@@ -7,6 +7,7 @@ mod common;
 mod advances;
 mod army;
 mod war;
+mod battle;
 mod atlas;
 mod bank;
 mod bargain;

@@ -17,6 +17,7 @@
 
 pub mod advances;
 pub mod army;
+pub mod battle;
 pub mod arrive;
 pub mod atlas;
 pub mod bank;

@@ -2780,3 +2780,30 @@ contract with similar mechanics like a boss blind", "Generalize"). The army keep
   skirmishes at a target of 9 and lost 46 of 55 over 962 soldier-days (0.048 a day, 0.053 with no skirmishes); at 12
   they won none. The host's report prints the skirmishes; the trace's `skirmishes` table has each (seed 1717's year
   had no war).
+
+## Society: the Horde and the Alliance fight for a hex (2026-11-04)
+
+John: "Let's seed a factional battle between horde and alliance, requiring them to hold a hex 30 days before
+settling is allowed"; "One hex, seeded", "Faction armies, army vs army", "30 days held, holder only".
+
+- **Factions are peoples grouped** (`battle::Faction::of`, the town's people the host sends): the Horde the orcs,
+  tauren and goblins; the Alliance Stormwind, Lordaeron, Dalaran, the dwarves and the night elves. A town of neither
+  takes no side.
+- **Seeded on `battle_day`** (a dial, none at 0: a lane's `--dial battle_day=30`): the hex nearest the middle of the
+  line between the nearest Horde town and the nearest Alliance town, within six hexes of it, dry and no town's.
+- **Each side's army is an `Army`** as the crown's: its soldiers eat and draw their kit (graded first) at its camp, its
+  town nearest the hex, and run their risks there; the fallen are buried and grieved at home, deserters walk home.
+  Each of the side's towns within `battle_reach` (20) hexes levies `battle_levy` (a tenth) of its residents, a levy's
+  order (idle hands first), who march to the hex, the road's time at a wagon's pace; every `battle_reinforce_days`
+  (10) its towns make up their levies. Its hands away are `HandAway` to the host, as a wagon's crew's.
+- **They meet** every `skirmish_days` (`war::clash`): each side's score the other's target, one twist for both; the
+  winner holds the hex, as does a side whose enemy has no one there.
+- **Held `battle_hold_days` (30) in a row**, the hex is its holder's (`Battle::won_by`): the fighting ends, both
+  armies walk home, and only its settlers may found a town on it (`Battles::may_settle`, read by the settlers' open
+  ground); none may before.
+- **Seed 1717's year with a battle from day 30** (`ENT_REPLAY_DIAL=battle_day=30`, a new switch of the replay that
+  sets dials as its world is made): the hex (-6, -5) between town 0 (orcs) and town 2 (the Alliance); 16 fights, the
+  sides' soldiers mostly unarmed Novices (their scores 0 to 13); the hex changed hands four times, the Horde held it
+  from day 80 and won it on day 110. The replay parts from the game once its levies leave (660 of 11,023 requests
+  refused, 28 towns at the year's end: towns the game's idle hands founded weren't founded): a lane with the dial is
+  the run to read. The trace has `battles` and `battle_fights`; the host's report each battle.

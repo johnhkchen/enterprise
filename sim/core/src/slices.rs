@@ -71,6 +71,7 @@ crate::saved! {
         households: crate::households::Households = crate::households::Households::default(),
         land_register: crate::property::Register = crate::property::Register::default(),
         firms: crate::firms::Firms = crate::firms::Firms::default(),
+        battles: crate::battle::Battles = crate::battle::Battles::default(),
         makers: crate::persons::Persons = crate::persons::Persons::default(),
         charters: crate::charters::Charters = crate::charters::Charters::default(),
     }
@@ -138,6 +139,7 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::kit::register(schedule);
     crate::rules::post::register(schedule);
     crate::rules::army::register(schedule);
+    crate::rules::battle::register(schedule);
     crate::rules::orders::register(schedule);
     crate::rules::stranded::register(schedule);
     crate::rules::crown::register(schedule);

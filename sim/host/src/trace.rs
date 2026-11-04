@@ -25,7 +25,8 @@
 //!
 //! A journal written by a core of another wire schema is refused: replay it with the core that wrote it (`git log` for
 //! the commit whose `sim/wire/registry.yaml` it matches), or, where only outputs changed since, with
-//! `ENT_REPLAY_SCHEMA=any` (its requests read as they were).
+//! `ENT_REPLAY_SCHEMA=any` (its requests read as they were). `ENT_REPLAY_DIAL=name=value,...` sets dials on the
+//! replayed world as it's made (the run as it would have gone with them: it parts from the game's).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -98,6 +99,10 @@ create table firm_events (firm integer, town integer, day integer, hand integer,
 create table persons (hand integer, habits text, talents text, skills text, spirits real, knack text);
 create table skirmishes (day integer, soldiers integer, twist text, target real, score real, won integer, captain integer,
     hero integer, routed integer);
+create table battles (day integer, battle integer, q integer, r integer, holder text, held_days integer, won_by text,
+    horde integer, alliance integer, marching integer, fights integer);
+create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
+    won integer, routed integer);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -159,6 +164,16 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
         };
         let before = society.as_ref().map_or(0, Society::now);
         let response = wire::handle(&mut society, request);
+        // (`ENT_REPLAY_DIAL=name=value,...`: dials set on the replayed world as it's made, as `--dial` sets a
+        // lane's: the run as it would have gone with them.)
+        if matches!(command, "Create" | "Load") {
+            if let (Ok(dials), Some(s)) = (std::env::var("ENT_REPLAY_DIAL"), society.as_mut()) {
+                for (name, value) in dials.split(',').filter_map(|d| d.split_once('=')) {
+                    let value: f64 = value.trim().parse().map_err(|_| format!("ENT_REPLAY_DIAL {name}: {value:?}"))?;
+                    s.set_dial(name.trim(), value)?;
+                }
+            }
+        }
         let Some(s) = society.as_ref() else {
             return Err(format!("request {seq} ({command}) left no society"));
         };
@@ -310,6 +325,19 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
                 .filter(|(k, _)| matches!(k, enterprise_core::property::Target::Field(_))).count();
             tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, h.id, h.members.len(),
                 enterprise_core::households::earners(&roster, &h, &employed), h.purse.to_f64(), st.name(), fields]).map_err(sql)?;
+        }
+    }
+    // The battles for hexes (`battle.rs`), and their fights today.
+    let dt = s.content().day_ticks.max(1);
+    for (i, b) in s.battles().battles.iter().enumerate() {
+        tx.execute("insert into battles values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", params![day, i, b.hex.q, b.hex.r,
+            b.holder.map(|h| b.factions[h].name()), b.held_days(s.now(), dt), b.won_by.map(|f| f.name()),
+            b.armies[0].soldiers.len(), b.armies[1].soldiers.len(), b.marching.len(), b.fights]).map_err(sql)?;
+        for (side, army) in b.armies.iter().enumerate() {
+            for k in army.skirmishes.iter().filter(|k| k.day == day) {
+                tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![day, i,
+                    b.factions[side].name(), k.soldiers, k.twist.name(), k.score, k.target, k.won, k.routed]).map_err(sql)?;
+            }
         }
     }
     // The army's skirmishes fought today (`war.rs`).

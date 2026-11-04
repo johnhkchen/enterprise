@@ -85,7 +85,7 @@ fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, m
 /// unclaimed, dry and flat enough; the one that would add most to the town's portfolio (`complement`), then the
 /// flattest, driest and nearest. Its hex and complement.
 fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: &Map, home: Hex, min: i32, max: i32,
-        worth: impl Fn(Hex) -> f64) -> Option<(Hex, f64)> {
+        may: impl Fn(Hex) -> bool, worth: impl Fn(Hex) -> f64) -> Option<(Hex, f64)> {
     let mut best: Option<((f64, f64), Hex)> = None;
     // Every hex of the rings between (seed 1717: six spokes' two hexes each left a town with savings and hands no ground),
     // the spokes first, each way in turn, so a tie goes as it did.
@@ -95,7 +95,8 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
     for (dq, dr) in spokes.chain(between) {
         let hex = Hex::new(home.q + dq, home.r + dr);
         let d = home.distance(hex);
-        if d <= min || d >= max || !clear(sites, settlers, min, hex, None) || territory.owner(hex).is_some() {
+        // (Nor a hex fought for, till a side has held it: then only its settlers, `battle.rs`.)
+        if d <= min || d >= max || !clear(sites, settlers, min, hex, None) || territory.owner(hex).is_some() || !may(hex) {
             continue;
         }
         let ground = map.ground(hex);
@@ -113,6 +114,7 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut map: ResMut<Map>, territory: Res<Territory>,
+        battles: Res<crate::battle::Battles>, taxes: Res<crate::taxes::Taxes>,
         mut outbox: ResMut<Outbox>,
         order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
@@ -201,7 +203,9 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
                 }
             }
             if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
-                if let Some((hex, w)) = open_ground(&sites, &settlers, &territory, &map, stop, min, max, worth) {
+                let faction = taxes.peoples.get(&town.id).and_then(|p| crate::battle::Faction::of(p));
+                let may = |h: Hex| battles.may_settle(h, faction);
+                if let Some((hex, w)) = open_ground(&sites, &settlers, &territory, &map, stop, min, max, may, worth) {
                     if better(w, trip(stop, hex), ground.map(|(h, bw, bs)| (bw, trip(bs, h)))) {
                         ground = Some((hex, w, stop));
                     }

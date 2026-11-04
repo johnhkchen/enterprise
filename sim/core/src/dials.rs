@@ -366,6 +366,14 @@ dials! {
     skirmish_days: f64 = 5.0,
     skirmish_target: f64 = 9.0,
     rout_morale: f64 = 0.75,
+    /// A battle between factions for a hex (`battle.rs`): seeded on this day (none at 0) between the nearest Horde and
+    /// Alliance towns; each side's towns within `battle_reach` hexes of it levy `battle_levy` of their residents, made
+    /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle.
+    battle_day: f64 = 0.0,
+    battle_reach: f64 = 20.0,
+    battle_levy: f64 = 0.1,
+    battle_reinforce_days: f64 = 10.0,
+    battle_hold_days: f64 = 30.0,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its

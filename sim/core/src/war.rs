@@ -122,17 +122,8 @@ pub fn fundamentals(content: &Content, s: &Soldier, p: &Person, twist: Twist) ->
     f.max(0.0)
 }
 
-/// The army's skirmish today, if one's due: see the module. The soldiers who routed, taken out of the army (they walk
-/// home).
-pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, charters: &mut Charters, now: u64)
-        -> Vec<Soldier> {
-    let d = &content.dials;
-    let day = content.day_ticks.max(1);
-    let today = now / day;
-    if army.soldiers.is_empty() {
-        return Vec::new();
-    }
-    // Its soldiers as people: drawn from their ids the first time, as a business's hands are.
+/// An army's soldiers as people: drawn from their ids the first time, as a business's hands are.
+fn as_people(army: &Army, persons: &mut Persons) {
     for s in &army.soldiers {
         if let Some(h) = &s.hand {
             let m = persons.hands.entry(h.id).or_insert_with(|| draw(h.id, h.level, &[]));
@@ -141,9 +132,15 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
             }
         }
     }
-    let id = |s: &Soldier| s.hand.as_ref().map(|h| h.id);
+}
+
+fn id(s: &Soldier) -> Option<HandId> {
+    s.hand.as_ref().map(|h| h.id)
+}
+
+/// An army's captain, by the crown's mandate to command: the most skilled at its work; another once it's gone.
+fn appoint(content: &Content, army: &mut Army, persons: &Persons, charters: &mut Charters, now: u64) {
     let serving: Vec<HandId> = army.soldiers.iter().filter_map(id).collect();
-    // Its captain, by the crown's mandate: the most skilled at its work; another once it's gone.
     if army.captain.is_some_and(|c| !serving.contains(&c.hand)) {
         let c = army.captain.take().unwrap();
         if let Some(m) = charters.mandates.iter_mut().find(|m| m.id == c.mandate) {
@@ -162,14 +159,24 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
             army.captain = Some(Head { hand, mandate });
         }
     }
-    let captain = army.captain.and_then(|c| persons.hands.get(&c.hand).cloned().map(|m| (c.hand, m)));
-    let no = army.skirmishes_fought;
-    army.skirmishes_fought += 1;
-    let twist = Twist::ALL[((roll(no, 0, 71) * 4.0) as usize).min(3)];
+}
+
+/// How an army fought: its score, its morale, and its best soldier's (a hand of a town's) score.
+pub struct Fought {
+    pub score: f64,
+    pub morale: f64,
+    pub best: Option<(f64, HandId)>,
+}
+
+/// An army's score in a fight (the `no`th it's fought, under `twist`): each soldier's Fundamentals × Morale, give or
+/// take its draw, summed; see the module.
+fn fight(content: &Content, army: &Army, persons: &Persons, twist: Twist, no: u64, now: u64) -> Fought {
+    let d = &content.dials;
     let night = twist == Twist::Night;
+    let captain = army.captain.and_then(|c| persons.hands.get(&c.hand).cloned().map(|m| (c.hand, m)));
     // Morale: its spirits, its captain's habits, less for the hungry and at night.
     let spirits = army.soldiers.iter().map(|s| id(s).and_then(|h| persons.hands.get(&h)).map_or(0.5, |m| m.spirits))
-        .sum::<f64>() / army.soldiers.len() as f64;
+        .sum::<f64>() / army.soldiers.len().max(1) as f64;
     let morale = crate::persons::morale(spirits, captain.as_ref().map(|c| &c.1)) - 0.3 * army.unfed
         - if night { 0.1 } else { 0.0 };
     let masters: Vec<(HandId, Vec<crate::persons::Talent>)> = army.soldiers.iter()
@@ -214,11 +221,20 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
     if twist == Twist::River {
         score *= 0.75;
     }
-    let target = d.skirmish_target * army.soldiers.len() as f64 * 1.1f64.powi(army.won_in_row.min(30) as i32);
-    let won = score >= target;
+    Fought { score, morale, best }
+}
+
+/// What a fight did to an army: its risk till the next, its spirits, its hero, its soldiers' skill, and its routs
+/// (the soldiers who routed, taken out of it).
+fn after(content: &Content, army: &mut Army, persons: &mut Persons, fought: &Fought, won: bool, twist: Twist, now: u64)
+        -> (Option<HandId>, Vec<Soldier>) {
+    let d = &content.dials;
+    let day = content.day_ticks.max(1);
+    let night = twist == Twist::Night;
+    let captain = army.captain.and_then(|c| persons.hands.get(&c.hand).cloned().map(|m| (c.hand, m)));
     army.won_in_row = if won { army.won_in_row + 1 } else { 0 };
     army.edge = if won { -0.5 } else { 0.5 };
-    let hero = best.filter(|_| won && !night).map(|b| b.1);
+    let hero = fought.best.filter(|_| won && !night).map(|b| b.1);
     // Spirits: each a third of the way to its mark (a little over a half, up for a win and down for a loss, less
     // hungry; a Beloved captain's up, a Taskmaster's down); its hero inspired; each more skilled for the fight.
     let mentor = captain.as_ref().is_some_and(|c| c.1.has(Habit::Mentor));
@@ -244,7 +260,7 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
     // Routed: lost with its morale broken (no Peacemaker serving), its soldiers in low spirits, never a Steady hand.
     let peace = army.soldiers.iter().any(|s| id(s).and_then(|h| persons.hands.get(&h)).is_some_and(|m| m.knack == Some(Knack::Peacemaker)));
     let mut routed = Vec::new();
-    if !won && morale < d.rout_morale && !peace {
+    if !won && fought.morale < d.rout_morale && !peace {
         let mut i = 0;
         while i < army.soldiers.len() {
             let runs = id(&army.soldiers[i]).and_then(|h| persons.hands.get(&h))
@@ -258,10 +274,58 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
             }
         }
     }
-    army.skirmishes.push(Skirmish { day: today, soldiers: (army.soldiers.len() + routed.len()) as u32, twist, target, score,
-        won, captain: army.captain.map(|c| c.hand), hero, routed: routed.len() as u32 });
+    (hero, routed)
+}
+
+/// Keeps a skirmish in an army's record (the last [`SKIRMISHES_KEPT`]).
+fn keep(army: &mut Army, k: Skirmish) {
+    army.skirmishes.push(k);
     if army.skirmishes.len() > SKIRMISHES_KEPT {
         army.skirmishes.remove(0);
     }
+}
+
+/// The army's skirmish today, against the land's target (`skirmish_target` a soldier, a tenth more for each won in
+/// a row): see the module. The soldiers who routed, taken out of the army (they walk home).
+pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, charters: &mut Charters, now: u64)
+        -> Vec<Soldier> {
+    if army.soldiers.is_empty() {
+        return Vec::new();
+    }
+    as_people(army, persons);
+    appoint(content, army, persons, charters, now);
+    let no = army.skirmishes_fought;
+    army.skirmishes_fought += 1;
+    let twist = Twist::ALL[((roll(no, 0, 71) * 4.0) as usize).min(3)];
+    let fought = fight(content, army, persons, twist, no, now);
+    let target = content.dials.skirmish_target * army.soldiers.len() as f64 * 1.1f64.powi(army.won_in_row.min(30) as i32);
+    let won = fought.score >= target;
+    let soldiers = army.soldiers.len() as u32;
+    let (hero, routed) = after(content, army, persons, &fought, won, twist, now);
+    keep(army, Skirmish { day: now / content.day_ticks.max(1), soldiers, twist, target, score: fought.score, won,
+        captain: army.captain.map(|c| c.hand), hero, routed: routed.len() as u32 });
     routed
+}
+
+/// Two armies meet (`docs/firms-plan.md` slice 5; John: "Faction armies, army vs army"): each's score is the other's
+/// target, under one twist (drawn from `no`, the battle's fight). Whether the first won, and each's routed.
+pub fn clash(content: &Content, a: &mut Army, b: &mut Army, persons: &mut Persons, charters: &mut Charters, no: u64,
+        now: u64) -> (bool, Vec<Soldier>, Vec<Soldier>) {
+    for army in [&mut *a, &mut *b] {
+        as_people(army, persons);
+        appoint(content, army, persons, charters, now);
+        army.skirmishes_fought += 1;
+    }
+    let twist = Twist::ALL[((roll(no, 1, 71) * 4.0) as usize).min(3)];
+    let (fa, fb) = (fight(content, a, persons, twist, 2 * no, now), fight(content, b, persons, twist, 2 * no + 1, now));
+    let a_won = fa.score >= fb.score;
+    let day = now / content.day_ticks.max(1);
+    let (na, nb) = (a.soldiers.len() as u32, b.soldiers.len() as u32);
+    let (ha, ra) = after(content, a, persons, &fa, a_won, twist, now);
+    let (hb, rb) = after(content, b, persons, &fb, !a_won, twist, now);
+    keep(a, Skirmish { day, soldiers: na, twist, target: fb.score, score: fa.score, won: a_won,
+        captain: a.captain.map(|c| c.hand), hero: ha, routed: ra.len() as u32 });
+    keep(b, Skirmish { day, soldiers: nb, twist, target: fa.score, score: fb.score, won: !a_won,
+        captain: b.captain.map(|c| c.hand), hero: hb, routed: rb.len() as u32 });
+    (a_won, ra, rb)
 }
