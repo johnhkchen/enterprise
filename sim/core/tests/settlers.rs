@@ -451,6 +451,19 @@ fn settlers_stay_home_once_the_world_has_its_towns() {
 }
 
 #[test]
+fn a_ruin_still_counts_against_the_town_limit() {
+    // One market and a ruin at max_towns 2: nobody goes (seed 1717's war: each town razed freed its place and a Horde
+    // party refounded one in three days, so Theramore never gained on it).
+    let (mut s, _) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    let ruin = village(&mut s, Hex::new(-5, 0));
+    s.world.resource_mut::<enterprise_core::battle::Battles>().ruins.insert(ruin);
+    s.set_dial("max_towns", 2.0).unwrap();
+    s.advance(DAY + DAY / 4);
+    assert!(s.parties().is_empty(), "{:?}", s.parties());
+}
+
+#[test]
 fn no_way_through_and_nobody_goes() {
     let (mut s, _) = world(100.0);
     let v = village(&mut s, Hex::new(5, 0));

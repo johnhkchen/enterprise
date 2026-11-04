@@ -2992,3 +2992,22 @@ Orgrimmar's chest ran dry on day 190, ten days into the war, before a mercenary 
   the Alliance razed two Horde towns and was beaten off once, the Horde struck at the port three times and was beaten
   off twice, the third on at the year's end. Theramore spent 13,049 in the war; its 5,623 left would last about 80
   days more.
+
+## Society: Theramore can win, hard-won (2026-11-05)
+
+John: "Let's see what it takes to get Theramore to victory now"; "Hard-won" (the Horde still pins and wins some
+battles; Theramore wins only if its chest holds out). Replays of seed 1717's year found what stood in the way.
+
+- **A ruin still counts against `max_towns`** (`rules/settlers.rs`): seed 1717 stood at 23 of its 24 towns when the
+  war began, so each town razed made room for another, and a Horde party refounded one three days later (seven new
+  Horde towns in 120 days, the Horde's count held at 20 while the Alliance razed nine). A ruin's desk and buildings
+  still stand in the game, so it's still a town to the server's footprint.
+- **Theramore lands `expedition_size` 50 marines** (was 40): at 40 it lost a battle in three and the Horde besieged
+  its port for 38 days after each; at 60 it won every battle and the Horde never had the numbers to pin it, a rout.
+  Against the grown Horde of day 180, 50 is where the Horde still pins it twice.
+- **A town is razed after `raze_hold_days` 5** (was 10): a town a battle of 13 days, not 17.
+- **Theramore's chest is `war_chest_alliance` 28,000** (was 20,000): a town razed costs it about 1,200 emeralds, and
+  the Horde has 21.
+- **Replayed** (war from day 180): six Horde towns razed by the year's end, 15 left, the Horde's two strikes at the
+  port beaten off; Theramore 12,492 left, about 1,500 short of the 15 more at its pace, so a pin or a lost battle more
+  decides it. From day 90 (a smaller Horde), 20 of 21 razed with 3,738 left by the journal's end.

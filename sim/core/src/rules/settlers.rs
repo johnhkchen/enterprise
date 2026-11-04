@@ -144,9 +144,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
     let farmer = content.trade("farmer");
     // The markets the world has, and those its parties will make: at `max_towns`, no party sets out (John, 2026-10-31:
     // "close to a town limit for a server that aims to keep resource footprint low"; seed 1717's 37 towns at day 240
-    // ran a server out of a 6 GB heap).
-    let markets = towns.iter().filter(|(_, _, _, _, _, _, roster, _, _, _)| roster.is_some_and(|r| r.merchant.is_some()))
-        .count();
+    // ran a server out of a 6 GB heap). A ruin still counts: its desk and buildings stand, and a town razed made room
+    // for another (seed 1717's war: the Horde refounded each in three days, and Theramore never gained on it).
+    let markets = towns.iter().filter(|(town, _, _, _, _, _, roster, _, _, _)| roster.is_some_and(|r| r.merchant.is_some())
+        || battles.ruins.contains(&town.id)).count();
     for &e in order.0.iter() {
         if markets + settlers.parties.len() >= d.max_towns as usize {
             break;

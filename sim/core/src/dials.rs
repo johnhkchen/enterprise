@@ -374,7 +374,7 @@ dials! {
     /// Each faction's war chest at its capital off the map, in emeralds (`docs/war-plan.md` slice 2): Theramore's for
     /// the Alliance, Orgrimmar's for the Horde. Its region's public spending on the war (barracks, procurement) draws
     /// on it; spent, it pays no more.
-    war_chest_alliance: f64 = 20000.0,
+    war_chest_alliance: f64 = 28000.0,
     war_chest_horde: f64 = 10000.0,
     /// A capital's public spending paced (John: "pace the arms buying so Orgrimmar's money lasts"): its chest past
     /// `chest_reserve` (kept for its soldiers in the field: marines, mercenaries) spread over `chest_pace_days`, a
@@ -394,7 +394,7 @@ dials! {
     /// numerical advantage to pin the Alliance down"): its attack on the Alliance's base levies `pin_levy` of every
     /// Horde town's residents, made whenever that levy is `pin_odds` times the Alliance's soldiers or more.
     war_day: f64 = 0.0,
-    expedition_size: f64 = 40.0,
+    expedition_size: f64 = 50.0,
     capital_soldier_pay: f64 = 1.0,
     mercenary_band: f64 = 8.0,
     horde_last_stand: f64 = 2.0,
@@ -406,7 +406,7 @@ dials! {
     watchtower_lift: f64 = 0.1,
     pin_levy: f64 = 0.2,
     pin_odds: f64 = 1.5,
-    raze_hold_days: f64 = 10.0,
+    raze_hold_days: f64 = 5.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival

@@ -44,7 +44,7 @@ run up and war phase in year 2."
 3. **Theramore's landing.** Its expedition (`expedition_size` marines, well kitted, Journeymen at arms) sails to the
    Alliance port nearest the Horde, its base and camp; reinforced as its chest allows.
 4. **A town's hex fought for.** A battle can target a town: its defenders its levy at home, its walls and watchtower
-   lifting their score, its guards; beaten and held `raze_hold_days` (10) by the attackers, it's razed: its people
+   lifting their score, its guards; beaten and held `raze_hold_days` (5) by the attackers, it's razed: its people
    refugees to the nearest town of their faction within reach (else gone), its stock looted or lost, its works gone,
    its hex free to settle (by the winner's settlers, as a won hex).
 5. **The two war councils.** Each day each side picks its fights from its strength and its chest:
@@ -63,7 +63,8 @@ Slices 0 to 5 are in (`docs/decisions.md`: settlers' garrisons, names by people,
 the region). The Horde's fight (`docs/decisions.md`, the Horde puts up a fight): every town of a town's defenders levied, their
 edge at home and behind walls, marines made up at a cost, Orgrimmar's mercenaries after a losing streak. The Horde pins the Alliance at its camp whenever it outnumbers it,
 and Theramore makes its marines up in the field at a cost. The capitals pay their towns' barracks and kit at a pace,
-keeping a reserve for their soldiers. Still to do: the mod's side of a ruin.
+keeping a reserve for their soldiers. Theramore can win, hard-won: a ruin still counts against the town limit
+(the Horde refounded every town razed), 50 marines, razed after 5 days held, a chest of 28,000. Still to do: the mod's side of a ruin.
 
 ## Checks, sized to what they test
 
