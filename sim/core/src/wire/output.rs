@@ -90,8 +90,9 @@ pub enum Output {
     /// A party of a host's town's settlers founded `town` (`settlers.rs`), called `name`, on open ground round the block
     /// (`x`, `z`): for the host to build there (a bell, the Merchant's desk, cottages) and say where its desk stands
     /// (`Input::AddPoint`, a desk of the town's). Asked at every look until it does; the settlers come out as
-    /// `Settled` when they arrive, for the host to spawn by the desk once it stands.
-    Found { town: TownNo, name: String, x: i32, z: i32 },
+    /// `Settled` when they arrive, for the host to spawn by the desk once it stands. Its `people` its founders' (John:
+    /// "The founders'"), empty where theirs aren't known: the host builds it in their style.
+    Found { town: TownNo, name: String, x: i32, z: i32, people: String },
     /// Wagons have worn a trail across `hex` (`map.rs`: crossings enough that its way is trodden level), or worn it
     /// wider: for the host to lay a desire path `width` blocks wide through it, from its edge with `from` to its edge
     /// with `to` (the hexes before and after it on the road that wore it), across its ground where it's soil, felling

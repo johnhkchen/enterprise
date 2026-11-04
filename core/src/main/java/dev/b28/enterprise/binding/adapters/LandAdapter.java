@@ -734,6 +734,12 @@ public final class LandAdapter {
             if (host.points().of(PointsAdapter.Kind.DESK).containsValue(f.town())) {
                 continue; // built, and said, since it was asked
             }
+            // Its people its founders' (John: "The founders'", overriding "A settlers' town takes the land's people"):
+            // built in their style; the land's where the core doesn't know theirs.
+            var kingdoms = dev.b28.enterprise.territory.Kingdoms.get(server);
+            if (!f.people().isEmpty() && !kingdoms.has(f.town())) {
+                kingdoms.set(f.town(), f.people());
+            }
             ChunkPos centre = new ChunkPos(new BlockPos(f.x(), 0, f.z()));
             List<ChunkPos> chunks = new ArrayList<>();
             for (int dx = -FOUND_CHUNKS; dx <= FOUND_CHUNKS; dx++) {
@@ -765,7 +771,7 @@ public final class LandAdapter {
                 }
                 // Held loaded till it's converted, as a founded town is.
                 dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
-                // Its people the land's, as any town's (decisions: "A settlers' town takes the land's people").
+                // Its people its founders' (set above), else the land's at its first survey.
                 Enterprise.LOGGER.info("{} settled: a desk by the village's bell at {} ({})", f.name(), desk.toShortString(),
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
                 continue;
@@ -791,8 +797,8 @@ public final class LandAdapter {
             if (why != null) {
                 Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), town.get().desk().toShortString(), why);
             } else {
-                // Founded on open ground, planned for the town it'll grow to; its people the land's, as any town's
-                // (decisions: "A settlers' town takes the land's people").
+                // Founded on open ground, planned for the town it'll grow to; its people its founders' (set above), else
+                // the land's.
                 dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
                 Enterprise.LOGGER.info("{} founded at {} ({})", f.name(), town.get().desk().toShortString(),
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));

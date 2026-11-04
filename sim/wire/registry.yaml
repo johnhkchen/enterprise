@@ -1073,6 +1073,7 @@ Output:
           - name: STR
           - x: I32
           - z: I32
+          - people: STR
     29:
       Trail:
         STRUCT:

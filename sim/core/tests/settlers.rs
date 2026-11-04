@@ -75,6 +75,7 @@ fn a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands() {
     use enterprise_core::wire::{self, Command, Input, Output, Point, PointKind, Request, Response};
     let (mut s, home) = world(100.0);
     s.host_places_lockers(home);
+    s.set_people_of(home, "tauren");
     s.advance(2 * DAY);
     let founded = s.settled();
     assert_eq!(founded.len(), 1, "a town founded: {:?}", s.parties());
@@ -84,6 +85,9 @@ fn a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands() {
     let hex = s.town_hex(t).unwrap();
     assert!(matches!(&s.show_founded()[0], Output::Found { x, z, .. }
         if (*x as f64 - hex.center_x()).abs() < 1.0 && (*z as f64 - hex.center_z()).abs() < 1.0), "at its hex's centre");
+    // Its founders' people (John: "The founders'"), and a name of theirs.
+    assert!(matches!(&s.show_founded()[0], Output::Found { people, name, .. } if people == "tauren" && name == "Bloodhoof Village"),
+        "{:?}", s.show_founded());
     assert!(s.lockers(t).is_some_and(|l| l.placed.is_some()), "a host's town: its lockers where the host places them");
     let mut host = Some(s);
     let desk = Point { kind: PointKind::Desk, dim: "minecraft:overworld".into(), x: hex.center_x() as i32, y: 64, z: hex.center_z() as i32 };

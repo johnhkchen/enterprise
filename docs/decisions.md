@@ -2863,3 +2863,7 @@ reserved as the distant Alliance capital." Slice 1 of `docs/war-plan.md`.
   from its town's people once the land has told them (its first survey), Lordaeron's till then; the core names a
   settlers' town from its founders' people.
 - **Theramore and Orgrimmar are no town's of the region:** the factions' capitals, off the map.
+- **A settlers' town is its founders' people** (John: "The founders'", overriding "A settlers' town takes the land's
+  people": each side's spread its own, for the war for the region): the core sets the new town's people its
+  founders' and says so with it (`Output::Found`'s `people`); the mod builds it in their style and names it from
+  their list (`LandAdapter.buildFounded`), the land's where the core doesn't know theirs.

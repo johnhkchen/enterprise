@@ -224,8 +224,9 @@ impl Society {
         self.world.resource::<Settlers>().unbuilt.iter().filter_map(|&t| {
             let hex = self.town_hex(t)?;
             let name = self.world.get::<crate::state::Town>(self.towns[t])?.name.clone();
+            let people = self.world.resource::<crate::taxes::Taxes>().peoples.get(&t).cloned().unwrap_or_default();
             Some(crate::wire::Output::Found { town: crate::wire::no(t), name, x: hex.center_x().round() as i32,
-                z: hex.center_z().round() as i32 })
+                z: hex.center_z().round() as i32, people })
         }).collect()
     }
 
@@ -358,6 +359,11 @@ impl Society {
                 t
             }
         };
+        // Its people its founders' (John: "The founders'", overriding "A settlers' town takes the land's people"):
+        // each side's spread its own.
+        if let Some(people) = self.world.resource::<crate::taxes::Taxes>().peoples.get(&party.from).cloned() {
+            self.set_people_of(town, &people);
+        }
         // Its people: the Merchant (the first hand) and, for a new town, its settler and their cottages.
         let e = self.towns[town];
         let mut roster = self.world.get::<Roster>(e).cloned().unwrap_or_default();

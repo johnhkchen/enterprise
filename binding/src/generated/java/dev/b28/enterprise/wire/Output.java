@@ -74,7 +74,7 @@ public sealed interface Output
             case 25 -> new BuildCrownShop(in.u32());
             case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
             case 27 -> new CrownShopDown(Point.decode(in));
-            case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
+            case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32(), in.string());
             case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode), in.bool(), in.u8());
             case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
             case 31 -> new Explore(in.list(2, HexAt::decode));
@@ -562,11 +562,13 @@ public sealed interface Output
      * A party of a host's town's settlers founded {@code town} ({@code settlers.rs}), called {@code name}, on open ground round the block
      * ({@code x}, {@code z}): for the host to build there (a bell, the Merchant's desk, cottages) and say where its desk stands
      * ({@code Input::AddPoint}, a desk of the town's). Asked at every look until it does; the settlers come out as
-     * {@code Settled} when they arrive, for the host to spawn by the desk once it stands.
+     * {@code Settled} when they arrive, for the host to spawn by the desk once it stands. Its {@code people} its founders' (John:
+     * "The founders'"), empty where theirs aren't known: the host builds it in their style.
      */
-    record Found(long town, String name, int x, int z) implements Output {
+    record Found(long town, String name, int x, int z, String people) implements Output {
         public Found {
             Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(people, "people");
         }
 
         @Override
@@ -576,6 +578,7 @@ public sealed interface Output
             out.string(this.name);
             out.i32(this.x);
             out.i32(this.z);
+            out.string(this.people);
         }
     }
 
