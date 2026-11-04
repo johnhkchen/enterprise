@@ -552,7 +552,8 @@ fn work(content: &Content, kind: &Kind, firm: &mut Firm, persons: &mut Persons, 
                     }
                 }
                 let m = persons.hands.get(&id).unwrap();
-                let whispers = knack(m, copied) == Some(Knack::SupplyWhisperer) && makers.contains_key(&g);
+                // (A graded piece is a business's: of this town, or carried in.)
+                let whispers = knack(m, copied) == Some(Knack::SupplyWhisperer);
                 for gr in Grade::ALL {
                     took[gr.index()] += own[gr.index()];
                     let to = if whispers && gr != Grade::Plain { gr.up() } else { gr };

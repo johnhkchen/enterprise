@@ -2,14 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, HexAt, PackageLine, Place, Point, RouteNo, TownNo, Work};
+use super::{GoodNo, GradedLine, HandNo, HexAt, PackageLine, Place, Point, RouteNo, TownNo, Work};
 use crate::fixed::Fixed;
 
 /// What happened, for the host to show.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Output {
     WagonLeft { route: RouteNo, stacks: u32, worth: f64 },
-    WagonSold { route: RouteNo, sold: f64, takings: Fixed },
+    WagonSold { route: RouteNo, sold: f64, takings: Fixed, graded: Vec<GradedLine> },
     WagonHome { route: RouteNo, takings: Fixed },
     /// A master Merchant filled a player's order: `lots` lots, `count` goods, for `spurs`. The host puts the goods in the
     /// vendor (`point`, if the order came through one) and takes the spurs off its bank card.

@@ -24,7 +24,8 @@
 //! - At the end of the run: `cash` (each town's cash book, every line).
 //!
 //! A journal written by a core of another wire schema is refused: replay it with the core that wrote it (`git log` for
-//! the commit whose `sim/wire/registry.yaml` it matches).
+//! the commit whose `sim/wire/registry.yaml` it matches), or, where only outputs changed since, with
+//! `ENT_REPLAY_SCHEMA=any` (its requests read as they were).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -99,7 +100,7 @@ create table routes (day integer, route integer, from_town integer, to_town inte
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
     home_day integer, stacks integer, worth real, purse real, sold real, takings real, bought real, paid real,
-    pallet_items real);
+    pallet_items real, graded_sold real);
 create table plans (tick integer, day integer, route integer, worth real, cost real, purse real, full integer, on_its_day integer,
     pressing integer, went integer, stacks integer);
 create table plan_whys (tick integer, day integer, route integer, good text, why text, count real);
@@ -134,8 +135,17 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
             }
         }
         if request.schema != wire::SCHEMA {
-            return Err(format!("request {seq} is of wire schema {:016x}, this core's is {:016x}: replay it with the core \
-                that wrote it", request.schema, wire::SCHEMA));
+            // (`ENT_REPLAY_SCHEMA=any`: an older schema's requests taken as this core's, where only outputs changed
+            // since: the requests read as they were.)
+            if std::env::var("ENT_REPLAY_SCHEMA").as_deref() != Ok("any") {
+                return Err(format!("request {seq} is of wire schema {:016x}, this core's is {:016x}: replay it with the \
+                    core that wrote it (ENT_REPLAY_SCHEMA=any if only outputs changed)", request.schema, wire::SCHEMA));
+            }
+            if seq == 0 {
+                eprintln!("replaying wire schema {:016x}'s requests on {:016x} (ENT_REPLAY_SCHEMA=any)", request.schema,
+                    wire::SCHEMA);
+            }
+            request.schema = wire::SCHEMA;
         }
         asking = Some((request.abi, request.schema));
         let (command, inputs) = match &request.command {
@@ -371,6 +381,8 @@ struct Trip {
     takings: f64,
     /// Items on the pallets put on this wagon while it was out (or as it left): contract goods, crated sales.
     pallet_items: f64,
+    /// The pieces it sold there counted by grade (not plain).
+    graded_sold: f64,
 }
 
 /// Each wagon's trip, written when it's home: what it took out (stacks, worth, purse), sold there and took for it, and
@@ -384,7 +396,7 @@ fn trips(tx: &rusqlite::Transaction, s: &mut Society, outputs: &[Value], out: &m
     let field = |v: &Value, kind: &str, f: &str| v.get(kind).and_then(|o| o.get(f)).cloned();
     let fixed = |v: Option<Value>| v.and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0;
     let blank = || Trip { left: None, stacks: 0, worth: 0.0, purse: 0.0, sold: 0.0, bought: 0.0, paid: 0.0, takings: 0.0,
-        pallet_items: 0.0 };
+        pallet_items: 0.0, graded_sold: 0.0 };
     for v in outputs {
         if let Some(id) = field(v, "PalletPacked", "id").and_then(|i| i.as_u64()) {
             let items = field(v, "PalletPacked", "packages").and_then(|p| p.as_array().cloned()).unwrap_or_default().iter()
@@ -402,20 +414,23 @@ fn trips(tx: &rusqlite::Transaction, s: &mut Society, outputs: &[Value], out: &m
                 stacks: field(v, "WagonLeft", "stacks").and_then(|n| n.as_u64()).unwrap_or(0) as u32,
                 worth: field(v, "WagonLeft", "worth").and_then(|n| n.as_f64()).unwrap_or(0.0),
                 purse: st.last_plan.as_ref().map_or(0.0, |p| p.purse),
-                sold: st.sold, bought: st.bought, paid: st.purchases.to_f64(), takings: 0.0 });
+                sold: st.sold, bought: st.bought, paid: st.purchases.to_f64(), takings: 0.0, graded_sold: 0.0 });
         } else if let Some(route) = field(v, "WagonSold", "route").and_then(|r| r.as_u64()) {
             let t = out.entry(route as usize).or_insert_with(blank);
             t.takings += fixed(field(v, "WagonSold", "takings"));
+            t.graded_sold += field(v, "WagonSold", "graded").and_then(|g| g.as_array().cloned()).unwrap_or_default().iter()
+                .filter_map(|l| l.get("count").and_then(Value::as_f64)).sum::<f64>();
         } else if let Some(route) = field(v, "WagonHome", "route").and_then(|r| r.as_u64()) {
             let Some((r, st)) = routes.get(&(route as usize)) else { continue };
             let t = out.remove(&(route as usize));
             // (One that left before the journal: only its takings are known.)
             let known = t.as_ref().filter(|t| t.left.is_some());
-            tx.execute("insert into trips values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            tx.execute("insert into trips values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
                 params![r.seq, r.from_id, r.to_id, known.map(|t| t.left), known.map(|t| t.left.unwrap() / day_ticks), now,
                     now / day_ticks, known.map(|t| t.stacks), known.map(|t| t.worth), known.map(|t| t.purse),
                     known.map(|t| st.sold - t.sold), t.as_ref().map_or(0.0, |t| t.takings), known.map(|t| st.bought - t.bought),
-                    known.map(|t| st.purchases.to_f64() - t.paid), t.as_ref().map_or(0.0, |t| t.pallet_items)])
+                    known.map(|t| st.purchases.to_f64() - t.paid), t.as_ref().map_or(0.0, |t| t.pallet_items),
+                    t.as_ref().map_or(0.0, |t| t.graded_sold)])
                 .map_err(|e| e.to_string())?;
         }
     }

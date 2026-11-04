@@ -476,6 +476,11 @@ GoodFlag:
       Crop: UNIT
     1:
       Meat: UNIT
+GradedLine:
+  STRUCT:
+    - good: U32
+    - grade: U32
+    - count: F64
 GroundView:
   STRUCT:
     - hex:
@@ -879,6 +884,9 @@ Output:
           - route: U32
           - sold: F64
           - takings: I64
+          - graded:
+              SEQ:
+                TYPENAME: GradedLine
     2:
       WagonHome:
         STRUCT:

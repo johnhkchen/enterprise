@@ -246,6 +246,12 @@ pub enum Leg {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Wagon {
     pub cargo: Vec<f64>,
+    /// Its goods' pieces by grade (`People::graded`'s, carried: the rest plain), and what it sold of each at the far end
+    /// this visit by grade.
+    #[serde(default)]
+    pub graded: std::collections::BTreeMap<usize, [f64; 5]>,
+    #[serde(default)]
+    pub graded_sold: std::collections::BTreeMap<usize, [f64; 5]>,
     pub purse: Fixed,
     pub leg: Leg,
     pub arrives: u64,

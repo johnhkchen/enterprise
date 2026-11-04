@@ -198,10 +198,15 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             if n <= 0.0 {
                 continue;
             }
+            // Its pieces by grade, each grade its share of what it sells (its households bought plain ones), into the
+            // buyer's counts; the buyer pays each grade's worth of the price.
+            let took = crate::people::take_share(&mut wagon.graded, g, wagon.cargo[g], n);
+            crate::people::put_graded(&mut people.graded, g, &took);
+            crate::people::put_graded(&mut wagon.graded_sold, g, &took);
             wagon.cargo[g] -= n;
             stock.0[g] += n;
             // The buyer pays the batch's price rounded up to the thousandth (`Treasury.withdraw`), within what it can.
-            let paid = Fixed::ceil(n * price).min(can);
+            let paid = Fixed::ceil(n * price * crate::people::worth_of(&content.dials, &took)).min(can);
             post(&mut ledger, &mut book, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Sale, now, day);
             budget.spent += paid;
@@ -304,13 +309,22 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                     w.arrives = now + crate::squad::leg_ticks(&content, route.travel_ticks, w.saddled, 1.0); // saddled: faster
                 }
                 let sold = w.sold_here.iter().sum();
-                outbox.0.push(Output::WagonSold { route: crate::wire::no(route.seq), sold, takings: w.takings_here });
+                let graded = std::mem::take(&mut w.graded_sold).into_iter().flat_map(|(g, of)| {
+                    crate::persons::Grade::COUNTED.into_iter().filter(move |gr| of[gr.index()] > 0.0)
+                        .map(move |gr| crate::wire::GradedLine { good: crate::wire::no(g), grade: gr.index() as u32,
+                            count: of[gr.index()] })
+                }).collect();
+                outbox.0.push(Output::WagonSold { route: crate::wire::no(route.seq), sold, takings: w.takings_here, graded });
             }
             Some(Leg::Home) => {
                 let mut wagon = state.wagon.take().unwrap();
-                let (mut stock, mut money, _, _, _) = towns.get_mut(route.from).expect("home");
+                let (mut stock, mut money, _, _, mut people) = towns.get_mut(route.from).expect("home");
                 for (g, n) in wagon.cargo.iter().enumerate() {
                     stock.0[g] += n;
+                }
+                // What it brings home of its goods' grades, home's again.
+                for (g, of) in std::mem::take(&mut wagon.graded) {
+                    crate::people::put_graded(&mut people.graded, g, &of);
                 }
                 let takings = wagon.purse;
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse),

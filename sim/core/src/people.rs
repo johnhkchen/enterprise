@@ -126,6 +126,45 @@ pub fn take_graded(graded: &mut std::collections::BTreeMap<usize, [f64; 5]>, g: 
     took
 }
 
+/// Takes `n` of the `held` pieces of good `g` out of graded counts, each grade its share of them (the pieces as they
+/// lie: what a wagon loads, or sells, of its goods): the pieces taken by grade, the rest plain.
+pub fn take_share(graded: &mut std::collections::BTreeMap<usize, [f64; 5]>, g: usize, held: f64, n: f64) -> [f64; 5] {
+    let mut took = [0.0; 5];
+    let n = n.max(0.0);
+    if let Some(of) = graded.get_mut(&g) {
+        let counted: f64 = of.iter().sum();
+        // (No more counted by grade than there are pieces.)
+        let share = if held <= 1e-9 { 1.0 } else { (n / held.max(counted)).min(1.0) };
+        for grade in Grade::COUNTED {
+            let t = of[grade.index()] * share;
+            of[grade.index()] -= t;
+            took[grade.index()] = t;
+        }
+        if of.iter().all(|x| *x <= 1e-9) {
+            graded.remove(&g);
+        }
+    }
+    took[Grade::Plain.index()] = (n - took.iter().sum::<f64>()).max(0.0);
+    took
+}
+
+/// Puts pieces of good `g` into graded counts (its plain ones are counted by none).
+pub fn put_graded(graded: &mut std::collections::BTreeMap<usize, [f64; 5]>, g: usize, of: &[f64; 5]) {
+    if Grade::COUNTED.iter().all(|grade| of[grade.index()] <= 0.0) {
+        return;
+    }
+    let to = graded.entry(g).or_insert([0.0; 5]);
+    for grade in Grade::COUNTED {
+        to[grade.index()] += of[grade.index()];
+    }
+}
+
+/// What pieces taken by grade are worth on the whole, a plain one's being 1 (1 for none).
+pub fn worth_of(d: &crate::content::Dials, took: &[f64; 5]) -> f64 {
+    let n: f64 = took.iter().sum();
+    if n <= 0.0 { 1.0 } else { Grade::ALL.iter().map(|g| took[g.index()] * g.worth(d)).sum::<f64>() / n }
+}
+
 /// What pieces of each grade are worth beyond as many plain ones, each a plain one being 1 (seconds less than none).
 pub fn beyond_plain(d: &crate::content::Dials, took: &[f64; 5]) -> f64 {
     Grade::ALL.iter().map(|g| took[g.index()] * (g.worth(d) - 1.0)).sum()

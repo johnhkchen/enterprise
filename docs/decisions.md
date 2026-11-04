@@ -2645,3 +2645,26 @@ Slice 3 of `docs/firms-plan.md`, its first part (John: "Slice 3"); grades carrie
   and its bootmaker (Lark, 244), the House chain of the year. Bread earns little name (a Fine loaf a twelfth of an
   emerald): no bakery is a House. The bootmakers that make seconds are well below nothing (-109 to -125). The trace's
   `firms` has each business's reputation and its House's name.
+
+## Society: grades carried by wagon (2026-11-04)
+
+Slice 3's second part (John: "With the wagon's cargo"; the goods a wagon sells ride loose or in lots, with no bill of
+lading: only goods under contract, crops mostly, ride on pallets under one):
+
+- **Out:** a wagon leaving takes, of each good it carries, each grade its share of the pieces as they lie in its
+  town's warehouse (`people::take_share`), its goods' grades with it (`Wagon::graded`).
+- **There:** what it sells the far town's treasury goes into that town's counts by grade, each grade its share of what
+  it sells, and the town pays each grade's worth of the price (`people::worth_of`); its households, buying off the
+  cart first, buy its plain pieces. A wagon buying at the far end buys plain ones: a town keeps its graded pieces for
+  its own. What it sold by grade goes to the host with its sale (`WagonSold`'s `graded`, a `GradedLine` a good and
+  grade), and the trace's `trips` counts them (`graded_sold`).
+- **Home:** the grades of what it brings back are home's again.
+- So a business's graded pieces reach the businesses of other towns: a Supply whisperer counts any graded piece it
+  buys a grade higher, made in its town or carried in. Its supplier is still only its own town's business (a piece
+  carried in doesn't say who made it).
+- `enterprise-sim --trace` replays a journal of an older wire schema with `ENT_REPLAY_SCHEMA=any` where only outputs
+  changed since (this part's `WagonSold`).
+- **Seed 1717's year, replayed** (21 of 11,023 requests refused, two fewer: the world went otherwise, its graded goods
+  fetching more): 21,565 graded pieces carried and sold in other towns of the year's 373,383 sold, most from town 3 to
+  town 21 (1,456) and town 16 to town 1 (1,356); 21 bakeries, 5 weavers' and 5 bootmakers; three Houses (the weavers
+  of towns 3 and 2, Vane and Sallow, and town 3's bootmaker, Wren); no tannery this time.

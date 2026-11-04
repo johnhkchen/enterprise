@@ -101,7 +101,8 @@ public final class WagonAdapter {
             case Output.HandAway o -> goes(server, o);
             case Output.HandBack o -> comes(server, o);
             case Output.WagonLeft o -> Enterprise.LOGGER.debug("Route {}'s wagon leaves with {} stacks", o.route(), o.stacks());
-            case Output.WagonSold o -> Enterprise.LOGGER.debug("Route {}'s wagon sold {} at the far end", o.route(), o.sold());
+            case Output.WagonSold o -> Enterprise.LOGGER.debug("Route {}'s wagon sold {} at the far end{}", o.route(), o.sold(),
+                    graded(o));
             case Output.WagonHome o -> Enterprise.LOGGER.debug("Route {}'s wagon is home", o.route());
             default -> {}
         }
@@ -473,5 +474,21 @@ public final class WagonAdapter {
         } catch (IOException e) {
             Enterprise.LOGGER.error("The stowed villagers in {} couldn't be read", file, e);
         }
+    }
+
+    /** " (8 fine, 2 masterwork of good 3)": what a wagon sold of its goods by grade, the plain ones not said. */
+    private static String graded(Output.WagonSold o) {
+        if (o.graded().isEmpty()) {
+            return "";
+        }
+        String[] names = {"seconds", "plain", "good", "fine", "masterwork"};
+        StringBuilder s = new StringBuilder(" (");
+        for (int i = 0; i < o.graded().size(); i++) {
+            var line = o.graded().get(i);
+            s.append(i == 0 ? "" : ", ").append("%s %s of good %d".formatted(
+                    line.count() == Math.rint(line.count()) ? Long.toString((long) line.count()) : "%.1f".formatted(line.count()),
+                    line.grade() < names.length ? names[(int) line.grade()] : "grade " + line.grade(), line.good()));
+        }
+        return s.append(')').toString();
     }
 }

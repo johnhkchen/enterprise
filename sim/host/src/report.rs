@@ -104,7 +104,7 @@ impl Tracker {
                         r.full += 1;
                     }
                 }
-                Output::WagonSold { route, sold, takings } => {
+                Output::WagonSold { route, sold, takings, .. } => {
                     let r = &mut self.routes[route as usize];
                     r.arrived += 1;
                     r.sold_items += sold;

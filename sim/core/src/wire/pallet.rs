@@ -26,6 +26,15 @@ pub struct PackageLine {
     pub count: f64,
 }
 
+/// So many pieces of a good at a grade (`persons::Grade`'s index: 0 seconds, 2 good, 3 fine, 4 masterwork; the plain
+/// pieces aren't listed): what a wagon sold of its goods by grade.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GradedLine {
+    pub good: GoodNo,
+    pub grade: u32,
+    pub count: f64,
+}
+
 /// A pallet as a host shows and lists it (`pallet_host.rs`): its id, where it is and since when (the tick it came there),
 /// its bill of lading (who ships it and to whom, by number and by name, the contract it goes under, whether it was paid
 /// for in coin as it was packed, when the bill was drawn), whether it is sealed and still as it was sealed (`intact`),

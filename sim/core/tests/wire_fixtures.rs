@@ -418,8 +418,9 @@ fn outputs() -> Vec<Output> {
     vec![
         Output::WagonLeft { route: 0, stacks: 0, worth: 0.0 },
         Output::WagonLeft { route: BIGGEST_ID, stacks: u32::MAX, worth: 1234.5 },
-        Output::WagonSold { route: 2, sold: 96.0, takings: Fixed::emeralds(12) },
-        Output::WagonSold { route: 2, sold: 0.0, takings: Fixed::from_millis(-1) },
+        Output::WagonSold { route: 2, sold: 96.0, takings: Fixed::emeralds(12),
+            graded: vec![enterprise_core::wire::GradedLine { good: 1, grade: 3, count: 8.0 }] },
+        Output::WagonSold { route: 2, sold: 0.0, takings: Fixed::from_millis(-1), graded: vec![] },
         Output::WagonHome { route: 1, takings: Fixed::MAX },
         Output::OrderFilled { town: 0, order: 3, good: 1, lots: 2, count: 32.0, spurs: 80.0, point: None },
         Output::OrderFilled { town: BIGGEST_ID, order: BIGGEST_ID, good: BIGGEST_ID, lots: u32::MAX, count: f64::MAX, spurs: 0.0,
@@ -946,6 +947,8 @@ fixtures! {
         Place::Container { container: u64::MAX }];
     package_line_fixtures: PackageLine = vec![PackageLine { kind: 0, good: 0, count: 0.0 },
         PackageLine { kind: u32::MAX, good: BIGGEST_ID, count: f64::MAX }];
+    graded_line_fixtures: GradedLine = vec![GradedLine { good: 0, grade: 0, count: 0.0 },
+        GradedLine { good: BIGGEST_ID, grade: 4, count: f64::MAX }];
     count_fixtures: Count = counts().concat();
     town_point_fixtures: TownPoint = points().into_iter().map(|point| TownPoint { point, town: 0 }).collect();
     content_pack_fixtures: ContentPack = packs();

@@ -490,6 +490,13 @@ pub fn score(brought: f64, morale: f64, spread: f64, draw: f64) -> f64 {
 }
 
 impl crate::society::Society {
+    /// Counts `n` of a town's pieces of good `g` at `grade` (a host's, or a test's: what its pieces are).
+    pub fn set_graded(&mut self, town: crate::messages::TownId, g: usize, grade: Grade, n: f64) {
+        let e = self.towns[town];
+        let mut people = self.world.get_mut::<crate::state::People>(e).expect("a town");
+        people.graded.entry(g).or_insert([0.0; 5])[grade.index()] = n;
+    }
+
     /// A hand's make-up as a person, if it has been looked at.
     pub fn person(&self, hand: HandId) -> Option<Person> {
         self.world.resource::<Persons>().hands.get(&hand).cloned()

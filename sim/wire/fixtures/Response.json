@@ -26,14 +26,22 @@
           "WagonSold": {
             "route": 2,
             "sold": 96.0,
-            "takings": 12000
+            "takings": 12000,
+            "graded": [
+              {
+                "good": 1,
+                "grade": 3,
+                "count": 8.0
+              }
+            ]
           }
         },
         {
           "WagonSold": {
             "route": 2,
             "sold": 0.0,
-            "takings": -1
+            "takings": -1,
+            "graded": []
           }
         },
         {
@@ -14483,14 +14491,22 @@
           "WagonSold": {
             "route": 2,
             "sold": 96.0,
-            "takings": 12000
+            "takings": 12000,
+            "graded": [
+              {
+                "good": 1,
+                "grade": 3,
+                "count": 8.0
+              }
+            ]
           }
         },
         {
           "WagonSold": {
             "route": 2,
             "sold": 0.0,
-            "takings": -1
+            "takings": -1,
+            "graded": []
           }
         },
         {

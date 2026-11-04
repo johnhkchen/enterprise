@@ -44,7 +44,7 @@ pub use input::{Count, Input, Resident};
 pub use land::{GroundView, HexAt, LandKind, Work, WorkView};
 pub use output::Output;
 pub use pack::{ContentPack, GoodFlag, PackAmount, PackAnimal, PackComfort, PackCrop, PackDial, PackFit, PackGood, PackMade, PackPackage, PackRecipe};
-pub use pallet::{ManifestLine, PackageLine, PalletView, Place};
+pub use pallet::{GradedLine, ManifestLine, PackageLine, PalletView, Place};
 pub use point::{Point, PointKind};
 pub use query::{Answer, DialView, HandView, LockerView, OfferView, Query, TownPoint};
 pub use save_file::SaveFile;

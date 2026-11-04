@@ -379,7 +379,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         } else {
             0.0
         };
-        let (mut stock, mut money, trades, mut budget, _) = towns.get_mut(route.from).expect("home");
+        let (mut stock, mut money, trades, mut budget, mut people) = towns.get_mut(route.from).expect("home");
         // Every route planned on the warehouse as it was at the look's start: another wagon from here may have left
         // with some of it since. What's owed first, then the rest, as far as the shelves still hold.
         let mut left = stock.0.clone();
@@ -506,7 +506,11 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             continue;
         }
         state.stayed = None;
+        // Its goods leave with their grades, each grade its share of them as they lie in the warehouse.
+        let mut graded = BTreeMap::new();
         for (g, n) in plan.cargo.iter().enumerate() {
+            let took = crate::people::take_share(&mut people.graded, g, stock.0[g], *n);
+            crate::people::put_graded(&mut graded, g, &took);
             stock.0[g] -= n;
         }
         for &(id, n) in &plan.contracted {
@@ -555,6 +559,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
         state.wagon = Some(Wagon {
             cargo: plan.cargo,
+            graded,
             purse,
             leg: Leg::Out,
             arrives: arrival,

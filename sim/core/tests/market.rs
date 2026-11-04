@@ -187,3 +187,34 @@ fn a_players_buying_vendor_is_a_bid_in_its_town_s_book_and_its_cane_is_bid_for_t
     s.advance(22 * DAY + DAY / 2);
     assert!(s.bid(hub, cane).is_some(), "cane for the vendor's paper");
 }
+
+#[test]
+fn a_wagon_carries_its_goods_grades_and_the_buyer_pays_each_grade_s_worth() {
+    use enterprise_core::persons::Grade;
+    // The first sale, its cookies all Fine or all plain.
+    let first_sale = |fine: bool| {
+        let (mut s, bakery, town) = bakery_and_town();
+        if fine {
+            s.set_graded(bakery, 0, Grade::Fine, 200.0);
+        }
+        s.add_route(bakery, town, 1.0, 0.5, 2.0);
+        for day in 1..=20 {
+            for out in s.advance(day * DAY) {
+                if let Output::WagonSold { sold, takings, graded, .. } = out {
+                    if sold > 0.0 {
+                        let there = s.town(town).people.graded.get(&0).map_or(0.0, |of| of[Grade::Fine.index()]);
+                        return (sold, takings.to_f64(), graded, there);
+                    }
+                }
+            }
+        }
+        panic!("no sale");
+    };
+    let (sold, takings, graded, there) = first_sale(true);
+    let fine: f64 = graded.iter().filter(|l| l.good == 0 && l.grade == Grade::Fine.index() as u32).map(|l| l.count).sum();
+    assert!(fine > 0.0 && fine <= sold + 1e-9, "{graded:?} of {sold}");
+    assert!((there - fine).abs() < 1e-9, "the buyer counts them Fine: {there} of {fine}");
+    let (plain_sold, plain_takings, plain_graded, _) = first_sale(false);
+    assert!(plain_graded.is_empty() && plain_sold == sold, "{plain_graded:?}");
+    assert!(takings > plain_takings * 1.1, "Fine cookies fetch more: {takings} to {plain_takings}");
+}

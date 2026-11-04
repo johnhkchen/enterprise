@@ -47,7 +47,7 @@ public sealed interface Output
         int at = in.variant();
         return switch (at) {
             case 0 -> new WagonLeft(in.u32(), in.u32(), in.f64());
-            case 1 -> new WagonSold(in.u32(), in.f64(), in.i64());
+            case 1 -> new WagonSold(in.u32(), in.f64(), in.i64(), in.list(10, GradedLine::decode));
             case 2 -> new WagonHome(in.u32(), in.i64());
             case 3 -> new OrderFilled(in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64(), in.option(Point::decode));
             case 4 -> new Signal(in.u32(), in.u32(), in.f64(), in.f64());
@@ -101,13 +101,19 @@ public sealed interface Output
         }
     }
 
-    record WagonSold(long route, double sold, long takings) implements Output {
+    record WagonSold(long route, double sold, long takings, List<GradedLine> graded) implements Output {
+        public WagonSold {
+            Objects.requireNonNull(graded, "graded");
+            graded = List.copyOf(graded);
+        }
+
         @Override
         public void encode(PostcardOut out) {
             out.variant(1);
             out.u32(this.route);
             out.f64(this.sold);
             out.i64(this.takings);
+            out.list(this.graded, (o1, e1) -> e1.encode(o1));
         }
     }
 

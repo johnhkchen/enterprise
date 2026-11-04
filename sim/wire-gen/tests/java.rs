@@ -130,7 +130,8 @@ fn inputs() -> Vec<Input> {
 fn outputs() -> Vec<Output> {
     vec![
         Output::WagonLeft { route: 0, stacks: u32::MAX, worth: 12.5 },
-        Output::WagonSold { route: 1, sold: 64.0, takings: Fixed::from_millis(-5) },
+        Output::WagonSold { route: 1, sold: 64.0, takings: Fixed::from_millis(-5),
+            graded: vec![enterprise_core::wire::GradedLine { good: 2, grade: 4, count: 1.5 }] },
         Output::WagonHome { route: u32::MAX, takings: Fixed::ZERO },
         Output::OrderFilled { town: 2, order: 3, good: 4, lots: 0, count: 1.0, spurs: 0.25, point: None },
         Output::Signal { town: 2, good: 1, count: 9.0, spurs_each: f64::NAN },
