@@ -376,6 +376,18 @@ dials! {
     /// on it; spent, it pays no more.
     war_chest_alliance: f64 = 20000.0,
     war_chest_horde: f64 = 6000.0,
+    /// The war for the region (`docs/war-plan.md`): declared on `war_day` (none at 0), its run-up
+    /// `battle_mobilise_days`, then Theramore lands `expedition_size` marines at the Alliance's port nearest the Horde,
+    /// each paid `capital_soldier_pay` a day of its chest, as Orgrimmar pays each of the `mercenary_band` it sends at a
+    /// last stand (its towns `horde_last_stand` or fewer). A town held `raze_hold_days` by its attackers is razed, its
+    /// people refugees to their faction's nearest town within `refugee_reach` hexes.
+    war_day: f64 = 0.0,
+    expedition_size: f64 = 40.0,
+    capital_soldier_pay: f64 = 1.0,
+    mercenary_band: f64 = 8.0,
+    horde_last_stand: f64 = 2.0,
+    raze_hold_days: f64 = 10.0,
+    refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival
     /// faction's town that keeps a watch, its escort skirmishes that watch for the claim, and beaten turns home (none

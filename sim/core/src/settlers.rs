@@ -335,7 +335,8 @@ impl Society {
                     && !self.world.query::<&Route>().iter(&self.world).any(|r| r.from_id == v || r.to_id == v)
             }),
             Kind::Found => {
-                let near = (0..self.town_count())
+                let ruins = self.world.resource::<crate::battle::Battles>().ruins.clone();
+                let near = (0..self.town_count()).filter(|t| !ruins.contains(t))
                     .any(|t| self.town_hex(t).is_some_and(|h| h.distance(party.target) < content.dials.min_hexes as i32));
                 let way = self.town_hex(party.from).and_then(|h| way(self.map(), &content, h, party.target));
                 // Its ground as the host has surveyed it by now (explored while the party travelled): still dry and

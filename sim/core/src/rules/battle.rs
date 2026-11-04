@@ -8,7 +8,7 @@ use bevy_ecs::prelude::*;
 
 use super::Step;
 use crate::army::{blocks_between, bury, levy_order, mourn, travel_ticks, Army, Recruit, Soldier, Walker};
-use crate::battle::{Battle, Battles, Faction, Marching};
+use crate::battle::{Battle, Battles, Campaign, Faction, Marching};
 use crate::content::Content;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::contracts::Book;
@@ -25,6 +25,7 @@ pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         fight.in_set(Step::Pay).after(super::army::campaign).before(super::territory::upkeep),
         procure.in_set(Step::Review).after(super::crown::review).after(super::market::review).before(super::training::lapse),
+        campaign.in_set(Step::Pay).after(fight).before(super::territory::upkeep),
     ));
 }
 
@@ -153,7 +154,8 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 let mut battle = Battle { hex, factions: [Faction::Horde, Faction::Alliance], armies: Default::default(),
                     camps: [h.0, a.0], levies: Default::default(), marching: Vec::new(), holder: None, held_since: None,
                     won_by: None, began: now, days: 0, fights: 0, reckoned: None,
-                    marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false };
+                    marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false, town: None,
+                    attacker: None, settled: false };
                 // Each side's towns near it are levied; their levies march once its towns have had time to arm.
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, _, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
@@ -262,8 +264,13 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 b.held_since = holder.map(|_| now);
             }
         }
-        // Held long enough, it's the holder's: the fighting ends, and both armies walk home.
-        if b.holder.is_some() && b.held_days(now, day) as f64 >= d.battle_hold_days {
+        // Held long enough, it's the holder's: the fighting ends, and both armies walk home. A town's hex its
+        // attackers hold `raze_hold_days` (its razing is the campaign's: `campaign`).
+        let hold = match (b.town, b.attacker) {
+            (Some(_), Some(a)) if b.holder == Some(a) => d.raze_hold_days,
+            _ => d.battle_hold_days,
+        };
+        if b.holder.is_some() && b.held_days(now, day) as f64 >= hold {
             b.won_by = b.holder.map(|s| b.factions[s]);
             for side in 0..2 {
                 let soldiers = std::mem::take(&mut b.armies[side].soldiers);
@@ -299,9 +306,9 @@ const LEVY_KIT: [(&str, f64); 4] = [("iron_sword", 1.0), ("iron_helmet", 1.0), (
 /// "look at how the early war scenario involved plenty of incentives to get the production system in place early
 /// using public spending"): each levied town requisitions its levy's kit beyond what it holds and has coming, at the
 /// mobilising premium till its levies march and the war's after; its bids taken are awarded as the crown's are, a
-/// third up front; and it tenders to train the master smiths its roads' towns lack. Its faction's war chest keeps its
-/// treasury up to what it owes on them (from outside the society, as the crown's mint): the public spending that pays
-/// the realm's towns to take up smithing.
+/// third up front; and it tenders to train the master smiths its roads' towns lack. Its faction's war chest pays it
+/// each contract's and tender's worth when let (from outside the society, as the crown's mint): the public spending
+/// that pays the realm's towns to take up smithing.
 pub fn procure(world: &mut World) {
     use crate::crown::{apply_awards, award, OFFTAKE, TRAINED, TRAINING_DAYS};
     use crate::sourcing::{route_facts, Env};
@@ -372,25 +379,32 @@ pub fn procure(world: &mut World) {
             }
         }
     }
-    // What each owes on them, its faction's war chest makes good.
-    let owed: Vec<(TownId, f64)> = {
+    // What each has let of them since, its faction's war chest pays for: each contract and tender once, its worth.
+    let mut battles = std::mem::take(&mut *world.resource_mut::<Battles>());
+    let owed: Vec<f64> = {
         let book = world.resource::<Book>();
         buyers.iter().map(|&(t, ..)| {
-            let contracts: f64 = book.open.iter().map(|&id| &book.contracts[id])
-                .filter(|c| c.buyer == t && matches!(c.state, crate::contracts::State::Drafted | crate::contracts::State::Active))
-                .map(|c| (c.worth() - c.paid.to_f64()).max(0.0)).sum();
-            let tendered: f64 = tenders.on(t).iter().filter(|x| x.buyer == t).map(|x| x.work.bonus.to_f64() * x.open as f64).sum();
-            (t, contracts + tendered)
+            let mut sum = 0.0;
+            for c in book.open.iter().map(|&id| &book.contracts[id]).filter(|c| c.buyer == t) {
+                if matches!(c.state, crate::contracts::State::Drafted | crate::contracts::State::Active)
+                        && battles.funded_contracts.insert(c.id) {
+                    sum += c.worth();
+                }
+            }
+            for x in tenders.on(t).iter().filter(|x| x.buyer == t) {
+                if battles.funded_tenders.insert(x.id) {
+                    sum += x.work.bonus.to_f64() * x.open as f64;
+                }
+            }
+            sum
         }).collect()
     };
     *world.resource_mut::<Tenders>() = tenders;
     let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
     let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());
-    let mut battles = std::mem::take(&mut *world.resource_mut::<Battles>());
-    for (&(t, _, faction, _), &(_, owes)) in buyers.iter().zip(&owed) {
+    for (&(t, _, faction, _), &owes) in buyers.iter().zip(&owed) {
         let Some(mut money) = world.get_mut::<Money>(towns[t]) else { continue };
-        let short = crate::fixed::Fixed::ceil(owes - money.0.to_f64());
-        let grant = battles.draw(d, faction, short, today);
+        let grant = battles.draw(d, faction, crate::fixed::Fixed::ceil(owes), today);
         if grant > crate::fixed::Fixed::ZERO {
             post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), grant,
                 Reason::Other(format!("{}'s war chest", faction.capital())), now, day);
@@ -399,4 +413,315 @@ pub fn procure(world: &mut World) {
     *world.resource_mut::<Battles>() = battles;
     *world.resource_mut::<Ledger>() = ledger;
     *world.resource_mut::<CashBook>() = cash;
+}
+
+/// Days a side regroups between one battle of the war and its next.
+const REGROUP_DAYS: u64 = 3;
+
+/// A town's faction, if it's a faction's and not ruins.
+fn faction_of(world: &World, t: TownId) -> Option<Faction> {
+    if world.resource::<Battles>().ruins.contains(&t) {
+        return None;
+    }
+    world.resource::<crate::taxes::Taxes>().peoples.get(&t).and_then(|p| Faction::of(p))
+}
+
+/// The region's towns of a faction (not ruins), with their hexes, in their order.
+fn faction_towns(world: &World, f: Faction) -> Vec<(TownId, Hex)> {
+    let towns = world.resource::<Towns>().0.clone();
+    (0..towns.len()).filter(|&t| faction_of(world, t) == Some(f))
+        .filter_map(|t| Some((t, world.get::<Town>(towns[t])?.hex?))).collect()
+}
+
+/// The nearest of `of` to the hex, the first on a tie.
+fn nearest(of: &[(TownId, Hex)], to: Hex) -> Option<(TownId, Hex)> {
+    of.iter().copied().min_by_key(|&(t, h)| (h.distance(to), t))
+}
+
+/// A battle of the war for a town: `attacker`'s towns near it against the town's own and theirs, each side's towns
+/// within `battle_reach` of it levied; its attackers camped at `camp`, its defenders in the town itself; they march at
+/// `marches`.
+fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attacker: Faction, camp: TownId,
+        marches: u64) -> Battle {
+    let factions = [Faction::Horde, Faction::Alliance];
+    let side = factions.iter().position(|&f| f == attacker).expect("a side");
+    let mut camps = [target, target];
+    camps[side] = camp;
+    let towns = world.resource::<Towns>().0.clone();
+    let mut levies: [Vec<(TownId, usize)>; 2] = Default::default();
+    for (s, &f) in factions.iter().enumerate() {
+        for (t, h) in faction_towns(world, f) {
+            if h.distance(hex) as f64 <= content.dials.battle_reach {
+                if let Some(roster) = world.get::<Roster>(towns[t]) {
+                    levies[s].push((t, levy_of(content, roster)));
+                }
+            }
+        }
+    }
+    let now = world.resource::<Clock>().now;
+    Battle { hex, factions, armies: Default::default(), camps, levies, marching: Vec::new(), holder: None,
+        held_since: None, won_by: None, began: now, days: 0, fights: 0, reckoned: None, marches, marched: false,
+        town: Some(target), attacker: Some(side), settled: false }
+}
+
+/// Theramore's marines, Journeymen at arms kitted in Fine iron (John: "a larger reinforcement"), or Orgrimmar's
+/// mercenaries (in what kit they find): `n` soldiers of its capital, at `camp`.
+fn capital_soldiers(content: &Content, n: u32, camp: TownId, kitted: bool, now: u64) -> Vec<Soldier> {
+    let piece = |name: &str| crate::army::good_named(content, name).filter(|_| kitted)
+        .map(|good| crate::army::Worn { good, enchant: 0.0, unbreaking: 0, worn: 0.0,
+            grade: Some(crate::persons::Grade::Fine) });
+    (0..n).map(|_| Soldier { home: camp, enlisted: now, weapon: piece("iron_sword"),
+        armour: [piece("iron_helmet"), piece("iron_chestplate"), None, None], shield: piece("shield"), from_capital: true,
+        ..Default::default() }).collect()
+}
+
+/// A town razed (`docs/war-plan.md` slice 4; John: "fight over a town's hex and raze it, which would create refugees
+/// and frees up a hex for new settlement"): its people at home refugees to their faction's nearest town within
+/// `refugee_reach` (none in reach: they leave the map), its households' purse with them; its treasury and goods looted
+/// out of the world; its land no one's; no one's people any more, its hex the razers' to settle (`may_settle`).
+/// Returns (refugees taken in, those with nowhere).
+fn raze(world: &mut World, content: &Content, t: TownId) -> (u32, u32) {
+    let (now, day) = (world.resource::<Clock>().now, content.day_ticks.max(1));
+    let towns = world.resource::<Towns>().0.clone();
+    let e = towns[t];
+    let faction = faction_of(world, t);
+    let hex = world.get::<Town>(e).and_then(|x| x.hex);
+    let refuge = faction.zip(hex).and_then(|(f, hex)| {
+        let friends: Vec<(TownId, Hex)> = faction_towns(world, f).into_iter().filter(|&(x, _)| x != t)
+            .filter(|&(_, h)| h.distance(hex) as f64 <= content.dials.refugee_reach).collect();
+        nearest(&friends, hex).map(|(x, _)| x)
+    });
+    world.resource_mut::<Battles>().ruins.insert(t);
+    world.resource_mut::<crate::taxes::Taxes>().peoples.remove(&t);
+    let moved = refugees(world, content, t, refuge);
+    // Its households' purse goes with them; its treasury and goods are looted.
+    let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
+    let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());
+    let purse = world.get::<People>(e).map_or(crate::fixed::Fixed::ZERO, |p| p.purse);
+    if let Some(r) = refuge {
+        let mut dest = world.get::<People>(towns[r]).map(|p| p.purse).unwrap_or_default();
+        let mut from = purse;
+        post(&mut ledger, &mut cash, Side::households(t, &mut from), Side::households(r, &mut dest), purse,
+            Reason::Other("refugees".into()), now, day);
+        if let Some(mut p) = world.get_mut::<People>(towns[r]) {
+            p.purse = dest;
+        }
+    } else {
+        let mut from = purse;
+        post(&mut ledger, &mut cash, Side::households(t, &mut from), Side::outside(), purse, Reason::Other("razed".into()), now, day);
+    }
+    if let Some(mut p) = world.get_mut::<People>(e) {
+        p.purse = crate::fixed::Fixed::ZERO;
+        p.beds = 0.0;
+        p.land = 0.0;
+    }
+    if let Some(mut money) = world.get_mut::<Money>(e) {
+        let all = money.0.at_least_zero();
+        post(&mut ledger, &mut cash, Side::treasury(t, &mut money.0), Side::outside(), all, Reason::Other("razed".into()), now, day);
+    }
+    if let Some(mut stock) = world.get_mut::<Stock>(e) {
+        for (g, n) in stock.0.iter_mut().enumerate() {
+            if *n > 0.0 {
+                ledger.used[g] += *n;
+                *n = 0.0;
+            }
+        }
+    }
+    *world.resource_mut::<Ledger>() = ledger;
+    *world.resource_mut::<CashBook>() = cash;
+    // Its land no one's.
+    let mut territory = world.resource_mut::<crate::territory::Territory>();
+    let held: Vec<Hex> = territory.holding(t).map(|h| h.hexes.clone()).unwrap_or_default();
+    for h in held {
+        territory.cede(h);
+    }
+    moved
+}
+
+/// A ruin's people at home go to `refuge` (none: they leave the map). Returns (taken in, gone).
+fn refugees(world: &mut World, content: &Content, t: TownId, refuge: Option<TownId>) -> (u32, u32) {
+    let towns = world.resource::<Towns>().0.clone();
+    let Some(mut roster) = world.get::<Roster>(towns[t]).cloned() else { return (0, 0) };
+    let (going, staying): (Vec<_>, Vec<_>) = roster.hands.into_iter().partition(|h| !h.away);
+    roster.hands = staying;
+    roster.merchant = None;
+    let n = going.len() as u32;
+    world.entity_mut(towns[t]).insert(roster);
+    world.entity_mut(towns[t]).insert(crate::lockers::Lockers::default());
+    if let Some(mut p) = world.get_mut::<People>(towns[t]) {
+        p.villagers = 0.0;
+    }
+    let Some(r) = refuge else { return (0, n) };
+    let Some(mut home) = world.get::<Roster>(towns[r]).cloned() else { return (0, n) };
+    for hand in going {
+        home.add(content, hand);
+    }
+    let residents = home.residents() as f64;
+    world.entity_mut(towns[r]).insert(home);
+    if let Some(mut p) = world.get_mut::<People>(towns[r]) {
+        p.villagers = residents;
+    }
+    (n, 0)
+}
+
+/// The war for the region, once a day after the battles' day (`docs/war-plan.md`): declared on `war_day`, the base
+/// the Alliance's port nearest the Horde, its first battle the Horde town nearest it (the run-up `battle_mobilise_days`);
+/// Theramore's marines land when it's over. Each day the capitals pay their soldiers in the field (Theramore dry, it
+/// withdraws: its marines sail home), its expedition made up again for each battle; Orgrimmar sends its mercenaries
+/// at a last stand; a town its attackers held is
+/// razed; a side with no towns left has lost, as has the Alliance once Theramore withdrew; and with no battle on, the
+/// next: an attack beaten off, its defenders strike back at the attackers' town nearest; else the Alliance strikes the
+/// Horde town nearest its base.
+pub fn campaign(world: &mut World) {
+    let content = world.resource::<Content>().clone();
+    let d = &content.dials;
+    let (now, day) = (world.resource::<Clock>().now, content.day_ticks.max(1));
+    let today = now / day;
+    if world.resource::<Battles>().campaign.is_none() {
+        if d.war_day <= 0.0 || (today as f64) < d.war_day {
+            return;
+        }
+        let (horde, alliance) = (faction_towns(world, Faction::Horde), faction_towns(world, Faction::Alliance));
+        if horde.is_empty() || alliance.is_empty() {
+            return;
+        }
+        let towns = world.resource::<Towns>().0.clone();
+        let reach = |h: Hex| horde.iter().map(|x| x.1.distance(h)).min().unwrap_or(i32::MAX);
+        let ports: Vec<(TownId, Hex)> = alliance.iter().copied()
+            .filter(|&(t, _)| world.get::<crate::works::Works>(towns[t]).is_some_and(|w| w.port.is_some())).collect();
+        let pool = if ports.is_empty() { &alliance } else { &ports };
+        let Some(&(base, base_hex)) = pool.iter().min_by_key(|&&(t, h)| (reach(h), t)) else { return };
+        let Some((target, hex)) = nearest(&horde, base_hex) else { return };
+        let lands = now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64;
+        let battle = town_battle(world, &content, target, hex, Faction::Alliance, base, lands);
+        let mut battles = world.resource_mut::<Battles>();
+        battles.seeded = true;
+        battles.battles.push(battle);
+        battles.campaign = Some(Campaign { declared: now, lands, base: Some(base), ..Default::default() });
+        return;
+    }
+    let mut c = world.resource::<Battles>().campaign.clone().expect("declared");
+    if c.won_by.is_some() || c.reckoned == Some(today) {
+        return;
+    }
+    c.reckoned = Some(today);
+    let current = world.resource::<Battles>().battles.iter().rposition(|b| b.town.is_some() && b.won_by.is_none());
+    // Landed: Theramore's marines at its camp.
+    if !c.landed && now >= c.lands {
+        c.landed = true;
+        c.marines = d.expedition_size.max(0.0) as u32;
+        if let Some(i) = current {
+            let camp = world.resource::<Battles>().battles[i].camps[1];
+            let marines = capital_soldiers(&content, c.marines, camp, true, now);
+            world.resource_mut::<Battles>().battles[i].armies[1].soldiers.extend(marines);
+        }
+    }
+    // The capitals' soldiers in the field: counted, and paid of their chests; Theramore dry, it withdraws.
+    if let Some(i) = current {
+        let b = world.resource::<Battles>().battles[i].clone();
+        let of = |side: usize| b.armies[side].soldiers.iter().filter(|s| s.from_capital).count() as u32;
+        if b.marched {
+            c.marines = of(1);
+            c.mercenaries = of(0);
+        }
+        let mut battles = world.resource_mut::<Battles>();
+        for (side, f) in [(1, Faction::Alliance), (0, Faction::Horde)] {
+            let n = of(side);
+            if n == 0 {
+                continue;
+            }
+            let want = crate::fixed::Fixed::ceil(n as f64 * d.capital_soldier_pay);
+            if battles.draw(d, f, want, today) < want {
+                battles.battles[i].armies[side].soldiers.retain(|s| !s.from_capital);
+                if f == Faction::Alliance {
+                    c.withdrew = Some(now);
+                    c.marines = 0;
+                } else {
+                    c.mercenaries = 0;
+                }
+            }
+        }
+    }
+    // Orgrimmar's mercenaries at a last stand, a band every `battle_reinforce_days`.
+    let horde_n = faction_towns(world, Faction::Horde).len();
+    if let Some(i) = current {
+        let gap = (d.battle_reinforce_days.max(1.0) as u64) * day;
+        let band = d.mercenary_band.max(0.0) as u32;
+        let cost = band as f64 * d.capital_soldier_pay * d.battle_reinforce_days.max(1.0);
+        let left = world.resource::<Battles>().chest_left(d, Faction::Horde);
+        if horde_n as f64 <= d.horde_last_stand && band > 0 && left >= cost && c.hired.is_none_or(|h| now >= h + gap) {
+            let camp = world.resource::<Battles>().battles[i].camps[0];
+            let mercs = capital_soldiers(&content, band, camp, false, now);
+            world.resource_mut::<Battles>().battles[i].armies[0].soldiers.extend(mercs);
+            c.hired = Some(now);
+            c.mercenaries += band;
+        }
+    }
+    // What came of the battles won: a town its attackers held is razed.
+    let won: Vec<usize> = world.resource::<Battles>().battles.iter().enumerate()
+        .filter(|(_, b)| b.won_by.is_some() && !b.settled && b.town.is_some()).map(|(i, _)| i).collect();
+    for i in won {
+        let b = world.resource::<Battles>().battles[i].clone();
+        world.resource_mut::<Battles>().battles[i].settled = true;
+        let (Some(t), Some(a)) = (b.town, b.attacker) else { continue };
+        if b.won_by == Some(b.factions[a]) && !world.resource::<Battles>().ruins.contains(&t) {
+            let (taken, gone) = raze(world, &content, t);
+            c.razed.push((today, t, b.factions[a]));
+            c.refugees += taken;
+            c.lost += gone;
+        }
+    }
+    // The ruins' people come home from the war to nowhere: refugees too.
+    let ruins: Vec<TownId> = world.resource::<Battles>().ruins.iter().copied().collect();
+    let towns = world.resource::<Towns>().0.clone();
+    for t in ruins {
+        if world.get::<Roster>(towns[t]).is_some_and(|r| r.hands.iter().any(|h| !h.away)) {
+            let (taken, gone) = refugees(world, &content, t, None);
+            c.refugees += taken;
+            c.lost += gone;
+        }
+    }
+    // Won: a side with no towns left; or Theramore withdrew.
+    let (horde, alliance) = (faction_towns(world, Faction::Horde), faction_towns(world, Faction::Alliance));
+    c.won_by = if horde.is_empty() {
+        Some((today, Faction::Alliance))
+    } else if alliance.is_empty() || c.withdrew.is_some() {
+        Some((today, Faction::Horde))
+    } else {
+        None
+    };
+    // With no battle on, the next.
+    let on = world.resource::<Battles>().battles.iter().any(|b| b.town.is_some() && b.won_by.is_none());
+    if c.won_by.is_none() && !on {
+        let last = world.resource::<Battles>().battles.iter().rev().find(|b| b.town.is_some()).cloned();
+        let beaten_off = last.as_ref().and_then(|b| Some((b.factions[b.attacker?], b.won_by?, b.hex)))
+            .filter(|(att, won, _)| att != won);
+        let (attacker, from) = match beaten_off {
+            // Beaten off, its defenders strike back at the attackers' town nearest.
+            Some((att, won, hex)) if att == Faction::Alliance => (won, hex),
+            _ => {
+                let base = c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b))
+                    .and_then(|b| world.get::<Town>(towns[b])?.hex);
+                (Faction::Alliance, base.or(last.map(|b| b.hex)).unwrap_or(alliance[0].1))
+            }
+        };
+        let (targets, own) = if attacker == Faction::Alliance { (&horde, &alliance) } else { (&alliance, &horde) };
+        if let (Some((target, hex)), true) = (nearest(targets, from), !own.is_empty()) {
+            let camp = if attacker == Faction::Alliance {
+                c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b)).unwrap_or(nearest(own, hex).expect("towns").0)
+            } else {
+                nearest(own, hex).expect("towns").0
+            };
+            let mut battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day);
+            // The capitals' soldiers go with their side: Theramore's made up to its expedition again, while it can
+            // pay them.
+            if c.landed && c.withdrew.is_none() {
+                c.marines = c.marines.max(d.expedition_size.max(0.0) as u32);
+                battle.armies[1].soldiers.extend(capital_soldiers(&content, c.marines, battle.camps[1], true, now));
+            }
+            battle.armies[0].soldiers.extend(capital_soldiers(&content, c.mercenaries, battle.camps[0], false, now));
+            world.resource_mut::<Battles>().battles.push(battle);
+        }
+    }
+    world.resource_mut::<Battles>().campaign = Some(c);
 }

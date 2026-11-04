@@ -101,6 +101,15 @@ pub struct Battle {
     pub marches: u64,
     #[serde(default)]
     pub marched: bool,
+    /// The town it's fought for, if it's a town's hex, and the side attacking it (`docs/war-plan.md`): held
+    /// `raze_hold_days` by the attackers, the town is razed; held `battle_hold_days` by its defenders, the attack is
+    /// beaten off. And whether what came of it has been seen to.
+    #[serde(default)]
+    pub town: Option<TownId>,
+    #[serde(default)]
+    pub attacker: Option<usize>,
+    #[serde(default)]
+    pub settled: bool,
 }
 
 impl Battle {
@@ -108,6 +117,28 @@ impl Battle {
     pub fn held_days(&self, now: u64, day: u64) -> u64 {
         self.held_since.map_or(0, |s| now.saturating_sub(s) / day.max(1))
     }
+}
+
+/// The war for the region (`docs/war-plan.md`): declared and when Theramore lands, its base (the Alliance's port
+/// nearest the Horde), the capitals' soldiers in the field (Theramore's marines, Orgrimmar's mercenaries), when
+/// Theramore withdrew, the towns razed (by whom), the refugees taken in and those with nowhere to go, and whose it was.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Campaign {
+    pub declared: u64,
+    pub lands: u64,
+    pub base: Option<TownId>,
+    pub landed: bool,
+    pub marines: u32,
+    pub mercenaries: u32,
+    pub hired: Option<u64>,
+    pub withdrew: Option<u64>,
+    pub razed: Vec<(u64, TownId, Faction)>,
+    pub refugees: u32,
+    pub lost: u32,
+    pub won_by: Option<(u64, Faction)>,
+    /// The day it was last reckoned (once a day).
+    #[serde(default)]
+    pub reckoned: Option<u64>,
 }
 
 /// The battles for hexes, and whether `battle_day`'s was seeded.
@@ -126,6 +157,17 @@ pub struct Battles {
     pub spent: std::collections::BTreeMap<Faction, crate::fixed::Fixed>,
     #[serde(default)]
     pub dry: std::collections::BTreeMap<Faction, u64>,
+    /// The war for the region, once declared, and the towns razed: ruins, no one's.
+    #[serde(default)]
+    pub campaign: Option<Campaign>,
+    #[serde(default)]
+    pub ruins: std::collections::BTreeSet<TownId>,
+    /// The contracts and tenders its capital has paid for (its towns' procurement: `rules/battle.rs` `procure`), by id:
+    /// each once, its worth when let.
+    #[serde(default)]
+    pub funded_contracts: std::collections::BTreeSet<usize>,
+    #[serde(default)]
+    pub funded_tenders: std::collections::BTreeSet<usize>,
 }
 
 impl Battles {
@@ -151,7 +193,9 @@ impl Battles {
     /// May a town of this faction found a town on `hex`? Not on a hex fought for until a side has held it
     /// `battle_hold_days`; then only the side that did.
     pub fn may_settle(&self, hex: Hex, faction: Option<Faction>) -> bool {
-        self.battles.iter().filter(|b| b.hex == hex).all(|b| b.won_by.is_some() && b.won_by == faction)
+        // (A town's hex beaten off is still its town's; razed, it's the razers' to settle.)
+        self.battles.iter().filter(|b| b.hex == hex && !(b.town.is_some() && b.won_by.is_some() && b.attacker
+            .is_some_and(|a| b.won_by != Some(b.factions[a])))).all(|b| b.won_by.is_some() && b.won_by == faction)
     }
 }
 

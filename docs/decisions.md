@@ -2895,3 +2895,38 @@ limited". Slice 2 of `docs/war-plan.md`.
   procure; posted as "Theramore's war chest" or "Orgrimmar's". Spent, it pays no more, and the day it ran dry is kept
   (`Battles::dry`): Theramore's withdrawal (slice 3) and the war's end (slice 5) read it.
 - The trace has each chest by day (`chests`).
+
+## Society: the war for the region, Theramore's landing and razing (2026-11-04)
+
+Slices 3 to 5 of `docs/war-plan.md` (John: "an Alliance navy/marine presence arrives to defeat the Horde defenders";
+"add the ability to fight over a town's hex and raze it, which would create refugees and frees up a hex for new
+settlement"; "Nearest friendly town", "No towns left", "Alliance port nearest Horde", "10 days").
+
+- **Declared on `war_day`** (none at 0; `rules/battle.rs` `campaign`): its base the Alliance's port nearest the Horde
+  (any Alliance town, with none), its first battle the Horde town nearest it, the Alliance attacking; the run-up
+  `battle_mobilise_days`, the towns of both sides near it levied and procuring as for any battle.
+- **Theramore lands** `expedition_size` (40) marines when the run-up's over, Journeymen at arms in Fine iron sword,
+  helmet, chestplate and shield, at its base; made up to 40 again for each battle; each paid `capital_soldier_pay` (1)
+  a day of its chest. Short of it, it **withdraws**: its marines sail home, and the Horde has held.
+- **A battle for a town** (`Battle::town`, `attacker`): its defenders the town's and its faction's towns near it; held
+  `raze_hold_days` (10) by its attackers, it's **razed** (`raze`): its people at home refugees to their faction's
+  nearest town within `refugee_reach` (20) hexes (none: they leave the map; the census tells the host each as gone and
+  settled), its households' purse with them, its treasury and goods looted out of the world, its land no one's; no
+  one's people any more, a ruin (`Battles::ruins`: no wagon goes to or from it, settlers may found by it), its hex the
+  razers' to settle. Its people away come home to it as refugees too. Held `battle_hold_days` by its defenders, the
+  attack is beaten off, and they strike back at the attackers' town nearest it; else the Alliance strikes the Horde
+  town nearest its base, after `REGROUP_DAYS` (3).
+- **Orgrimmar's mercenaries** at a last stand (the Horde's towns `horde_last_stand`, 2, or fewer): a band of
+  `mercenary_band` (8) every `battle_reinforce_days` while its chest can pay them as long, each paid as a marine.
+- **Won:** a side with no towns left; or the Horde, once Theramore withdrew.
+- **The capitals pay for each contract and tender their towns let once, its worth when let** (it had kept the
+  treasury topped up to what was owed each look, and the town's own spending drained the chest: 20,000 emeralds in 38
+  days); the campaign's pay is reckoned once a day.
+- **Seed 1717's year replayed with a war from day 180** (`ENT_REPLAY_DIAL=war_day=180`; its journal's battle from day
+  30 besides; parting from the game): 22 Horde towns to the Alliance's one, a port, its base. Theramore landed on day
+  210 and razed nine Horde towns in 150 days, one every 17 days, never beaten off; 307 refugees taken in, 49 with
+  nowhere to go; the Horde's towns 22 to 20 (its settlers founding more). Theramore had spent 9,313 of its 20,000 by
+  day 360; Orgrimmar's chest ran dry on day 182, on the year's battle and procurement before the war. The trace has
+  `war`, `razed`, and each battle's town and attackers.
+- **Still to do:** the mod's side of a ruin (its desk and buildings stand; the core counts no one there); walls and a
+  watchtower lifting a town's defence; the Horde's council pinning the Alliance's camp rather than waiting to be struck.

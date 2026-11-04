@@ -57,6 +57,11 @@ run up and war phase in year 2."
 6. **Its tally and trace.** By day: each side's towns, soldiers, chest spent and left, towns razed, refugees; the host
    reports it, the trace has it (`war_days`, `razed`).
 
+## Done (2026-11-04)
+
+Slices 0 to 5 are in (`docs/decisions.md`: settlers' garrisons, names by people, the capitals' war chests, the war for
+the region). Still to do: the mod's side of a ruin, walls in a town's defence, the Horde pinning the Alliance's camp.
+
 ## Checks, sized to what they test
 
 Unit tests for each slice; the study host's world for the councils (a few dozen days); one lane of seed 1717 only

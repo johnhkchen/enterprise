@@ -340,6 +340,9 @@ pub struct Soldier {
     pub exposure: f64,
     pub levy: Option<usize>,
     pub pay: f64,
+    /// Sent by its faction's capital off the map (Theramore's marines, Orgrimmar's mercenaries), paid of its chest.
+    #[serde(default)]
+    pub from_capital: bool,
 }
 
 /// A recruit waiting at the capital for the front (`Army.barracks`): its town, the hand, when it came, its levy and pay.

@@ -100,7 +100,10 @@ create table persons (hand integer, habits text, talents text, skills text, spir
 create table skirmishes (day integer, soldiers integer, twist text, target real, score real, won integer, captain integer,
     hero integer, routed integer);
 create table battles (day integer, battle integer, q integer, r integer, holder text, held_days integer, won_by text,
-    horde integer, alliance integer, marching integer, fights integer);
+    horde integer, alliance integer, marching integer, fights integer, town integer, attacker text);
+create table war (day integer, base integer, landed integer, marines integer, mercenaries integer, razed integer,
+    refugees integer, lost integer, withdrew integer, won_by text, horde_towns integer, alliance_towns integer);
+create table razed (day integer, town integer, by_faction text);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
     won integer, routed integer);
 create table chests (day integer, capital text, spent real, left_over real, dry integer);
@@ -333,9 +336,13 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
     // The battles for hexes (`battle.rs`), and their fights today.
     let dt = s.content().day_ticks.max(1);
     for (i, b) in s.battles().battles.iter().enumerate() {
-        tx.execute("insert into battles values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)", params![day, i, b.hex.q, b.hex.r,
-            b.holder.map(|h| b.factions[h].name()), b.held_days(s.now(), dt), b.won_by.map(|f| f.name()),
-            b.armies[0].soldiers.len(), b.armies[1].soldiers.len(), b.marching.len(), b.fights]).map_err(sql)?;
+        if b.won_by.is_some() && b.reckoned.is_some_and(|r| r + 1 < day) {
+            continue; // (a battle long over: once)
+        }
+        tx.execute("insert into battles values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)", params![day, i, b.hex.q,
+            b.hex.r, b.holder.map(|h| b.factions[h].name()), b.held_days(s.now(), dt), b.won_by.map(|f| f.name()),
+            b.armies[0].soldiers.len(), b.armies[1].soldiers.len(), b.marching.len(), b.fights, b.town,
+            b.attacker.map(|a| b.factions[a].name())]).map_err(sql)?;
         for (side, army) in b.armies.iter().enumerate() {
             for k in army.skirmishes.iter().filter(|k| k.day == day) {
                 tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![day, i,
@@ -349,6 +356,18 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             let b = s.battles();
             tx.execute("insert into chests values (?1, ?2, ?3, ?4, ?5)", params![day, f.capital(),
                 b.spent.get(&f).map_or(0.0, |x| x.to_f64()), b.chest_left(&s.content().dials, f), b.dry.get(&f)]).map_err(sql)?;
+        }
+    }
+    // The war for the region (`battle.rs` `Campaign`), by day, and the towns razed today.
+    if let Some(c) = s.battles().campaign.clone() {
+        let peoples = s.world.resource::<enterprise_core::taxes::Taxes>().peoples.clone();
+        let count = |f: enterprise_core::battle::Faction| (0..s.town_count()).filter(|t| !s.battles().ruins.contains(t)
+            && peoples.get(t).and_then(|p| enterprise_core::battle::Faction::of(p)) == Some(f)).count();
+        tx.execute("insert into war values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", params![day, c.base, c.landed,
+            c.marines, c.mercenaries, c.razed.len(), c.refugees, c.lost, c.withdrew.map(|w| w / dt), c.won_by.map(|w| w.1.name()),
+            count(enterprise_core::battle::Faction::Horde), count(enterprise_core::battle::Faction::Alliance)]).map_err(sql)?;
+        for r in c.razed.iter().filter(|r| r.0 == day) {
+            tx.execute("insert into razed values (?1, ?2, ?3)", params![r.0, r.1, r.2.name()]).map_err(sql)?;
         }
     }
     // The frontier's skirmishes for claims today (`settlers.rs`).

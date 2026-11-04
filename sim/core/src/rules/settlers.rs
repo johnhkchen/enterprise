@@ -132,7 +132,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
     let d = &content.dials;
     let (min, max) = (d.min_hexes as i32, d.max_hexes as i32);
     let roads: std::collections::BTreeSet<usize> = routes.iter().flat_map(|r| [r.from_id, r.to_id]).collect();
-    let sites: Vec<Site> = towns.iter()
+    // (Ruins are no one's: their ground is free to settle.)
+    let sites: Vec<Site> = towns.iter().filter(|(town, ..)| !battles.ruins.contains(&town.id))
         .filter_map(|(town, _, _, _, _, _, roster, _, _, _)| {
             let village = roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id);
             town.hex.map(|hex| Site { id: town.id, hex, village,

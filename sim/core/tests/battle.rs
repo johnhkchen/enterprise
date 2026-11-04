@@ -158,3 +158,65 @@ fn a_factions_war_spending_draws_on_its_capitals_chest_till_its_dry() {
     assert!(b.chest_left(d, Faction::Alliance) <= 10.0 && b.dry.contains_key(&Faction::Alliance), "Theramore's ran dry");
     assert_eq!((Faction::Horde.capital(), Faction::Alliance.capital()), ("Orgrimmar", "Theramore"));
 }
+
+/// The war for the region's world: two Horde towns and two Alliance, the Alliance's nearer one a port.
+fn war_world(chest_alliance: f64) -> (Society, [usize; 4]) {
+    let mut s = Society::new(content());
+    let d = &mut s.content_mut().dials;
+    d.war_day = 1.0;
+    d.battle_mobilise_days = 4.0;
+    d.battle_levy = 0.25;
+    d.expedition_size = 30.0;
+    d.raze_hold_days = 5.0;
+    d.war_chest_alliance = chest_alliance;
+    let horde = [town(&mut s, "Razor Hill", "orc", 0, 0, 12, 0.0, None), town(&mut s, "Sen'jin", "orc", 0, 6, 12, 0.0, None)];
+    let port = town(&mut s, "Southshore", "lordaeron", 10, 0, 12, 0.0, None);
+    let far = town(&mut s, "Goldshire", "stormwind", 20, 0, 12, 0.0, None);
+    let hex = Hex::new(10, 0);
+    s.set_port(port, hex.center_x() + 8.0, hex.center_z());
+    (s, [horde[0], horde[1], port, far])
+}
+
+#[test]
+fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns() {
+    let (mut s, [razor, senjin, port, _]) = war_world(20000.0);
+    s.advance(2 * DAY);
+    let c = s.battles().campaign.clone().expect("the war declared");
+    assert_eq!(c.base, Some(port), "its base the Alliance's port nearest the Horde");
+    let b = s.battles().battles.last().cloned().unwrap();
+    assert_eq!((b.town, b.attacker), (Some(razor), Some(1)), "the Horde town nearest it first, the Alliance attacking");
+    s.advance(7 * DAY);
+    assert!(s.battles().campaign.as_ref().unwrap().landed, "landed after the run-up");
+    let before = s.roster(senjin).residents();
+    s.advance(80 * DAY);
+    let c = s.battles().campaign.clone().unwrap();
+    assert!(c.razed.iter().any(|r| r.1 == razor), "Razor Hill razed: {c:?}");
+    assert!(s.battles().ruins.contains(&razor));
+    assert_eq!(s.roster(razor).hands.iter().filter(|h| !h.away).count(), 0, "no one at home in the ruins");
+    assert!(c.refugees > 0, "its people taken in");
+    assert!(s.roster(senjin).residents() > before || s.battles().ruins.contains(&senjin), "at Sen'jin, its nearest");
+    assert!(s.battles().may_settle(Hex::new(0, 0), Some(Faction::Alliance))
+        && !s.battles().may_settle(Hex::new(0, 0), Some(Faction::Horde)), "the razers' to settle");
+    // On it goes, town by town: the Horde's settlers founding more, an attack beaten off struck back at, till a side
+    // has no towns or Theramore's spent.
+    s.advance(200 * DAY);
+    let c = s.battles().campaign.clone().unwrap();
+    assert!(c.razed.len() >= 2, "{c:?}");
+    let chest = s.content().dials.war_chest_alliance;
+    assert!(s.battles().spent.get(&Faction::Alliance).is_some_and(|x| x.to_f64() <= chest));
+    match c.won_by {
+        Some((_, Faction::Alliance)) => assert!(s.battles().battles.iter().all(|b| b.won_by.is_some())),
+        Some((_, Faction::Horde)) => assert!(c.withdrew.is_some() || c.razed.iter().any(|r| r.2 == Faction::Horde)),
+        None => assert!(s.battles().battles.iter().any(|b| b.won_by.is_none()), "a battle on"),
+    }
+}
+
+#[test]
+fn theramore_spent_withdraws_and_the_horde_has_held() {
+    let (mut s, _) = war_world(200.0);
+    s.advance(60 * DAY);
+    let c = s.battles().campaign.clone().unwrap();
+    assert!(c.withdrew.is_some(), "Theramore's chest dry: {c:?}");
+    assert_eq!(c.won_by.map(|w| w.1), Some(Faction::Horde));
+    assert!(s.battles().battles.iter().all(|b| b.armies[1].soldiers.iter().all(|x| !x.from_capital)), "its marines gone home");
+}
