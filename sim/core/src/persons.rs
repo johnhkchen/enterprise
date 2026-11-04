@@ -92,10 +92,13 @@ pub enum Work {
     Weaving,
     Tanning,
     Leatherwork,
+    Smelting,
+    Smithing,
 }
 
 impl Work {
-    pub const ALL: [Work; 4] = [Work::Baking, Work::Weaving, Work::Tanning, Work::Leatherwork];
+    pub const ALL: [Work; 6] = [Work::Baking, Work::Weaving, Work::Tanning, Work::Leatherwork, Work::Smelting,
+        Work::Smithing];
 
     pub fn name(self) -> &'static str {
         match self {
@@ -103,6 +106,8 @@ impl Work {
             Work::Weaving => "weaving",
             Work::Tanning => "tanning",
             Work::Leatherwork => "leatherwork",
+            Work::Smelting => "smelting",
+            Work::Smithing => "smithing",
         }
     }
 
@@ -113,6 +118,8 @@ impl Work {
             Work::Weaving => "Weaving: wool into carpets.",
             Work::Tanning => "Tanning: hides cured into leather, rabbit hides tanned into it.",
             Work::Leatherwork => "Leatherwork: leather cut and sewn into boots.",
+            Work::Smelting => "Smelting: raw iron and coal into iron ingots.",
+            Work::Smithing => "Smithing: iron ingots forged into swords and tools.",
         }
     }
 }

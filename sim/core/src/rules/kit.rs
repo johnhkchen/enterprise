@@ -89,7 +89,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         security: Res<crate::security::Security>,
         far: Query<(&Roster, &crate::lockers::Lockers)>,
         mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>,
-            Option<&crate::state::People>)>) {
+            Option<&mut crate::state::People>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
     // What the towns down each town's roads (either way) buy at their managed lockers: kept for them.
@@ -102,7 +102,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         }
     }
     for &e in &order.0 {
-        let Ok((town, mut kits, mut stock, trades, roster, works, shipments, people)) = towns.get_mut(e) else { continue };
+        let Ok((town, mut kits, mut stock, trades, roster, works, shipments, mut people)) = towns.get_mut(e) else { continue };
         if now < kits.last + day {
             continue;
         }
@@ -225,7 +225,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             // A home or a hall waiting on its timber has it felled and laid by, warehouse full or not: the timber goes
             // to the building (seed 1717's year: towns of 30 with a Master Lumberjack, their warehouses full, felled
             // nothing for 60 days while their homes waited, and grew no more).
-            let waiting = people.map_or(0.0, |p| p.timber_wait) + works.map_or(0.0, |w| w.timber_wait) > 0.0;
+            let waiting = people.as_ref().map_or(0.0, |p| p.timber_wait) + works.map_or(0.0, |w| w.timber_wait) > 0.0;
             let builds = if waiting { d.home_logs + d.hall_logs } else { 0.0 };
             if let Some(g) = kits.wood {
                 kits.felling += fellers * d.lots_felled_per_level_day * days;
@@ -261,7 +261,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             guards: if kits.armoury_until.is_some_and(|u| u >= now) { ARMOURY_WEAR } else { 1.0 },
         };
         let crew = crew(&content, &territory, town.id, Some(roster), security.watchmen(town.id));
-        for (g, n) in kits.wear(&content, stock, days, crew, how) {
+        for (g, n) in kits.wear(&content, stock, days, crew, how, people.as_deref_mut().map(|p| &mut p.graded)) {
             ledger.used[g] += n as f64;
         }
         // What was gathered is brought in, whole items, while the warehouse has room.
@@ -313,13 +313,14 @@ pub fn deep_mine(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mu
 /// hunting share, the guards armed and armoured (`Territory.touch`'s end).
 #[allow(clippy::type_complexity)]
 pub fn measure(content: Res<Content>, order: Res<Towns>, mut territory: ResMut<Territory>, security: Res<crate::security::Security>,
-        mut towns: Query<(&Town, &mut Kits, &Stock, Option<&Roster>, Option<&Works>, Option<&mut Farm>)>) {
+        mut towns: Query<(&Town, &mut Kits, &Stock, Option<&Roster>, Option<&Works>, Option<&mut Farm>,
+            Option<&crate::state::People>)>) {
     let guards_kit = ["iron_sword", "bow", "iron_chestplate"].iter().any(|n| content.good(n).is_some());
     for &e in &order.0 {
-        let Ok((town, mut kits, stock, roster, works, farm)) = towns.get_mut(e) else { continue };
+        let Ok((town, mut kits, stock, roster, works, farm, people)) = towns.get_mut(e) else { continue };
         kits.fit(&content, &stock.0);
         let crew = crew(&content, &territory, town.id, roster, security.watchmen(town.id));
-        kits.measure(&content, &stock.0, crew);
+        kits.measure(&content, &stock.0, crew, people.map(|p| &p.graded));
         if let Some(mut farm) = farm {
             let hands = 1.0 + content.dials.tool_bonus * kits.share_of("iron_hoe");
             if farm.hands != hands {

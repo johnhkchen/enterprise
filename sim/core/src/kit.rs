@@ -254,6 +254,34 @@ impl Kits {
         out
     }
 
+    /// The pieces of a good as they're taken into use (the first copies, those in use): the enchanted ones, then its
+    /// graded ones best first (`People::graded`: each as good as its grade's worth, up to [`BEST`], and lasting as many
+    /// times as long; John: "Count like enchantment"), its plain ones, its seconds last: `(quality, wear rate, count,
+    /// its grade if graded)`, clipped to the `held` pieces there are.
+    fn in_use(&self, good: GoodId, held: u32, graded: Option<&[f64; 5]>, d: &crate::content::Dials)
+            -> Vec<(f64, f64, u32, Option<crate::persons::Grade>)> {
+        use crate::persons::Grade;
+        let mut out: Vec<(f64, f64, u32, Option<Grade>)> = self.enchanted(good, held).into_iter()
+            .map(|(q, r, n)| (q, r, n, None)).collect();
+        let mut left = held - out.iter().map(|g| g.2).sum::<u32>();
+        let of = graded.copied().unwrap_or([0.0; 5]);
+        let seconds = (of[Grade::Seconds.index()].floor() as u32).min(left);
+        for grade in [Grade::Masterwork, Grade::Fine, Grade::Good] {
+            let n = (of[grade.index()].floor() as u32).min(left - seconds);
+            if n > 0 {
+                let w = grade.worth(d);
+                out.push((w.min(BEST), 1.0 / w, n, Some(grade)));
+                left -= n;
+            }
+        }
+        out.push((1.0, 1.0, left - seconds, None));
+        if seconds > 0 {
+            let w = Grade::Seconds.worth(d);
+            out.push((w, 1.0 / w, seconds, Some(Grade::Seconds)));
+        }
+        out
+    }
+
     /// Takes away the enchanted pieces in excess of what the warehouse holds, the last first.
     pub fn fit(&mut self, content: &Content, stock: &[f64]) {
         for g in 0..content.goods.len().min(stock.len()) {
@@ -283,13 +311,17 @@ impl Kits {
     /// The share of `wearers` a kind of kit covers: the best pieces first, enchanted ones counting for more, 0 to
     /// [`BEST`] (0 with no wearers) (`Smithing.share`).
     pub fn share(&self, good: GoodId, held: f64, wearers: usize) -> f64 {
+        self.share_graded(good, held, wearers, None, &crate::content::Dials::default())
+    }
+
+    /// [`Kits::share`], its graded pieces counting as their grades (`in_use`).
+    pub fn share_graded(&self, good: GoodId, held: f64, wearers: usize, graded: Option<&[f64; 5]>,
+            d: &crate::content::Dials) -> f64 {
         if wearers == 0 {
             return 0.0;
         }
         let held = whole(held) as u32;
-        let mut groups: Vec<(f64, u32)> = self.enchanted(good, held).into_iter().map(|(q, _, n)| (q, n)).collect();
-        let enchanted: u32 = groups.iter().map(|g| g.1).sum();
-        groups.push((1.0, held - enchanted));
+        let mut groups: Vec<(f64, u32)> = self.in_use(good, held, graded, d).into_iter().map(|(q, _, n, _)| (q, n)).collect();
         groups.sort_by(|a, b| b.0.total_cmp(&a.0));
         let (mut left, mut sum) = (wearers as u32, 0.0);
         for (q, n) in groups {
@@ -302,7 +334,8 @@ impl Kits {
 
     /// Kit wears out over `days`: each wearer with kit uses up a share of one, by kind, carried in `wear`; whole ones
     /// are taken from the warehouse. Returns what was used up, by good (`Smithing.wear`).
-    pub fn wear(&mut self, content: &Content, stock: &mut [f64], days: f64, crew: Crew, how: Wear) -> Vec<(GoodId, u32)> {
+    pub fn wear(&mut self, content: &Content, stock: &mut [f64], days: f64, crew: Crew, how: Wear,
+            mut graded: Option<&mut std::collections::BTreeMap<GoodId, [f64; 5]>>) -> Vec<(GoodId, u32)> {
         let mut used = Vec::new();
         for kind in KITS.iter() {
             let Some(g) = content.good(kind.good) else { continue };
@@ -312,12 +345,12 @@ impl Kits {
                 self.wear.remove(&g); // nothing in use: nothing wearing out
                 continue;
             }
-            // The first copies in use, enchanted pieces first, then plain: the rate they wear at, on average.
-            let mut groups: Vec<(f64, u32)> = self.enchanted(g, held).into_iter().map(|(_, r, n)| (r, n)).collect();
-            let enchanted: u32 = groups.iter().map(|g| g.1).sum();
-            groups.push((1.0, held - enchanted));
+            // The first copies in use, enchanted pieces first, then graded, plain and seconds: the rate they wear at, on
+            // average.
+            let of = graded.as_deref().and_then(|m| m.get(&g)).copied();
+            let groups = self.in_use(g, held, of.as_ref(), &content.dials);
             let (mut left, mut sum) = (equipped, 0.0);
-            for (rate, n) in groups {
+            for &(_, rate, n, _) in &groups {
                 let take = n.min(left);
                 sum += rate * take as f64;
                 left -= take;
@@ -330,6 +363,17 @@ impl Kits {
             if gone > 0 {
                 stock[g] -= gone as f64;
                 self.take(g, gone);
+                // (Worn out in the order they're used: past the enchanted ones, the graded.)
+                if let Some(of) = graded.as_deref_mut().and_then(|m| m.get_mut(&g)) {
+                    let mut left = gone;
+                    for &(_, _, n, grade) in &groups {
+                        let cut = n.min(left);
+                        if let Some(grade) = grade {
+                            of[grade.index()] = (of[grade.index()] - cut as f64).max(0.0);
+                        }
+                        left -= cut;
+                    }
+                }
                 used.push((g, gone));
             }
             self.wear.insert(g, owed - gone as f64);
@@ -348,9 +392,11 @@ impl Kits {
     }
 
     /// The share of its wearers each kind of kit covers, from the warehouse (`Territory.touch`'s end).
-    pub fn measure(&mut self, content: &Content, stock: &[f64], crew: Crew) {
+    pub fn measure(&mut self, content: &Content, stock: &[f64], crew: Crew,
+            graded: Option<&std::collections::BTreeMap<GoodId, [f64; 5]>>) {
         for (i, kind) in KITS.iter().enumerate() {
-            self.shares[i] = content.good(kind.good).map_or(0.0, |g| self.share(g, stock[g], crew.wearers(kind.wearer)));
+            self.shares[i] = content.good(kind.good).map_or(0.0, |g| self.share_graded(g, stock[g], crew.wearers(kind.wearer),
+                graded.and_then(|m| m.get(&g)), &content.dials));
         }
     }
 

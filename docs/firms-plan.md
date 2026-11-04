@@ -147,5 +147,7 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    works at a station, its first holding its pieces to Fine, a second letting them be masterworks, each tier a quarter
    faster and its kind's capital again; it breaks down 2% of days a tier (half where a Tinkerer works it), repaired
    the next day at a tenth of its price; a business saves for and buys the next tier where it pays for itself in 60
-   days. The iron chain next.
+   days. The iron chain done: an ironworks (Armorers) smelts raw iron and coal or charcoal into graded ingots, a
+   bladesmith (Weaponsmiths) and a toolmaker (Toolsmiths) forge them into swords and hoes, a town wanting two of each
+   for its wearers; graded kit counts as its grade, as enchanted kit does (John: "Count like enchantment").
 5. **War**: a skirmish as a task against a target with a twist, on the same engine.

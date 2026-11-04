@@ -45,13 +45,22 @@ const TANNING: StepDef = (Work::Tanning, "leather", &[(&[("rabbit_hide", 4.0)], 
 /// others the smith's 300 blocks, and its 60 people cut to 50: seed 1717's towns are 55 at most, and no Shepherd's or
 /// Leatherworker's had 60 within its range all year). A tannery sells its leather to its town, where a bootmaker buys
 /// it before tanning its own.
+/// An ironworks' smelting, and the iron chain's first step (`docs/firms-plan.md` slice 4): eight raw iron and a coal
+/// (or a charcoal) make eight ingots (`services::RAW_PER_COAL`).
+const SMELTING: StepDef = (Work::Smelting, "iron_ingot", &[(&[("raw_iron", 8.0), ("coal", 1.0)], 8.0),
+    (&[("raw_iron", 8.0), ("charcoal", 1.0)], 8.0)]);
+
 #[allow(clippy::type_complexity)]
-pub const KINDS: [(&str, &str, &[StepDef], f64, f64, f64); 4] = [
+pub const KINDS: [(&str, &str, &[StepDef], f64, f64, f64); 7] = [
     ("bakery", "farmer", &[(Work::Baking, "bread", &[(&[("wheat", 3.0)], 1.0)])], 40.0, 150.0, 30.0),
     ("weaver", "shepherd", &[(Work::Weaving, "white_carpet", &[(&[("white_wool", 2.0)], 3.0)])], 50.0, 300.0, 40.0),
     ("tannery", "leatherworker", &[TANNING], 50.0, 300.0, 40.0),
     ("bootmaker", "leatherworker", &[TANNING, (Work::Leatherwork, "leather_boots", &[(&[("leather", 4.0)], 1.0)])],
         50.0, 300.0, 40.0),
+    // The iron chain: an ironworks' ingots, graded, to the smiths', whose kit (`kit.rs`) counts as its grade.
+    ("ironworks", "armorer", &[SMELTING], 50.0, 300.0, 60.0),
+    ("bladesmith", "weaponsmith", &[(Work::Smithing, "iron_sword", &[(&[("iron_ingot", 2.0)], 1.0)])], 50.0, 300.0, 50.0),
+    ("toolmaker", "toolsmith", &[(Work::Smithing, "iron_hoe", &[(&[("iron_ingot", 2.0)], 1.0)])], 50.0, 300.0, 50.0),
 ];
 
 /// A step of a kind as the host's content has it: its work, and its recipes the host has the goods of.

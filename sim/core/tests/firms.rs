@@ -510,3 +510,30 @@ fn a_broken_station_makes_nothing_until_it_is_repaired_and_its_town_mends_it() {
     let g = sound.firms().into_iter().next().unwrap();
     assert!(f.made * 2.0 < g.made, "{} broken, {} sound", f.made, g.made);
 }
+
+#[test]
+fn an_ironworks_smelts_graded_ingots_for_its_town_s_toolmaker_whose_hoes_its_farmers_wear() {
+    let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64).crop(), Good::new("bread", 0.2, 64).food(5.0),
+        Good::new("raw_iron", 0.2, 64), Good::new("charcoal", 1.0 / 15.0, 64), Good::new("iron_ingot", 0.25, 64),
+        Good::new("iron_hoe", 1.0, 1)], DAY));
+    s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    s.content_mut().dials.hand_wage = 0.01;
+    let mut hands = vec!["farmer"; 12];
+    hands.extend(["armorer", "armorer", "armorer", "toolsmith", "toolsmith", "toolsmith", "merchant"]);
+    let t = town_of(&mut s, "Ironforge", 60, (0.0, 0.0), &hands, 4, 800.0);
+    let before = s.totals();
+    for _ in 0..30 {
+        s.deliver(t, 2, 200.0);
+        s.deliver(t, 3, 30.0);
+        s.deliver(t, WHEAT, 120.0);
+        run(&mut s, 1);
+    }
+    s.conserved(&before).unwrap();
+    let firms = s.firms();
+    let works = firms.iter().find(|f| f.name == "ironworks").expect("an ironworks");
+    let tools = firms.iter().find(|f| f.name == "toolmaker").expect("a toolmaker");
+    assert!(works.grades.iter().sum::<f64>() > 0.0 && tools.grades.iter().sum::<f64>() > 0.0, "{firms:?}");
+    assert_eq!(tools.main_supplier(), Some(works.id), "{:?}", tools.suppliers);
+    let hoes = s.town(t).people.graded.get(&5).copied().unwrap_or_default();
+    assert!(hoes.iter().sum::<f64>() > 0.0, "graded hoes in its warehouse: {hoes:?}");
+}

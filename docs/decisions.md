@@ -2715,3 +2715,25 @@ quality goods"): capital buys the ceiling, masters reach it.
   16,014; no bakery's ovens: a masterwork loaf adds a twelfth of an emerald over a Fine one, so none would pay for
   itself, and the year's bread is Fine at best (10,326 of 12,360). 22 breakdowns. The trace's `firms` has each
   business's stations' tiers.
+
+## Society: the iron chain, and graded kit (2026-11-04)
+
+Slice 4's second part: a chain of businesses from ore to kit, and what a grade does for kit.
+
+- **The chain** (`firms::KINDS`): an **ironworks** (Armorers) smelts eight raw iron and a coal, or a charcoal, into
+  eight ingots (Smelting, a new work); a **bladesmith** (Weaponsmiths) forges two into a sword and a **toolmaker**
+  (Toolsmiths) two into a hoe (Smithing). Their ingots are bought of the ironworks as any business's materials (its
+  suppliers, its bids). A town wants of a kind of kit two graded pieces for each who wears it (`kit::crew`).
+- **Graded kit counts as its grade** (John: "Count like enchantment"): a graded piece is as good as its grade's worth
+  in the share of its wearers a town's kit covers, up to the enchanted cap (`kit::BEST`, half again), and wears at one
+  over it (a masterwork hoe lasts twice as long, seconds three quarters as long); worn out in the order used,
+  enchanted pieces first, then graded best first, plain, seconds (`Kits::share_graded`, `wear`). So a toolmaker's
+  Fine hoes are more farm hands' work, a bladesmith's Fine swords better armed guards; war (slice 5) reads the same.
+- **A business opens only where it would have work:** its town holds the makings of a day's batches of its first
+  step, a hand's of a level, or another kind could make what it lacks of them from what it holds (a toolmaker's
+  ingots an ironworks would smelt). Seed 1717's year had founded three ironworks one after another in a town with no
+  raw iron.
+- **Seed 1717's year, replayed** (19 of 11,023 requests refused): no ironworks (no town with raw iron, Armorers and
+  enough people round it) and no toolmaker; three bladesmiths, wound up, their Weaponsmiths' 34 swords nearly all
+  seconds. Ore is scarce in this world: its mines few. The chain works in its test town (an ironworks' graded ingots
+  bought by a toolmaker whose graded hoes its farmers wear).

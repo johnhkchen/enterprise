@@ -124,10 +124,10 @@ fn tools_wear_out_slower_when_mended() {
     stock[hoe] = 4.0;
     let mut kits = Kits::default();
     let crew = Crew { farmers: 2, ..Default::default() };
-    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false));
+    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false), None);
     assert_eq!(used, vec![(hoe, 2)], "two farmers wear out a hoe each in 16 days");
     assert_eq!(stock[hoe], 2.0);
-    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(true));
+    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(true), None);
     assert_eq!(used, vec![(hoe, 1)], "half that while mended");
 }
 
@@ -141,10 +141,10 @@ fn unbreaking_kit_lasts_longer() {
     let mut kits = Kits::default();
     kits.enchant(hoe, 2, 0.0, 3);
     let crew = Crew { farmers: 2, ..Default::default() };
-    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false));
+    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false), None);
     assert!(used.is_empty(), "Unbreaking III: four times as long, {used:?} used in 16 days");
     assert_eq!(kits.wear[&hoe], 0.5, "a half a hoe owed");
-    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false));
+    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false), None);
     assert_eq!(used, vec![(hoe, 1)], "and the next 16 days take one of the two (the first in use)");
     assert_eq!(kits.pieces[0].count, 1, "an enchanted one");
     assert_eq!(kits.wear[&hoe], 0.0);
@@ -726,3 +726,30 @@ fn a_town_draws_lumberjacks_for_the_wood_its_trades_use_and_no_more() {
     assert!(s.job_bag(t).iter().any(|(trade, m)| trade == "lumberjack" && *m > 0.0), "six users want more: {:?}", s.job_bag(t));
 }
 
+
+#[test]
+fn graded_kit_counts_as_its_grade_and_lasts_as_many_times_as_long() {
+    use enterprise_core::persons::Grade;
+    use std::collections::BTreeMap;
+    let c = content();
+    let (hoe, sword) = (good(&c, "iron_hoe"), good(&c, "iron_sword"));
+    let kits = Kits::default();
+    // Of four swords one masterwork (at most half again), one Good, one seconds and a plain one.
+    let mut of = [0.0; 5];
+    of[Grade::Masterwork.index()] = 1.0;
+    of[Grade::Good.index()] = 1.0;
+    of[Grade::Seconds.index()] = 1.0;
+    assert_eq!(kits.share_graded(sword, 4.0, 4, Some(&of), &c.dials), (1.5 + 1.25 + 1.0 + 0.75) / 4.0);
+    assert_eq!(kits.share_graded(sword, 4.0, 2, Some(&of), &c.dials), (1.5 + 1.25) / 2.0, "the best go to the two");
+    // Two masterwork hoes for two farmers wear half as fast as plain ones, and the worn one comes off their count.
+    let mut stock = vec![0.0; c.goods.len()];
+    stock[hoe] = 2.0;
+    let mut graded: BTreeMap<usize, [f64; 5]> = BTreeMap::new();
+    graded.insert(hoe, [0.0, 0.0, 0.0, 0.0, 2.0]);
+    let mut kits = Kits::default();
+    let crew = Crew { farmers: 2, ..Default::default() };
+    // (Two plain ones would be worn out in their 16 days.)
+    let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false), Some(&mut graded));
+    assert_eq!(used, vec![(hoe, 1)], "16 days: one of the two");
+    assert_eq!(graded[&hoe][Grade::Masterwork.index()], 1.0, "a masterwork worn out");
+}

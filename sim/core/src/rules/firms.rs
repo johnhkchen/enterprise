@@ -107,6 +107,7 @@ fn pace(d: &crate::content::Dials, hand: &Hand, m: &Person, head: Option<(HandId
 pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firms: ResMut<Firms>,
         mut households: ResMut<Households>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         mut charters: ResMut<Charters>, mut persons: ResMut<Persons>, routes: Query<&crate::state::Route>,
+        territory: Res<crate::territory::Territory>, security: Res<crate::security::Security>,
         mut q: Query<(&Town, &mut People, &mut Stock, &mut Money, &Roster, Option<&Workshop>),
             (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
     let kinds = kinds(&content);
@@ -157,6 +158,13 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
         // their town wants of them, a tannery's leather kept at what its bootmaker would sew.
         let mut makers: BTreeMap<GoodId, FirmId> = BTreeMap::new();
         let mut needs: BTreeMap<GoodId, f64> = BTreeMap::new();
+        // (And its kit: two pieces for each who wears it, `kit.rs`.)
+        let crew = crate::kit::crew(&content, &territory, t, Some(roster), security.watchmen(t));
+        for k in crate::services::KITS.iter() {
+            if let Some(g) = content.good(k.good) {
+                *needs.entry(g).or_insert(0.0) += 2.0 * crew.wearers(k.wearer) as f64;
+            }
+        }
         let bids = bids(&content, firms.firms.iter().filter(|f| f.town == t)
             .filter_map(|f| kinds.iter().find(|k| k.name == f.name)));
         for f in firms.firms.iter().filter(|f| f.town == t) {
@@ -368,7 +376,8 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             }
             let c = &kind.conversion;
             let par = hooks.map_or(0.0, |h| h.par_of(c.output));
-            if graded_wanted_for(&content, people, c.output, par, needs.get(&c.output).copied().unwrap_or(0.0)) < c.out {
+            if graded_wanted_for(&content, people, c.output, par, needs.get(&c.output).copied().unwrap_or(0.0)) < c.out
+                    || !makings(&content, &kinds, kind, stock, hooks) {
                 continue;
             }
             // (The hand it's founded round, the best of those it would pay, it takes on: another kind founded today
@@ -498,6 +507,17 @@ fn stations(content: &Content, kind: &Kind, firm: &mut Firm, persons: &Persons, 
         }
     }
     saving
+}
+
+/// Does a town hold the makings of a day's batches of a kind's first step, a hand's of a level (`firm_batches_per_level`),
+/// by one of its recipes (not what's set aside for forward sales), or could another kind make what it lacks of them
+/// from what it holds (a toolmaker's ingots, an ironworks' to make)? A business opens only where it would have work.
+fn makings(content: &Content, kinds: &[Kind], kind: &Kind, stock: &Stock, hooks: Option<&Workshop>) -> bool {
+    let n = content.dials.firm_batches_per_level;
+    let held = |g: GoodId, per: f64| stock.0[g] - hooks.map_or(0.0, |h| h.aside_of(g)) >= per * n - 1e-9;
+    let made = |g: GoodId| kinds.iter().any(|k| k.name != kind.name && k.steps.last().is_some_and(|s| s.output == g)
+        && k.steps[0].recipes.iter().any(|c| c.inputs.iter().all(|&(i, per)| held(i, per))));
+    kind.steps[0].recipes.iter().any(|c| c.inputs.iter().all(|&(g, per)| held(g, per) || made(g)))
 }
 
 /// A town's businesses' bids for their materials (`firms::bids`).
@@ -651,10 +671,10 @@ fn branches(content: &Content, kinds: &[Kind], firms: &mut Firms, persons: &mut 
             let Some(e) = entity(to, q) else { continue };
             let bids = bids_in(content, kinds, firms, to);
             let employed = firms.employed(to);
-            let Ok((_, people, _, _, roster, hooks)) = q.get(e) else { continue };
+            let Ok((_, people, stock, _, roster, hooks)) = q.get(e) else { continue };
             let c = &kind.conversion;
             let par = hooks.map_or(0.0, |h| h.par_of(c.output));
-            if graded_wanted_for(content, people, c.output, par, 0.0) < c.out {
+            if graded_wanted_for(content, people, c.output, par, 0.0) < c.out || !makings(content, kinds, kind, stock, hooks) {
                 continue;
             }
             let offer = offer_in(content, book, firms, roster, to, today);
