@@ -113,6 +113,12 @@ pub struct Battle {
     /// A battle where squads on the march met (`Squad`): over when one side has no one left on its hex.
     #[serde(default)]
     pub field: bool,
+    /// A raid on a town away from the enemy's main force (`rules::battle::council`), fought beside the campaign's.
+    #[serde(default)]
+    pub raid: bool,
+    /// The side that held the hex's ground when it began (a field battle's: the side waiting there).
+    #[serde(default)]
+    pub ground_side: Option<usize>,
 }
 
 impl Battle {
@@ -163,6 +169,12 @@ pub struct Squad {
     pub goal: Option<Hex>,
     pub homeward: bool,
     pub battle: Option<usize>,
+    /// The town battle it was raised for, and whether it waits at its goal (a post its council gave it: a chokepoint,
+    /// the road to the enemy's camp, a hex round its battle).
+    #[serde(default)]
+    pub bound: Option<usize>,
+    #[serde(default)]
+    pub waits: bool,
 }
 
 impl Squad {

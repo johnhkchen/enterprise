@@ -396,6 +396,12 @@ dials! {
     /// soldiers come once every `convoy_days` at most: Theramore's ships with marines, Orgrimmar's mercenary bands.
     /// The war's squads (`battle::Squad`) march `squad_hexes_per_day`, the capitals' in squads of `capital_squad`;
     /// hostile squads on the march meet on one hex or the next unless one is `overrun_odds` the other or more.
+    /// The Horde's council (John: "strategies that can be enacted against the deathball"): a squad met at worse than
+    /// `skirmish_odds` of the enemy's strength falls back a hex; a town's defenders from elsewhere mass on the best
+    /// ground within `choke_reach` of it on the marines' road, and once the marines are at the town post
+    /// `surround_sides` squads round it (an army on its battle's hex with hostile squads on that many sides, or one on
+    /// the road to its camp, draws nothing from its camp); while the marines are `raid_hexes` from an Alliance town it
+    /// raids it. The side holding a hex's ground fights `hills_lift`, `woods_lift`, `river_lift` the better there.
     /// Each side's score in a battle is times its numbers over the enemy's to the `numbers_weight` (0: numbers count
     /// only by their sum). Each fight of a battle kills `combat_losses` of each side's soldiers by the enemy's share of
     /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
@@ -418,6 +424,13 @@ dials! {
     squad_hexes_per_day: f64 = 4.0,
     capital_squad: f64 = 20.0,
     overrun_odds: f64 = 3.0,
+    skirmish_odds: f64 = 0.6,
+    choke_reach: f64 = 4.0,
+    surround_sides: f64 = 3.0,
+    raid_hexes: f64 = 10.0,
+    hills_lift: f64 = 0.25,
+    woods_lift: f64 = 0.15,
+    river_lift: f64 = 0.15,
     numbers_weight: f64 = 0.0,
     combat_losses: f64 = 0.15,
     combat_skill: f64 = 1.0,

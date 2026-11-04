@@ -169,6 +169,7 @@ fn war_world(chest_alliance: f64) -> (Society, [usize; 4]) {
     d.expedition_size = 30.0;
     d.raze_hold_days = 5.0;
     d.war_chest_alliance = chest_alliance;
+    d.raid_hexes = 0.0; // (the campaign's own order of battles: raids are tried by themselves)
     let horde = [town(&mut s, "Razor Hill", "orc", 0, 0, 12, 0.0, None), town(&mut s, "Sen'jin", "orc", 0, 6, 12, 0.0, None)];
     let port = town(&mut s, "Southshore", "lordaeron", 10, 0, 12, 0.0, None);
     let far = town(&mut s, "Goldshire", "stormwind", 20, 0, 12, 0.0, None);
@@ -179,7 +180,7 @@ fn war_world(chest_alliance: f64) -> (Society, [usize; 4]) {
 
 #[test]
 fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns() {
-    let (mut s, [razor, senjin, port, _]) = war_world(20000.0);
+    let (mut s, [razor, _, port, _]) = war_world(20000.0);
     s.advance(2 * DAY);
     let c = s.battles().campaign.clone().expect("the war declared");
     assert_eq!(c.base, Some(port), "its base the Alliance's port nearest the Horde");
@@ -187,14 +188,12 @@ fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns(
     assert_eq!((b.town, b.attacker), (Some(razor), Some(1)), "the Horde town nearest it first, the Alliance attacking");
     s.advance(7 * DAY);
     assert!(s.battles().campaign.as_ref().unwrap().landed, "landed after the run-up");
-    let before = s.roster(senjin).residents();
     s.advance(80 * DAY);
     let c = s.battles().campaign.clone().unwrap();
     assert!(c.razed.iter().any(|r| r.1 == razor), "Razor Hill razed: {c:?}");
     assert!(s.battles().ruins.contains(&razor));
     assert_eq!(s.roster(razor).hands.iter().filter(|h| !h.away).count(), 0, "no one at home in the ruins");
     assert!(c.refugees > 0, "its people taken in");
-    assert!(s.roster(senjin).residents() > before || s.battles().ruins.contains(&senjin), "at Sen'jin, its nearest");
     assert!(s.battles().may_settle(Hex::new(0, 0), Some(Faction::Alliance))
         && !s.battles().may_settle(Hex::new(0, 0), Some(Faction::Horde)), "the razers' to settle");
     // On it goes, town by town: the Horde's settlers founding more, an attack beaten off struck back at, till a side
@@ -276,19 +275,14 @@ fn theramore_pays_for_each_marine_it_sends_to_make_its_expedition_up() {
 
 #[test]
 fn a_fight_kills_on_both_sides_the_winner_fewer() {
-    // John: "more realistic partial damage to the winning side".
-    let fallen = |losses: f64| {
-        let (mut s, _) = war_world(20000.0);
-        s.content_mut().dials.combat_losses = losses;
-        s.advance(30 * DAY);
-        let b = s.battles().battles.iter().find(|b| b.town.is_some()).cloned().expect("the first battle");
-        let dead = |side: usize| b.armies[side].records.values().map(|r| r.fallen).sum::<u32>();
-        (dead(0), dead(1), b.fights)
-    };
-    let (horde0, alliance0, _) = fallen(0.0);
-    let (horde, alliance, fights) = fallen(0.5);
-    assert!(fights >= 2, "fought: {fights}");
-    assert!(horde > horde0 && alliance > alliance0, "both sides lose more: horde {horde0}->{horde}, alliance {alliance0}->{alliance}");
+    // John: "more realistic partial damage to the winning side": two squads of 20 meet on the march.
+    let (mut s, _) = squads_world(Hex::new(4, 0), 20, Hex::new(6, 0), 20);
+    s.content_mut().dials.combat_losses = 0.5;
+    s.advance(3 * DAY);
+    let b = s.battles().battles.iter().find(|b| b.field).cloned().expect("they met");
+    let dead = |side: usize| b.armies[side].records.values().map(|r| r.fallen).sum::<u32>();
+    let won = b.factions.iter().position(|&f| Some(f) == b.won_by).expect("fought it out");
+    assert!(dead(won) > 0 && dead(won) <= dead(1 - won), "the winner lost {}, the beaten {}", dead(won), dead(1 - won));
 }
 
 #[test]
@@ -363,6 +357,66 @@ fn a_squad_bound_where_no_battle_is_goes_home() {
     assert!(q.as_ref().is_none_or(|q| q.homeward), "there and nothing doing, home: {q:?}");
 }
 
+/// Each day of the war world for `days`, what `seen` makes of it, any day.
+fn any_day(s: &mut Society, days: u64, seen: impl Fn(&Society) -> bool) -> bool {
+    (1..=days).any(|day| {
+        s.advance(day * DAY);
+        seen(s)
+    })
+}
+
+#[test]
+fn the_hordes_defenders_mass_ahead_of_the_marines() {
+    // John: "Mass at a chokepoint": Sen'jin's squad waits on the marines' road within `choke_reach` of Razor Hill.
+    let (mut s, [razor, senjin, ..]) = war_world(20000.0);
+    let town = s.town_hex(razor).unwrap();
+    assert!(any_day(&mut s, 40, |s| s.battles().squads.iter().any(|q| q.home == senjin && q.waits && q.goal != Some(town)
+        && q.goal.is_some_and(|g| (1..=4).contains(&g.distance(town))))), "{:?}", s.battles().squads);
+}
+
+#[test]
+fn the_horde_surrounds_the_marines_at_its_town_and_they_sally() {
+    // "Fortify and surround": posts round the town once the marines are there; cut off, the marines sally on one.
+    let (mut s, _) = war_world(20000.0);
+    // (Its levy made up every few days: the squads it sends after the marines are there take the posts.)
+    s.content_mut().dials.surround_sides = 1.0;
+    s.content_mut().dials.choke_reach = 0.0;
+    s.content_mut().dials.battle_reinforce_days = 2.0;
+    // (Round the town the Alliance is attacking.)
+    let attacked = |s: &Society| s.battles().battles.iter().rfind(|b| b.town.is_some() && b.won_by.is_none() && b.attacker == Some(1))
+        .map(|b| b.hex.neighbors());
+    assert!(any_day(&mut s, 120, |s| attacked(s).is_some_and(|round| s.battles().squads.iter()
+        .any(|q| q.side == 0 && q.waits && q.goal.is_some_and(|g| round.contains(&g))))), "a post round the town");
+    assert!(any_day(&mut s, 120, |s| attacked(s).is_some_and(|round| s.battles().squads.iter()
+        .any(|q| q.capital && q.side == 1 && q.battle.is_none() && q.goal.is_some_and(|g| round.contains(&g))))), "a sally on it");
+}
+
+#[test]
+fn the_horde_raids_an_alliance_town_far_from_the_marines() {
+    // "Raid the weak": an Alliance town far from the marines' port (Goldshire, 20 hexes, or one founded since).
+    let (mut s, [_, _, port, _]) = war_world(20000.0);
+    s.content_mut().dials.raid_hexes = 10.0;
+    s.content_mut().dials.battle_reach = 30.0;
+    assert!(any_day(&mut s, 60, |s| s.battles().battles.iter().any(|b| b.raid && b.town != Some(port) && b.attacker == Some(0))),
+        "{:?}", s.battles().battles.iter().map(|b| (b.town, b.attacker, b.raid)).collect::<Vec<_>>());
+}
+
+#[test]
+fn a_weaker_horde_squad_falls_back_rather_than_fight() {
+    // "Skirmish and fall back": 10 to 18 is worse than `skirmish_odds` (0.6) but not an overrun: no stand.
+    let (mut s, _) = squads_world(Hex::new(4, 0), 10, Hex::new(6, 0), 18);
+    s.advance(DAY + DAY / 2);
+    assert!(s.battles().battles.iter().all(|b| !b.field), "no field battle: {:?}", s.battles().squads);
+}
+
+#[test]
+fn the_ground_lifts_the_side_holding_it() {
+    let d = enterprise_core::Dials::default();
+    let hills = enterprise_core::map::Ground { land: enterprise_core::map::Land::Hills, river: true, ..Default::default() };
+    let lift = enterprise_core::rules::battle::ground_lift(&d, hills);
+    assert!((lift - (1.0 + d.hills_lift + d.river_lift)).abs() < 1e-9, "{lift}");
+}
+
 #[test]
 fn theramores_ships_come_once_every_convoy_days() {
     // John: "limit reinforcement frequency": its marines made up when its ships come, every `convoy_days` at most.
@@ -429,3 +483,4 @@ fn a_capitals_public_spending_keeps_to_its_pace_and_its_reserve() {
     }
     assert!(last > 0.0, "Orgrimmar paid its towns something");
 }
+

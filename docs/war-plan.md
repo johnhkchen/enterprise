@@ -78,9 +78,9 @@ game shows battles as it does).
    and its road there (`map` ways, the terrain's cost), `squad_hexes_per_day`. Hostile squads on one hex fight
    (`war::clash_lifted`, the squads of a side there as one army); a town's hex held by its attackers with none of
    its defenders on it `raze_hold_days` is razed. The two-army battle becomes the squads on its hex.
-2. **The Alliance's council.** Its marines march as one (the deathball) on the Horde town it can take soonest; its
+2. **The Alliance's council** (done, 2026-11-05). Its marines march as one (the deathball) on the Horde town it can take soonest; its
    towns' squads hold home.
-3. **The Horde's council**, each day each free squad given a goal:
+3. **The Horde's council** (done, 2026-11-05), each day each free squad given a goal:
    - **Skirmish and fall back:** a squad facing worse than `skirmish_odds` steps back a hex toward home, not fighting;
      on good odds or ground it fights.
    - **Mass at a chokepoint:** the squads gather on the hex of the marines' road where the ground favours defenders
@@ -91,8 +91,8 @@ game shows battles as it does).
      from its camp (it goes hungry: `Army.unfed`).
    - **Fortify and surround:** a town's defenders behind walls hold (`defence_lift`); squads on `surround_sides` of
      the six hexes round the marines cut them off on every side, their spirits falling each day.
-4. **Ground in a fight:** a hill, forest or river crossing lifts the side holding it.
-5. **The trace and the map:** `squads` by day (side, home, hex, soldiers, goal); the war map's frames show them.
+4. **Ground in a fight** (done): a hill, forest or river crossing lifts the side holding it.
+5. **The trace and the map** (the trace's `squads` done; the map to do): `squads` by day (side, home, hex, soldiers, goal); the war map's frames show them.
 6. **Tuned by replays:** `numbers_weight`, `skirmish_odds`, the convoys, against seed 1717's year.
 
 ## Checks, sized to what they test

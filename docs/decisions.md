@@ -3058,3 +3058,34 @@ hexes).
 - **Replayed** (war from day 180): the Alliance razed one Horde town and beat off the Horde at its port once; worn
   from 46 marines to 15 in 27 days with its ships not due, it lost the port 309 to 313 on day 300, its last town: the
   Horde's. Theramore 20,628 left unspent. The councils (slices 2 and 3) are next.
+
+## Society: the war councils on the hexes, slices 2 to 4 (2026-11-05)
+
+John: "strategies that can be enacted against the deathball strategy of the marines"; "Raid the weak, Cut supply,
+Skirmish and fall back, Mass at a chokepoint, Fortify and surround" (`rules::battle::council`, once a day after the
+campaign).
+
+- **The Alliance's council**: the capitals' squads march as one wherever they meet (the deathball); its idle marines
+  rejoin the battle going on, or turn back to a raid on its towns; cut off at a town, it sallies on a post with
+  `overrun_odds` the post's numbers, one sally at a time.
+- **The Horde's**, for the Alliance's attack on its town: its defenders from elsewhere mass ahead of the marines on
+  the best ground within `choke_reach` (4) of the town on their road (hills, then woods or a river), waiting there
+  (`Squad::waits`); once the marines are at the town, `surround_sides` (3) squads take posts round it and the rest join
+  the fight. While the marines are `raid_hexes` (10) or more from an Alliance town in reach of its towns, it raids it
+  (`Battle::raid`, fought beside the campaign's, its levy its towns within `battle_reach`).
+- **Cut off** (`cut_off`): an army on a town's hex with posted hostile squads on `surround_sides` of the hexes round
+  it, or one on the road to its camp, draws nothing from its camp that day (it goes hungry). Only squads at a post
+  cut: any Horde squad crossing the road starved the marines in the first replay.
+- **Skirmish and fall back**: a Horde stack met at worse than `skirmish_odds` (0.6) of the enemy's strength (its
+  soldiers' fundamentals summed) steps back a hex rather than fight.
+- **Stacks**: squads of a side on one hex meet, overrun and fight together; a stack `overrun_odds` the other's size
+  falls back out of its way (a town's squads home, a capital's to wait for orders). A lone mercenary whose camp was a
+  ruin, sent back to it, held the marines on its hex for 26 days.
+- **Ground** (`ground_lift`): the side holding a hex fights `hills_lift` (0.25), `woods_lift` (0.15) and `river_lift`
+  (0.15) the better: a town's defenders, or in a field battle the side waiting there. A squad joins only the battle
+  it's bound for: one passing through stopped there.
+- **Replayed** (war from day 180), each move by itself and all together: with none, the Alliance razed two Horde
+  towns and beat off two strikes at its port (15,712 left); the chokepoint alone, three razed (42 field battles, the
+  Horde's masses of 7 at 4.1 a soldier to the Alliance's 9.8); all together, the Alliance razed three and lost its port
+  on day 301, its marines worn to 17 with 20,560 unspent. The raid never came: seed 1717's Alliance has its port only.
+  The result swings with small changes: the balance is slice 6's.
