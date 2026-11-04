@@ -39,6 +39,13 @@ fn village(s: &mut Society, hex: Hex) -> usize {
     v
 }
 
+/// The home town grown to twelve, two more idle: enough to spare an escort of two beyond its settlers.
+fn grown(s: &mut Society, t: usize) {
+    s.set_roster(t, &[("merchant", 2), ("farmer", 1), ("librarian", 1), ("cartographer", 1), ("mason", 1), ("none", 1), ("none", 1),
+        ("none", 1), ("nitwit", 1), ("none", 1), ("none", 1), ("none", 1)]);
+    s.set_people(t, 12.0, 14.0, 14.0);
+}
+
 fn world(money: f64) -> (Society, usize) {
     let mut s = Society::new(content());
     s.content_mut().dials.budget_share = 1.0;
@@ -76,6 +83,7 @@ fn a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands() {
     let (mut s, home) = world(100.0);
     s.host_places_lockers(home);
     s.set_people_of(home, "tauren");
+    s.content_mut().dials.garrison_escort = 0.0; // (its escort: below)
     s.advance(2 * DAY);
     let founded = s.settled();
     assert_eq!(founded.len(), 1, "a town founded: {:?}", s.parties());
@@ -619,4 +627,48 @@ fn a_new_town_is_named_from_its_founders_peoples_list() {
     assert!(!all.contains(&"Theramore") && !all.contains(&"Orgrimmar"));
     let unique: std::collections::BTreeSet<&str> = all.iter().copied().collect();
     assert_eq!(unique.len(), all.len());
+}
+
+#[test]
+fn a_peoples_party_goes_with_its_escort_who_are_the_new_towns_first_watch() {
+    // John: "garrisons needed to found cities". An orc town's party: its Merchant and Farmer, and two of its hands as
+    // escort, the new town's watch.
+    let (mut s, home) = world(100.0);
+    s.set_people_of(home, "orc");
+    // At ten, it keeps the eight a grown town keeps: none to spare for an escort, and it sends nobody.
+    s.advance(DAY / 4);
+    assert!(s.parties().is_empty());
+    grown(&mut s, home);
+    s.advance(DAY);
+    let parties = s.parties();
+    assert_eq!(parties.len(), 1);
+    assert_eq!(parties[0].hands, 4, "settlers and their escort");
+    assert_eq!(s.roster(home).residents(), 8);
+    s.advance(2 * DAY);
+    let new = s.settled()[0];
+    assert_eq!(s.roster(new).residents(), 4);
+    assert_eq!(s.world.resource::<enterprise_core::security::Security>().watchmen(new), 2, "its escort its garrison");
+    assert!(s.world.resource::<enterprise_core::settlers::Settlers>().frontier.is_empty(), "no rival near: no skirmish");
+}
+
+#[test]
+fn a_claim_near_a_rival_factions_watch_is_fought_for_and_lost_turns_home() {
+    // An Alliance town keeping a strong watch 4 hexes from the orcs' ground: their escort is beaten and they come home.
+    let (mut s, home) = world(100.0);
+    s.set_people_of(home, "orc");
+    let rival = s.add_town("Stormwind", 500.0);
+    at(&mut s, rival, Hex::new(9, 0));
+    s.set_people_of(rival, "stormwind");
+    grown(&mut s, home);
+    s.advance(DAY / 4);
+    let target = s.parties()[0].target;
+    assert!(target.distance(Hex::new(9, 0)) <= 5, "its claim within the rival's reach: {target:?}");
+    s.world.resource_mut::<enterprise_core::security::Security>().towns.entry(rival).or_default().garrison = 10;
+    s.advance(2 * DAY);
+    let fr = s.world.resource::<enterprise_core::settlers::Settlers>().frontier.clone();
+    assert_eq!(fr.len(), 1, "a skirmish for the claim");
+    assert_eq!((fr[0].from, fr[0].rival, fr[0].escort), (home, rival, 2));
+    assert!(!fr[0].won, "two bare-handed hands against a watch of {}", fr[0].watch);
+    assert!(s.settled().is_empty(), "no town");
+    assert_eq!(s.roster(home).residents(), 12, "all home again");
 }

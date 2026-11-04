@@ -170,7 +170,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         let spare = free + savings;
         // The hands it can spare: those waiting for work, else workers it has others of (`party_hands`).
         let hands = party_hands(&content, &roster);
-        if hands.is_empty() || spare < SETTLING_EMERALDS {
+        // A people's party goes with its escort (John: "garrisons needed to found cities"): hands it must spare too.
+        let faction = taxes.peoples.get(&town.id).and_then(|p| crate::battle::Faction::of(p));
+        let escort = if faction.is_some() { d.garrison_escort.max(0.0) as usize } else { 0 };
+        if hands.len() < 1 + escort || spare < SETTLING_EMERALDS {
             continue;
         }
         // The lands the town has: its holding's, its own hex's and those round it.
@@ -202,8 +205,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
                     village = Some((v, hex, w, stop));
                 }
             }
-            if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
-                let faction = taxes.peoples.get(&town.id).and_then(|p| crate::battle::Faction::of(p));
+            if hands.len() >= 2 + escort && spare >= FOUNDING_EMERALDS {
                 let may = |h: Hex| battles.may_settle(h, faction);
                 if let Some((hex, w)) = open_ground(&sites, &settlers, &territory, &map, stop, min, max, may, worth) {
                     if better(w, trip(stop, hex), ground.map(|(h, bw, bs)| (bw, trip(bs, h)))) {
@@ -250,7 +252,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         }
         // The hands: one signs on as a travelling Merchant (trained: it keeps the trade on the road); for a new
         // town the settler goes as its Farmer.
-        let going = if kind == Kind::Village { 1 } else { 2 };
+        let going = if kind == Kind::Village { 1 } else { 2 } + escort;
         let picked: Vec<usize> = hands[..going].to_vec();
         let mut high_first = picked.clone();
         high_first.sort_unstable_by(|a, b| b.cmp(a));
@@ -294,7 +296,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         settlers.next_id += 1;
         let arrives = now + travel_ticks(path.blocks());
         settlers.parties.push(Party { id, from: t, kind, target: target_hex, village: target, hands: party_hands,
-            capital: carried, bread, crates, departs: now, arrives });
+            capital: carried, bread, crates, escort: escort as u32, departs: now, arrives });
         settlers.last_sent.insert(t, now);
     }
 }

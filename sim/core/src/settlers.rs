@@ -84,8 +84,24 @@ pub struct Party {
     /// Empty crates it carries from home, for the new town to ship in.
     #[serde(default)]
     pub crates: u32,
+    /// The last of its hands its escort (`garrison_escort`): the new town's first watch, who fight for its claim.
+    #[serde(default)]
+    pub escort: u32,
     pub departs: u64,
     pub arrives: u64,
+}
+
+/// A frontier skirmish for a claim (`garrison_escort`): the day, the party's town and the hex it would settle, the
+/// rival town whose watch contested it, each side's numbers, and whether the party's escort won.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Frontier {
+    pub day: u64,
+    pub from: TownId,
+    pub target: Hex,
+    pub rival: TownId,
+    pub escort: u32,
+    pub watch: u32,
+    pub won: bool,
 }
 
 /// The parties on the road, when each town last sent one, and what came of those that arrived.
@@ -109,6 +125,9 @@ pub struct Settlers {
     /// till one opens: a harbour laid since, a ship's way (seed 1717's Moonbrook, reached by boat, never had a road).
     #[serde(default)]
     pub roads_owed: Vec<(TownId, TownId)>,
+    /// The frontier's skirmishes for claims, all told.
+    #[serde(default)]
+    pub frontier: Vec<Frontier>,
 }
 
 /// What a party on the road looks like to a host.
@@ -326,9 +345,10 @@ impl Society {
                 !near && way.is_some() && open
             }
         };
-        if !ok {
+        if !ok || !self.frontier_claim(&party) {
             return self.home_again(party);
         }
+        let escort = party.escort;
         let town = match party.village {
             Some(v) if party.kind == Kind::Village => {
                 // A host's village is the host's to make a market of: a desk by its bell (`Output::Found`, until one
@@ -399,11 +419,61 @@ impl Society {
                 self.world.resource_mut::<Settlers>().roads_owed.push((from, to));
             }
         }
+        // Its escort its garrison.
+        if escort > 0 {
+            self.world.resource_mut::<crate::security::Security>().towns.entry(town).or_default().garrison = escort;
+        }
         let mut settlers = self.world.resource_mut::<Settlers>();
         settlers.settled.push(town);
         if party.kind == Kind::Village {
             settlers.villages.push(town);
         }
+    }
+
+    /// May the party settle its claim? Yes, unless a rival faction's town within `frontier_reach` hexes of it keeps a
+    /// watch: then the party's escort and that watch (strangers to us) skirmish for it (`war::clash`), the nearest
+    /// such town's, and the claim is the winner's. Each skirmish is kept ([`Settlers::frontier`]).
+    fn frontier_claim(&mut self, party: &Party) -> bool {
+        use crate::army::{Army, Soldier};
+        use crate::battle::Faction;
+        let content = self.content().clone();
+        let reach = content.dials.frontier_reach;
+        let peoples = self.world.resource::<crate::taxes::Taxes>().peoples.clone();
+        let Some(ours) = peoples.get(&party.from).and_then(|p| Faction::of(p)) else { return true };
+        if reach <= 0.0 {
+            return true;
+        }
+        let watch = |t: TownId| self.world.resource::<crate::security::Security>().watchmen(t);
+        let rival = (0..self.town_count())
+            .filter(|&t| peoples.get(&t).and_then(|p| Faction::of(p)).is_some_and(|f| f != ours))
+            .filter_map(|t| Some((t, self.town_hex(t)?.distance(party.target))))
+            .filter(|&(t, n)| n as f64 <= reach && watch(t) > 0)
+            .min_by_key(|&(t, n)| (n, t));
+        let Some((rival, _)) = rival else { return true };
+        let now = self.world.resource::<crate::state::Clock>().now;
+        let day = content.day_ticks.max(1);
+        let escort = party.escort as usize;
+        let mut ours_army = Army::default();
+        for h in party.hands.iter().rev().take(escort) {
+            ours_army.soldiers.push(Soldier { home: party.from, hand: Some(h.clone()), enlisted: now, ..Default::default() });
+        }
+        let men = watch(rival);
+        let mut theirs = Army::default();
+        for _ in 0..men {
+            theirs.soldiers.push(Soldier { home: rival, enlisted: now, ..Default::default() });
+        }
+        let won = !ours_army.soldiers.is_empty() && {
+            let mut persons = std::mem::take(&mut *self.world.resource_mut::<crate::persons::Persons>());
+            let mut charters = std::mem::take(&mut *self.world.resource_mut::<crate::charters::Charters>());
+            let no = self.world.resource::<Settlers>().frontier.len() as u64;
+            let (won, ..) = crate::war::clash(&content, &mut ours_army, &mut theirs, &mut persons, &mut charters, no, now);
+            *self.world.resource_mut::<crate::persons::Persons>() = persons;
+            *self.world.resource_mut::<crate::charters::Charters>() = charters;
+            won
+        };
+        self.world.resource_mut::<Settlers>().frontier.push(Frontier { day: now / day, from: party.from,
+            target: party.target, rival, escort: escort as u32, watch: men as u32, won });
+        won
     }
 
     /// No place to settle: they come home with the capital and the bread (`Expeditions.homeAgain`).

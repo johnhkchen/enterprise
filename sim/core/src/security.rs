@@ -59,6 +59,9 @@ pub struct Watch {
     pub robbed: u32,
     #[serde(default)]
     pub robbed_of: Fixed,
+    /// Its garrison: the escort its settlers came with, standing however small it is (`garrison_escort`).
+    #[serde(default)]
+    pub garrison: u32,
 }
 
 /// Soldiers holding a hex beyond a town's rings.
@@ -81,7 +84,7 @@ pub struct Security {
 impl Security {
     /// A town's watchmen and garrisons' soldiers: the guards its kit arms.
     pub fn watchmen(&self, town: TownId) -> usize {
-        self.towns.get(&town).map_or(0, |w| w.watchmen as usize) + self.soldiers(town)
+        self.towns.get(&town).map_or(0, |w| (w.watchmen + w.garrison) as usize) + self.soldiers(town)
     }
 
     pub fn soldiers(&self, town: TownId) -> usize {

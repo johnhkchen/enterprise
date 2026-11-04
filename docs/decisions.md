@@ -2867,3 +2867,18 @@ reserved as the distant Alliance capital." Slice 1 of `docs/war-plan.md`.
   people": each side's spread its own, for the war for the region): the core sets the new town's people its
   founders' and says so with it (`Output::Found`'s `people`); the mod builds it in their style and names it from
   their list (`LandAdapter.buildFounded`), the land's where the core doesn't know theirs.
+
+## Society: settlers' garrisons and the frontier (2026-11-04)
+
+John: "We'll do 1 year of natural growth and expansion, with skirmishes and garrisons needed to found cities"; "Escort,
+then guards"; "Frontier claims". Slice 0 of `docs/war-plan.md`.
+
+- **A people's party goes with its escort:** `garrison_escort` (2) hands of its town beside its settlers, spared as
+  they are (a town keeps the eight a grown town keeps: it founds at twelve, not ten). Settled, they're the new town's
+  **garrison** (`security::Watch::garrison`), its guards however small it is (a hamlet keeps no paid watch): counted
+  in its watch for its kit, its wagons' escort and its frontier.
+- **The frontier:** landing within `frontier_reach` (8) hexes of a rival faction's town that keeps a watch or garrison,
+  the escort skirmishes the nearest such town's (strangers to us: `war::clash`), and beaten the party comes home. The
+  trace has each (`frontier`). Seed 1717's factions stand far apart: of 18 claims in its year, the nearest rival town
+  was 6 to 43 hexes off (none within the 5 first tried); its new town lost to a rival after founding is razing's
+  (slice 4).

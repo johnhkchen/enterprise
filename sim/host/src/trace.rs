@@ -103,6 +103,8 @@ create table battles (day integer, battle integer, q integer, r integer, holder 
     horde integer, alliance integer, marching integer, fights integer);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
     won integer, routed integer);
+create table frontier (day integer, from_town integer, q integer, r integer, rival integer, escort integer, watch integer,
+    won integer);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -339,6 +341,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
                     b.factions[side].name(), k.soldiers, k.twist.name(), k.score, k.target, k.won, k.routed]).map_err(sql)?;
             }
         }
+    }
+    // The frontier's skirmishes for claims today (`settlers.rs`).
+    for f in s.world.resource::<enterprise_core::settlers::Settlers>().frontier.iter().filter(|f| f.day == day) {
+        tx.execute("insert into frontier values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![f.day, f.from, f.target.q,
+            f.target.r, f.rival, f.escort, f.watch, f.won]).map_err(sql)?;
     }
     // The army's skirmishes fought today (`war.rs`).
     for k in s.army().skirmishes.iter().filter(|k| k.day == day) {

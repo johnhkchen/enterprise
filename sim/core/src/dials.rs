@@ -371,6 +371,12 @@ dials! {
     /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle. Its levies
     /// march `battle_mobilise_days` after it's seeded: till then its towns build barracks and procure their kit.
     battle_day: f64 = 0.0,
+    /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
+    /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival
+    /// faction's town that keeps a watch, its escort skirmishes that watch for the claim, and beaten turns home (none
+    /// at 0).
+    garrison_escort: f64 = 2.0,
+    frontier_reach: f64 = 8.0,
     battle_mobilise_days: f64 = 30.0,
     battle_reach: f64 = 20.0,
     battle_levy: f64 = 0.1,
