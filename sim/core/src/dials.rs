@@ -375,17 +375,27 @@ dials! {
     /// the Alliance, Orgrimmar's for the Horde. Its region's public spending on the war (barracks, procurement) draws
     /// on it; spent, it pays no more.
     war_chest_alliance: f64 = 20000.0,
-    war_chest_horde: f64 = 6000.0,
+    war_chest_horde: f64 = 10000.0,
     /// The war for the region (`docs/war-plan.md`): declared on `war_day` (none at 0), its run-up
     /// `battle_mobilise_days`, then Theramore lands `expedition_size` marines at the Alliance's port nearest the Horde,
     /// each paid `capital_soldier_pay` a day of its chest, as Orgrimmar pays each of the `mercenary_band` it sends at a
-    /// last stand (its towns `horde_last_stand` or fewer). A town held `raze_hold_days` by its attackers is razed, its
-    /// people refugees to their faction's nearest town within `refugee_reach` hexes.
+    /// last stand (its towns `horde_last_stand` or fewer, or its last `horde_losing_streak` battles lost); each marine
+    /// Theramore sends to make its expedition up again costs it `marine_cost` (a voyage, Fine iron). A town held
+    /// `raze_hold_days` by its attackers is razed, its people refugees to their faction's nearest town within
+    /// `refugee_reach` hexes. A town's defenders are `defence_levy` of the residents of every town of its side, however
+    /// far; they fight `home_ground_lift` the better at home, `walls_lift` more behind a whole wall and
+    /// `watchtower_lift` more with a watchtower.
     war_day: f64 = 0.0,
     expedition_size: f64 = 40.0,
     capital_soldier_pay: f64 = 1.0,
     mercenary_band: f64 = 8.0,
     horde_last_stand: f64 = 2.0,
+    horde_losing_streak: f64 = 2.0,
+    marine_cost: f64 = 30.0,
+    defence_levy: f64 = 0.2,
+    home_ground_lift: f64 = 0.2,
+    walls_lift: f64 = 0.2,
+    watchtower_lift: f64 = 0.1,
     raze_hold_days: f64 = 10.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's

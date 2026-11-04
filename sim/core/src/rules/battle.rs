@@ -33,7 +33,20 @@ type Homes<'w, 's> = Query<'w, 's, (&'static mut People, Option<&'static mut Ros
 
 /// A side's levy from each of its towns: `battle_levy` of its residents, one at least.
 fn levy_of(content: &Content, roster: &Roster) -> usize {
-    ((roster.residents() as f64 * content.dials.battle_levy).ceil() as usize).max(1)
+    levy_at(roster, content.dials.battle_levy)
+}
+
+/// `share` of a town's residents, one at least.
+fn levy_at(roster: &Roster, share: f64) -> usize {
+    ((roster.residents() as f64 * share).ceil() as usize).max(1)
+}
+
+/// How much better a town's defenders fight for it (John: "the horde should be able to put up a better fight"):
+/// `home_ground_lift` at home, `walls_lift` more behind a whole wall (as much of it as stands), `watchtower_lift`
+/// more with a watchtower.
+pub fn defence_lift(d: &crate::dials::Dials, works: Option<&crate::works::Works>) -> f64 {
+    1.0 + d.home_ground_lift + works.map_or(0.0, |w| d.walls_lift * w.walled()
+        + if w.built(crate::works::Kind::Watchtower) { d.watchtower_lift } else { 0.0 })
 }
 
 /// Up to `n` of a town's hands for a side, marching from home to the hex (a levy's order: idle hands first), each in
@@ -249,7 +262,13 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             let [x, y] = &mut b.armies;
             let holder = match (x.soldiers.is_empty(), y.soldiers.is_empty()) {
                 (false, false) => {
-                    let (x_won, rx, ry) = crate::war::clash(&content, x, y, &mut persons, &mut charters, b.fights, now);
+                    // (A town's defenders, `defence_lift` the better.)
+                    let mut lift = [1.0; 2];
+                    if let (Some(t), Some(a)) = (b.town, b.attacker) {
+                        lift[1 - a] = defence_lift(d, entity(t).and_then(|e| works.get(e).ok()));
+                    }
+                    let (x_won, rx, ry) = crate::war::clash_lifted(&content, x, y, &mut persons, &mut charters, b.fights,
+                        now, lift);
                     b.fights += 1;
                     walk_home(x, rx, &town_hex, hex, now);
                     walk_home(y, ry, &town_hex, hex, now);
@@ -438,9 +457,10 @@ fn nearest(of: &[(TownId, Hex)], to: Hex) -> Option<(TownId, Hex)> {
     of.iter().copied().min_by_key(|&(t, h)| (h.distance(to), t))
 }
 
-/// A battle of the war for a town: `attacker`'s towns near it against the town's own and theirs, each side's towns
-/// within `battle_reach` of it levied; its attackers camped at `camp`, its defenders in the town itself; they march at
-/// `marches`.
+/// A battle of the war for a town: `attacker`'s towns near it against the town's own and theirs, the attackers' towns
+/// within `battle_reach` of it levied `battle_levy` of their residents, every town of the defenders' `defence_levy`
+/// (John: "using its local numerical advantage"); its attackers camped at `camp`, its defenders in the town itself;
+/// they march at `marches`.
 fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attacker: Faction, camp: TownId,
         marches: u64) -> Battle {
     let factions = [Faction::Horde, Faction::Alliance];
@@ -450,10 +470,12 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     let towns = world.resource::<Towns>().0.clone();
     let mut levies: [Vec<(TownId, usize)>; 2] = Default::default();
     for (s, &f) in factions.iter().enumerate() {
+        let defends = s != side;
         for (t, h) in faction_towns(world, f) {
-            if h.distance(hex) as f64 <= content.dials.battle_reach {
+            if defends || h.distance(hex) as f64 <= content.dials.battle_reach {
                 if let Some(roster) = world.get::<Roster>(towns[t]) {
-                    levies[s].push((t, levy_of(content, roster)));
+                    let share = if defends { content.dials.defence_levy } else { content.dials.battle_levy };
+                    levies[s].push((t, levy_at(roster, share)));
                 }
             }
         }
@@ -642,14 +664,19 @@ pub fn campaign(world: &mut World) {
             }
         }
     }
-    // Orgrimmar's mercenaries at a last stand, a band every `battle_reinforce_days`.
+    // Orgrimmar's mercenaries at a last stand, or its last `horde_losing_streak` battles lost, a band every
+    // `battle_reinforce_days`.
     let horde_n = faction_towns(world, Faction::Horde).len();
+    let streak = world.resource::<Battles>().battles.iter().rev().filter(|b| b.town.is_some() && b.won_by.is_some())
+        .take_while(|b| b.won_by != Some(Faction::Horde)).count();
+    let desperate = horde_n as f64 <= d.horde_last_stand
+        || d.horde_losing_streak > 0.0 && streak as f64 >= d.horde_losing_streak;
     if let Some(i) = current {
         let gap = (d.battle_reinforce_days.max(1.0) as u64) * day;
         let band = d.mercenary_band.max(0.0) as u32;
         let cost = band as f64 * d.capital_soldier_pay * d.battle_reinforce_days.max(1.0);
         let left = world.resource::<Battles>().chest_left(d, Faction::Horde);
-        if horde_n as f64 <= d.horde_last_stand && band > 0 && left >= cost && c.hired.is_none_or(|h| now >= h + gap) {
+        if desperate && band > 0 && left >= cost && c.hired.is_none_or(|h| now >= h + gap) {
             let camp = world.resource::<Battles>().battles[i].camps[0];
             let mercs = capital_soldiers(&content, band, camp, false, now);
             world.resource_mut::<Battles>().battles[i].armies[0].soldiers.extend(mercs);
@@ -715,8 +742,18 @@ pub fn campaign(world: &mut World) {
             let mut battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day);
             // The capitals' soldiers go with their side: Theramore's made up to its expedition again, while it can
             // pay them.
+            // Each marine sent to make it up costs Theramore `marine_cost`, as far as its chest goes.
             if c.landed && c.withdrew.is_none() {
-                c.marines = c.marines.max(d.expedition_size.max(0.0) as u32);
+                let short = (d.expedition_size.max(0.0) as u32).saturating_sub(c.marines);
+                if short > 0 && d.marine_cost > 0.0 {
+                    let mut battles = world.resource_mut::<Battles>();
+                    let left = battles.chest_left(d, Faction::Alliance);
+                    let sent = short.min((left / d.marine_cost).floor().max(0.0) as u32);
+                    battles.draw(d, Faction::Alliance, crate::fixed::Fixed::ceil(sent as f64 * d.marine_cost), today);
+                    c.marines += sent;
+                } else {
+                    c.marines += short;
+                }
                 battle.armies[1].soldiers.extend(capital_soldiers(&content, c.marines, battle.camps[1], true, now));
             }
             battle.armies[0].soldiers.extend(capital_soldiers(&content, c.mercenaries, battle.camps[0], false, now));

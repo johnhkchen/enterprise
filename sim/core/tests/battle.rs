@@ -220,3 +220,56 @@ fn theramore_spent_withdraws_and_the_horde_has_held() {
     assert_eq!(c.won_by.map(|w| w.1), Some(Faction::Horde));
     assert!(s.battles().battles.iter().all(|b| b.armies[1].soldiers.iter().all(|x| !x.from_capital)), "its marines gone home");
 }
+
+#[test]
+fn a_towns_defenders_fight_better_at_home_behind_walls_and_a_watchtower() {
+    use enterprise_core::rules::battle::defence_lift;
+    use enterprise_core::works::{Kind, What};
+    let (mut s, [razor, ..]) = war_world(20000.0);
+    let d = s.content().dials.clone();
+    assert!((defence_lift(&d, Some(&s.works(razor))) - 1.2).abs() < 1e-9, "at home: a fifth better");
+    s.start_project(razor, What::Wall);
+    s.finish_project(razor, What::Wall);
+    s.start_project(razor, What::Hall(Kind::Watchtower));
+    s.finish_project(razor, What::Hall(Kind::Watchtower));
+    assert!((defence_lift(&d, Some(&s.works(razor))) - 1.5).abs() < 1e-9, "behind a whole wall, with a watchtower");
+}
+
+#[test]
+fn every_town_of_the_defenders_side_sends_its_levy_however_far() {
+    let (mut s, [razor, senjin, port, goldshire]) = war_world(20000.0);
+    let far = town(&mut s, "Thrallmar", "orc", 0, -40, 12, 0.0, None);
+    s.advance(2 * DAY);
+    let b = s.battles().battles.last().cloned().unwrap();
+    assert_eq!(b.town, Some(razor));
+    let horde: Vec<(usize, usize)> = b.levies[0].clone();
+    assert!(horde.contains(&(far, 3)), "Thrallmar, 40 hexes off, sends a fifth of its 13: {horde:?}");
+    assert!(horde.contains(&(senjin, 3)) && horde.contains(&(razor, 3)));
+    assert_eq!(b.levies[1], vec![(port, 4), (goldshire, 4)], "the attackers' towns within reach their battle_levy");
+}
+
+#[test]
+fn orgrimmar_sends_mercenaries_once_its_last_battles_were_lost() {
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.horde_last_stand = 0.0;
+    s.advance(120 * DAY);
+    let c = s.battles().campaign.clone().unwrap();
+    let lost = s.battles().battles.iter().filter(|b| b.town.is_some() && b.won_by == Some(Faction::Alliance)).count();
+    assert!(lost >= 2, "two battles lost: {c:?}");
+    assert!(c.hired.is_some(), "mercenaries sent after a losing streak: {c:?}");
+}
+
+#[test]
+fn theramore_pays_for_each_marine_it_sends_to_make_its_expedition_up() {
+    let spent = |cost: f64| {
+        let (mut s, _) = war_world(20000.0);
+        s.content_mut().dials.marine_cost = cost;
+        s.advance(120 * DAY);
+        let b = s.battles();
+        (b.spent.get(&Faction::Alliance).map_or(0.0, |x| x.to_f64()), b.campaign.clone().unwrap())
+    };
+    let (free, c) = spent(0.0);
+    let (paid, _) = spent(30.0);
+    assert!(c.razed.len() >= 1, "{c:?}");
+    assert!(paid > free, "marines made up cost Theramore: {paid} against {free}");
+}

@@ -2930,3 +2930,27 @@ settlement"; "Nearest friendly town", "No towns left", "Alliance port nearest Ho
   `war`, `razed`, and each battle's town and attackers.
 - **Still to do:** the mod's side of a ruin (its desk and buildings stand; the core counts no one there); walls and a
   watchtower lifting a town's defence; the Horde's council pinning the Alliance's camp rather than waiting to be struck.
+
+## Society: the Horde puts up a fight (2026-11-04)
+
+John, on the war replayed: "the horde should be able to put up a better fight than that. What went wrong?" Seed 1717's
+war had the Horde score a quarter of the Alliance's every fight: half the soldiers (its towns within `battle_reach`
+sending a tenth of their residents, about 20 against 40 marines), each half as strong (a marine fights as a level-3
+hand in Fine iron, 14.6; a level-1 villager unarmed scores nothing, in Plain iron 6.6), no edge at home, Theramore
+making its expedition up for nothing, and Orgrimmar's chest dry on the war's second day. John: "All look good" to:
+
+- **Every town of a town's defenders sends `defence_levy` (0.2) of its residents**, however far (John: "using its
+  local numerical advantage"); its attackers' towns within `battle_reach` still `battle_levy`.
+- **A town's defenders fight better at home** (`rules::battle::defence_lift`, the defenders' score times it in
+  `war::clash_lifted`): `home_ground_lift` (0.2), `walls_lift` (0.2) behind a whole wall (as much as stands), and
+  `watchtower_lift` (0.1) with a watchtower: half again at most.
+- **Each marine Theramore sends to make its expedition up costs it `marine_cost` (30)** of its chest (a voyage, Fine
+  iron), as many as it can pay; the Horde's wins drain it.
+- **Orgrimmar's chest is 10,000** (`war_chest_horde`), and **its mercenaries come once the Horde has lost its last
+  `horde_losing_streak` (2) battles**, not only at its last stand.
+- **Replayed** (the same year, war from day 180): the Horde fielded 60 to 99 a fight to the Alliance's 40. It lost
+  its first town narrowly (633 to 684), then beat the Alliance off at its second ten fights to none, struck back at
+  the port and was beaten, and beat off the next attack: one town razed in 150 days (was nine). Theramore spent 8,459
+  in the war (was 7,387). Orgrimmar's chest still ran dry, on day 190: this journal's year-one battle spent 5,813 of
+  it, and its 22 towns, every one now levied, buy their levies' kit at once. The Horde's strikes back, with a tenth of
+  its towns near the port and no edge, lose.

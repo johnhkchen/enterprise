@@ -311,13 +311,22 @@ pub fn skirmish(content: &Content, army: &mut Army, persons: &mut Persons, chart
 /// target, under one twist (drawn from `no`, the battle's fight). Whether the first won, and each's routed.
 pub fn clash(content: &Content, a: &mut Army, b: &mut Army, persons: &mut Persons, charters: &mut Charters, no: u64,
         now: u64) -> (bool, Vec<Soldier>, Vec<Soldier>) {
+    clash_lifted(content, a, b, persons, charters, no, now, [1.0, 1.0])
+}
+
+/// [`clash`], each army's score times its `lift` (a town's defenders at home, behind its walls: `rules/battle.rs`).
+#[allow(clippy::too_many_arguments)]
+pub fn clash_lifted(content: &Content, a: &mut Army, b: &mut Army, persons: &mut Persons, charters: &mut Charters,
+        no: u64, now: u64, lift: [f64; 2]) -> (bool, Vec<Soldier>, Vec<Soldier>) {
     for army in [&mut *a, &mut *b] {
         as_people(army, persons);
         appoint(content, army, persons, charters, now);
         army.skirmishes_fought += 1;
     }
     let twist = Twist::ALL[((roll(no, 1, 71) * 4.0) as usize).min(3)];
-    let (fa, fb) = (fight(content, a, persons, twist, 2 * no, now), fight(content, b, persons, twist, 2 * no + 1, now));
+    let (mut fa, mut fb) = (fight(content, a, persons, twist, 2 * no, now), fight(content, b, persons, twist, 2 * no + 1, now));
+    fa.score *= lift[0];
+    fb.score *= lift[1];
     // (A tie, by the toss of a coin: never the first army's.)
     let a_won = fa.score > fb.score || fa.score == fb.score && roll(no, 2, 71) < 0.5;
     let day = now / content.day_ticks.max(1);
