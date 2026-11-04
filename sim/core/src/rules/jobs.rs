@@ -182,6 +182,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
                 people.timber_wait + works.map_or(0.0, |w| w.timber_wait), crate::storage::Stores::of(works)) {
             far.push(marbles);
         }
+        // Its hills unmined, a Toolsmith's.
+        if let Some(marbles) = crate::jobs::mine_marbles(&content, territory.holding(town.id), town.hex, &map, &roster) {
+            far.push(marbles);
+        }
         // Its watch short of its kit, a smith's or a Fletcher's (`security.rs`).
         let held = territory.holding(town.id);
         far.extend(crate::jobs::security_marbles(&content, &roster, security.watchmen(town.id),

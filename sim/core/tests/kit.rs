@@ -474,16 +474,17 @@ fn a_ports_unfished_waters_are_a_fishermans_marbles() {
 }
 
 #[test]
-fn ore_comes_from_the_hills() {
-    // On plains: no mine dug, and a mine given brings up nothing.
+fn ore_comes_from_the_hills_most() {
+    // On plains: a mine dug, half a hill mine's ore.
     let mut s = Society::new(content());
     let t = town(&mut s, &[("toolsmith", 2)]);
     s.pay(t, 50.0);
     s.advance(DAY);
-    assert!(s.mine(t).is_none(), "no hills, no mine");
-    s.set_mine(t, false);
-    s.advance(2 * DAY);
-    assert_eq!(stock(&s, t, "raw_iron"), 0.0, "no ore off the plains");
+    // (John: "Ore": iron lies under any land, deeper off the hills.)
+    assert!(s.mine(t).is_some(), "off the hills a mine too");
+    let before = stock(&s, t, "raw_iron");
+    s.advance(3 * DAY);
+    assert_eq!(stock(&s, t, "raw_iron") - before, 4.0, "half a hill mine's: two a day for a level-2 Toolsmith");
     // On a hill: the plain yield; with its own hex and two more hills held, twice it.
     let mut s = Society::new(content());
     let t = hill_town(&mut s, &[("toolsmith", 2)]);
@@ -491,9 +492,11 @@ fn ore_comes_from_the_hills() {
     s.advance(DAY);
     let one = stock(&s, t, "raw_iron");
     assert_eq!(one, 4.0);
-    assert_eq!(kit::ore_ground(1), 1.0);
-    assert_eq!(kit::ore_ground(3), 2.0, "three hills: half again twice");
-    assert_eq!(kit::ore_ground(9), 2.0, "no more past three");
+    let d = Content::new(vec![], DAY).dials;
+    assert_eq!(kit::ore_ground(0, &d), 0.5, "off the hills, half");
+    assert_eq!(kit::ore_ground(1, &d), 1.0);
+    assert_eq!(kit::ore_ground(3, &d), 2.0, "three hills: half again twice");
+    assert_eq!(kit::ore_ground(9, &d), 2.0, "no more past three");
 }
 
 /// The logs a town holds, of every wood (its Lumberjacks fell the wood they like).
@@ -752,4 +755,27 @@ fn graded_kit_counts_as_its_grade_and_lasts_as_many_times_as_long() {
     let used = kits.wear(&c, &mut stock, 16.0, crew, Wear::mended(false), Some(&mut graded));
     assert_eq!(used, vec![(hoe, 1)], "16 days: one of the two");
     assert_eq!(graded[&hoe][Grade::Masterwork.index()], 1.0, "a masterwork worn out");
+}
+
+#[test]
+fn a_hill_town_with_no_mine_draws_a_toolsmith_to_dig_one() {
+    let mut s = Society::new(content());
+    let t = hill_town(&mut s, &[("nitwit", 1)]);
+    let toolsmith = |s: &Society| s.job_bag(t).into_iter().find(|(name, _)| name == "toolsmith").map(|b| b.1);
+    assert!(toolsmith(&s).is_some_and(|m| m > 0.0), "{:?}", s.job_bag(t));
+    // With a Toolsmith, or its mine dug, none.
+    let mut s = Society::new(content());
+    let t2 = hill_town(&mut s, &[("toolsmith", 1)]);
+    assert!(s.job_bag(t2).iter().all(|(name, _)| name != "toolsmith" || s.job_bag(t2).is_empty()));
+    let mut s = Society::new(content());
+    let t3 = hill_town(&mut s, &[("nitwit", 1)]);
+    s.set_mine(t3, false);
+    assert!(s.job_bag(t3).iter().all(|(name, _)| name != "toolsmith"), "{:?}", s.job_bag(t3));
+    // Off the hills, none; but with an Armorer to smelt its ore, a Toolsmith's.
+    let mut s = Society::new(content());
+    let t4 = town(&mut s, &[("nitwit", 1)]);
+    assert!(s.job_bag(t4).iter().all(|(name, _)| name != "toolsmith"));
+    let mut s = Society::new(content());
+    let t5 = town(&mut s, &[("nitwit", 1), ("armorer", 1)]);
+    assert!(s.job_bag(t5).iter().any(|(name, m)| name == "toolsmith" && *m > 0.0), "{:?}", s.job_bag(t5));
 }

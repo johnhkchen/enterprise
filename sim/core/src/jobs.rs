@@ -357,6 +357,24 @@ pub fn fishing_marbles(content: &Content, works: Option<&crate::works::Works>, h
     (unfished > 0.0).then(|| (fisherman, unfished * content.goods[cod].value * 4.0))
 }
 
+/// A town's ground unmined, a Toolsmith's marbles (John: "Ore"): a town with no mine and no Toolsmith at home, on the
+/// hills or with an Armorer at home to smelt its ore, four
+/// days of the raw iron a Novice's mine there would bring up (`raw_iron_per_level_day`, its ground's
+/// `kit::ore_ground`: less off the hills): a Toolsmith digs the mine (`rules/kit.rs` `dig`), as untended plots are a
+/// Farmer's. Seed 1717's year had 7 Toolsmiths in 40 towns, drawn only by their lockers' trades.
+pub fn mine_marbles(content: &Content, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>,
+        map: &crate::map::Map, roster: &Roster) -> Option<(TradeId, f64)> {
+    let (toolsmith, ore) = (content.trade("toolsmith")?, content.good("raw_iron")?);
+    let hills = crate::kit::hills(map, holding, home);
+    // (Where its ore would be wanted: on the hills, or with an Armorer at home to smelt it.)
+    let smelts = content.trade("armorer").is_some_and(|a| crate::kit::at_home(roster, Some(a)).next().is_some());
+    if (hills == 0 && !smelts) || holding.is_some_and(|h| h.mine.is_some()) || crate::kit::at_home(roster, Some(toolsmith)).next().is_some() {
+        return None;
+    }
+    let daily = content.dials.raw_iron_per_level_day * crate::kit::ore_ground(hills, &content.dials);
+    Some((toolsmith, 4.0 * daily * content.goods[ore].value))
+}
+
 /// A town's whole bag for its idle hand now: the markets' signals and the comforts it lacks, then [`bag`].
 pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock, farm: &Farm, met: &[f64],
         savings: f64, roster: &Roster) -> Marbles {
@@ -718,6 +736,10 @@ impl crate::society::Society {
                 e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster, stock,
                 people.timber_wait + e.get::<crate::works::Works>().map_or(0.0, |w| w.timber_wait),
                 crate::storage::Stores::of(e.get::<crate::works::Works>())) {
+            put(&mut bag, t, m);
+        }
+        if let Some((t, m)) = mine_marbles(content, self.world.resource::<crate::territory::Territory>().holding(town),
+                e.get::<crate::state::Town>().and_then(|t| t.hex), self.map(), &roster) {
             put(&mut bag, t, m);
         }
         let held = self.world.resource::<crate::territory::Territory>().holding(town);

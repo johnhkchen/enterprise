@@ -84,10 +84,11 @@ pub fn hills(map: &crate::map::Map, holding: Option<&crate::territory::Holding>,
     hexes.into_iter().filter(|&h| map.land(h) == Land::Hills).count()
 }
 
-/// What a mine yields for the town's hill hexes: nothing without any, the plain yield with one, half again for each
-/// beyond up to `ORE_HILLS`.
-pub fn ore_ground(hills: usize) -> f64 {
-    if hills == 0 { 0.0 } else { 1.0 + ORE_PER_HILL * (hills.min(ORE_HILLS) - 1) as f64 }
+/// What a mine yields for the town's hill hexes: the plain yield with one, half again for each beyond up to
+/// `ORE_HILLS`; without any, `ore_off_hills` of it (John: "Ore": iron lies under any land, deeper off the hills; seed
+/// 1717's year had no town mainly on hills, and its ore came from few mines).
+pub fn ore_ground(hills: usize, d: &crate::content::Dials) -> f64 {
+    if hills == 0 { d.ore_off_hills } else { 1.0 + ORE_PER_HILL * (hills.min(ORE_HILLS) - 1) as f64 }
 }
 
 /// What a hand gathers a day on land of this kind (`Labour.hauls`), by good name: the mod's biome tags as the land

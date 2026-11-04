@@ -577,6 +577,8 @@ dials! {
     /// gold, and lapis too once the mine is sunk deep (`Mines.RAW_IRON_PER_LEVEL_DAY`, `COAL_PER_LEVEL_DAY`,
     /// `RAW_GOLD_PER_LEVEL_DAY`, `LAPIS_PER_LEVEL_DAY`).
     raw_iron_per_level_day: f64 = 2.0,
+    /// A mine off the hills yields this share of a hill mine's (iron lies under any land, deeper).
+    ore_off_hills: f64 = 0.5,
     coal_per_level_day: f64 = 0.5,
     raw_gold_per_level_day: f64 = 0.25,
     lapis_per_level_day: f64 = 0.5,

@@ -2737,3 +2737,18 @@ Slice 4's second part: a chain of businesses from ore to kit, and what a grade d
   enough people round it) and no toolmaker; three bladesmiths, wound up, their Weaponsmiths' 34 swords nearly all
   seconds. Ore is scarce in this world: its mines few. The chain works in its test town (an ironworks' graded ingots
   bought by a toolmaker whose graded hoes its farmers wear).
+
+## Society: ore under any land (2026-11-04)
+
+John: "Ore". Seed 1717's world had no town mainly on hills, so its mines were few and its ore scarce: a mine was dug
+only on the hills, and a Toolsmith (who digs it) drawn only by its lockers' trades (7 in 40 towns).
+
+- **A mine anywhere:** a town with a Toolsmith and the money digs a mine on any ground; off the hills it yields
+  `ore_off_hills` (a half) of a hill mine's (`kit::ore_ground`): iron lies under any land, deeper off the hills.
+- **A Toolsmith drawn to dig it** (`jobs::mine_marbles`): a town with no mine and no Toolsmith at home, on the hills
+  or with an Armorer at home to smelt its ore, has four days of the raw iron a Novice's mine there would bring up in
+  the jobs draw's bag, as untended plots are a Farmer's. (Everywhere, it drew the hands that would have gone with
+  settlers.)
+- **Seed 1717's year, replayed** (19 of 11,023 requests refused): Toolsmiths in 9 towns (6 before), raw iron held in
+  16 towns at the year's end (2), coal in 10 (2), iron hoes in 13 and pickaxes in 10. Still no ironworks: each
+  town's own Armorers smelt its raw iron as it comes up (`services.rs`' smelting).

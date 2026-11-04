@@ -48,7 +48,7 @@ pub fn register(schedule: &mut Schedule) {
 
 /// A town with a Toolsmith and no mine digs one (`Territory.digMine`) for `mine_emeralds` beyond its reserve.
 #[allow(clippy::type_complexity)]
-pub fn dig(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut territory: ResMut<Territory>, map: Res<Map>,
+pub fn dig(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut territory: ResMut<Territory>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         mut towns: Query<(&Town, &mut Money, &Trades, Option<&Roster>, Option<&Farm>, Has<OffMap>, Has<Realm>)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -59,10 +59,7 @@ pub fn dig(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut terr
         if off_map || realm || !roster.hands.iter().any(|h| h.trade == toolsmith && !h.is_baby()) {
             continue;
         }
-        // Only on the hills: a town holding none digs no mine (`hills`).
-        if hills(&map, territory.holdings.get(&town.id), town.hex) == 0 {
-            continue;
-        }
+        // (On any ground: off the hills its ore is less, `ore_ground`.)
         let Some(holding) = territory.holdings.get_mut(&town.id).filter(|h| h.mine.is_none()) else { continue };
         let cost = crate::fixed::Fixed::ceil(content.dials.mine_emeralds);
         if money.0 - super::farms::build_reserve(&content, trades, farm) < cost {
@@ -133,12 +130,11 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             kits.hand_tools += given;
         }
         // The Toolsmiths' ore: so much a day a level each, half again with pickaxes and with a smithy.
-        // As much as its hill hexes give (`ore_ground`): none where it holds no hills (a mine dug before ore was the
-        // hills' stands idle).
+        // As much as its ground gives (`ore_ground`): its hill hexes', less where it holds none.
         if holding.is_some_and(|h| h.mine.is_some()) {
             let levels = levels(roster, content.trade("toolsmith"))
                 * (1.0 + d.tool_bonus * kits.share_of("iron_pickaxe")) * if smithy { SMITHY_ORE } else { 1.0 }
-                * ore_ground(hills(&map, holding, town.hex));
+                * ore_ground(hills(&map, holding, town.hex), d);
             owe(&content, kits, "raw_iron", levels * d.raw_iron_per_level_day * days);
             owe(&content, kits, "coal", levels * d.coal_per_level_day * days);
             owe(&content, kits, "raw_gold", levels * d.raw_gold_per_level_day * days);
