@@ -376,6 +376,12 @@ dials! {
     /// on it; spent, it pays no more.
     war_chest_alliance: f64 = 20000.0,
     war_chest_horde: f64 = 10000.0,
+    /// A capital's public spending paced (John: "pace the arms buying so Orgrimmar's money lasts"): its chest past
+    /// `chest_reserve` (kept for its soldiers in the field: marines, mercenaries) spread over `chest_pace_days`, a
+    /// day's share a day; its towns order no more kit while it owes them `chest_backlog_days` of it.
+    chest_reserve: f64 = 0.25,
+    chest_pace_days: f64 = 120.0,
+    chest_backlog_days: f64 = 10.0,
     /// The war for the region (`docs/war-plan.md`): declared on `war_day` (none at 0), its run-up
     /// `battle_mobilise_days`, then Theramore lands `expedition_size` marines at the Alliance's port nearest the Horde,
     /// each paid `capital_soldier_pay` a day of its chest, as Orgrimmar pays each of the `mercenary_band` it sends at a

@@ -134,10 +134,11 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 let kind = crate::works::Kind::Barracks;
                 if let (Ok((stock, _)), Ok(mut money)) = (camps.get(e), purses.get_mut(e)) {
                     let cost = crate::fixed::Fixed::ceil(crate::works::cost(&content, &stock.0, kind));
-                    let grant = battles.draw(d, faction, cost, today);
-                    if grant < cost {
-                        continue; // its capital's chest dry: no more barracks of its paying
+                    // (Only when its capital can pay it all today, at its pace.)
+                    if battles.public_left(d, faction, today) < cost {
+                        continue;
                     }
+                    let grant = battles.spend_public(d, faction, cost, today);
                     let materials = crate::fixed::Fixed::ceil(crate::works::materials(&content, &stock.0, kind));
                     let chest = Reason::Other(format!("{}'s war chest", faction.capital()));
                     post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t.id, &mut money.0), grant, chest, now, day);
@@ -338,42 +339,57 @@ pub fn procure(world: &mut World) {
     let mut battles = std::mem::take(&mut *world.resource_mut::<Battles>());
     let fresh = battles.procured != Some(today);
     battles.procured = Some(today);
-    // Each levied town of a battle not won, its levy, its faction, and whether its levies have marched.
+    // Each levied town of a battle not won, its levy, its faction, and whether its levies have marched: the nearest
+    // the fighting first.
+    let towns = world.resource::<Towns>().0.clone();
     let mut buyers: Vec<(TownId, usize, Faction, bool)> = Vec::new();
+    let mut far: Vec<i32> = Vec::new();
     for b in battles.battles.iter().filter(|b| b.won_by.is_none()) {
         for side in 0..2 {
             for &(t, n) in &b.levies[side] {
                 if !buyers.iter().any(|x| x.0 == t) {
                     buyers.push((t, n, b.factions[side], now >= b.marches));
+                    far.push(world.get::<Town>(towns[t]).and_then(|x| x.hex).map_or(i32::MAX, |h| h.distance(b.hex)));
                 }
             }
         }
     }
+    let mut order: Vec<usize> = (0..buyers.len()).collect();
+    order.sort_by_key(|&i| (far[i], buyers[i].0));
+    let buyers: Vec<(TownId, usize, Faction, bool)> = order.into_iter().map(|i| buyers[i]).collect();
     *world.resource_mut::<Battles>() = battles;
-    if !fresh || buyers.is_empty() {
+    if !fresh {
         return;
     }
-    let towns = world.resource::<Towns>().0.clone();
     let kit: Vec<(crate::content::GoodId, f64)> = LEVY_KIT.iter()
         .filter_map(|&(name, each)| crate::army::good_named(&content, name).map(|g| (g, each))).collect();
     let mut sov = std::mem::take(&mut *world.resource_mut::<Sovereign>());
     sov.lapse(now);
-    for &(t, n, _, marched) in &buyers {
+    let mut ordered: std::collections::BTreeMap<Faction, f64> = Default::default();
+    for &(t, n, faction, marched) in &buyers {
         let premium = if marched { d.war_premium } else { d.mobilising_premium };
         // Bids in: the lots awarded.
         let routes = route_facts(world);
         let awards = award(&Env::gather(world, routes), &mut sov.requisitions, t, sov.theatre);
         sov.awarded += awards.len() as u32;
         apply_awards(world, &awards);
-        // What its levy still lacks.
+        // What its levy still lacks, while its capital doesn't owe its towns `chest_backlog_days` of its pace (what
+        // it ordered today counted at its worth).
         let held = world.get::<Stock>(towns[t]).map_or_else(Vec::new, |s| s.0.clone());
+        let needs: Vec<(crate::content::GoodId, f64)> = kit.iter()
+            .map(|&(g, each)| (g, (n as f64 * each).ceil() - held.get(g).copied().unwrap_or(0.0).floor()))
+            .filter(|x| x.1 > 0.0).collect();
+        let worth: f64 = needs.iter().map(|&(g, need)| need * content.goods[g].value * premium).sum();
+        let battles = world.resource::<Battles>();
+        let behind = battles.backlog(faction) + ordered.get(&faction).copied().unwrap_or(0.0);
+        if behind > 0.0 && behind + worth > battles.pace(d, faction) * d.chest_backlog_days {
+            continue;
+        }
+        *ordered.entry(faction).or_default() += worth;
         let routes = route_facts(world);
         let env = Env::gather(world, routes);
-        for &(g, each) in &kit {
-            let need = (n as f64 * each).ceil() - held.get(g).copied().unwrap_or(0.0).floor();
-            if need > 0.0 {
-                super::crown::requisition(&env, &mut sov, t, &[g], false, need, premium, now);
-            }
+        for (g, need) in needs {
+            super::crown::requisition(&env, &mut sov, t, &[g], false, need, premium, now);
         }
     }
     *world.resource_mut::<Sovereign>() = sov;
@@ -398,7 +414,8 @@ pub fn procure(world: &mut World) {
             }
         }
     }
-    // What each has let of them since, its faction's war chest pays for: each contract and tender once, its worth.
+    // What each has let of them since its faction's war chest owes it: each contract and tender once, its worth; paid
+    // at its capital's pace, the nearest the fighting first.
     let mut battles = std::mem::take(&mut *world.resource_mut::<Battles>());
     let owed: Vec<f64> = {
         let book = world.resource::<Book>();
@@ -419,16 +436,35 @@ pub fn procure(world: &mut World) {
         }).collect()
     };
     *world.resource_mut::<Tenders>() = tenders;
+    for (&(t, _, faction, _), &owes) in buyers.iter().zip(&owed) {
+        if owes > 0.0 {
+            match battles.owed.iter_mut().find(|o| o.0 == t && o.1 == faction) {
+                Some(o) => o.2 += crate::fixed::Fixed::ceil(owes),
+                None => battles.owed.push((t, faction, crate::fixed::Fixed::ceil(owes))),
+            }
+        }
+    }
+    let rank = |t: TownId| buyers.iter().position(|b| b.0 == t).unwrap_or(usize::MAX);
+    battles.owed.sort_by_key(|o| (rank(o.0), o.0));
+    // (A ruin is owed nothing.)
+    let ruins = battles.ruins.clone();
+    battles.owed.retain(|o| !ruins.contains(&o.0));
     let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
     let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());
-    for (&(t, _, faction, _), &owes) in buyers.iter().zip(&owed) {
+    for i in 0..battles.owed.len() {
+        let (t, faction, owes) = battles.owed[i];
+        if world.get::<Money>(towns[t]).is_none() {
+            continue;
+        }
+        let grant = battles.spend_public(d, faction, owes, today);
+        battles.owed[i].2 -= grant;
         let Some(mut money) = world.get_mut::<Money>(towns[t]) else { continue };
-        let grant = battles.draw(d, faction, crate::fixed::Fixed::ceil(owes), today);
         if grant > crate::fixed::Fixed::ZERO {
             post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), grant,
                 Reason::Other(format!("{}'s war chest", faction.capital())), now, day);
         }
     }
+    battles.owed.retain(|o| o.2 > crate::fixed::Fixed::ZERO);
     *world.resource_mut::<Battles>() = battles;
     *world.resource_mut::<Ledger>() = ledger;
     *world.resource_mut::<CashBook>() = cash;

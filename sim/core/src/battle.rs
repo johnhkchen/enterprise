@@ -168,6 +168,12 @@ pub struct Battles {
     pub funded_contracts: std::collections::BTreeSet<usize>,
     #[serde(default)]
     pub funded_tenders: std::collections::BTreeSet<usize>,
+    /// What each capital owes its towns for what they procured and haven't been paid yet (town, faction, owed), paid
+    /// at its daily pace ([`Battles::spend_public`]); and what each paid of its pace today (day, paid).
+    #[serde(default)]
+    pub owed: Vec<(TownId, Faction, crate::fixed::Fixed)>,
+    #[serde(default)]
+    pub paid_today: std::collections::BTreeMap<Faction, (u64, crate::fixed::Fixed)>,
 }
 
 impl Battles {
@@ -188,6 +194,40 @@ impl Battles {
     /// What's left of a faction's war chest.
     pub fn chest_left(&self, d: &crate::Dials, faction: Faction) -> f64 {
         (faction.chest(d) - self.spent.get(&faction).map_or(0.0, |s| s.to_f64())).max(0.0)
+    }
+
+    /// A capital's daily pace of public spending (its towns' barracks and procurement): what its chest holds past its
+    /// reserve (`chest_reserve`, kept for its soldiers in the field), over `chest_pace_days`.
+    pub fn pace(&self, d: &crate::Dials, faction: Faction) -> f64 {
+        faction.chest(d) * (1.0 - d.chest_reserve.clamp(0.0, 1.0)) / d.chest_pace_days.max(1.0)
+    }
+
+    /// What a capital may still spend on public works today: what's left of its pace, its chest past its reserve at
+    /// most.
+    pub fn public_left(&self, d: &crate::Dials, faction: Faction, today: u64) -> crate::fixed::Fixed {
+        use crate::fixed::Fixed;
+        let paid = self.paid_today.get(&faction).filter(|p| p.0 == today).map_or(Fixed::ZERO, |p| p.1);
+        let pace = (Fixed::floor(self.pace(d, faction)) - paid).at_least_zero();
+        let above = self.chest_left(d, faction) - faction.chest(d) * d.chest_reserve.clamp(0.0, 1.0);
+        pace.min(Fixed::floor(above.max(0.0)))
+    }
+
+    /// What a capital pays of `want` on public works today, [`Battles::public_left`] at most, counted spent.
+    pub fn spend_public(&mut self, d: &crate::Dials, faction: Faction, want: crate::fixed::Fixed, today: u64)
+            -> crate::fixed::Fixed {
+        let paid = want.at_least_zero().min(self.public_left(d, faction, today));
+        let paid = self.draw(d, faction, paid, today);
+        let p = self.paid_today.entry(faction).or_insert((today, crate::fixed::Fixed::ZERO));
+        if p.0 != today {
+            *p = (today, crate::fixed::Fixed::ZERO);
+        }
+        p.1 += paid;
+        paid
+    }
+
+    /// What a capital owes its towns, all told.
+    pub fn backlog(&self, faction: Faction) -> f64 {
+        self.owed.iter().filter(|o| o.1 == faction).map(|o| o.2.to_f64()).sum()
     }
 
     /// May a town of this faction found a town on `hex`? Not on a hex fought for until a side has held it

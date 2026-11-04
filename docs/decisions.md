@@ -2972,3 +2972,23 @@ advantage to pin the Alliance down and attrit them").
   its 40, besieged the port for 118 days and was beaten off; the Alliance's next attack was on at the year's end. One
   town razed in the war. Theramore spent 10,782 in it (was 8,459), about 70 a day: its chest's 7,291 left would last
   about a hundred days more. Orgrimmar's chest still ran dry on day 190 (this journal's year-one battle).
+
+## Society: the capitals' public spending paced (2026-11-04)
+
+John: "Yes, do that" (pace the arms buying so Orgrimmar's money lasts). With every Horde town levied, its 22 towns
+ordered their levies' kit at once (some 200 soldiers' sword, helmet and chestplate, about 12,000 emeralds of it), and
+Orgrimmar's chest ran dry on day 190, ten days into the war, before a mercenary was hired.
+
+- **A capital pays for its towns' barracks and procurement at a pace** (`Battles::spend_public`): what its chest
+  holds past `chest_reserve` (0.25, kept for its soldiers in the field: marines made up, their pay, mercenaries)
+  over `chest_pace_days` (120), a day's share a day.
+- **What it owes waits its turn** (`Battles::owed`): each contract and tender its towns let, once, its worth, paid
+  the towns nearest the fighting first.
+- **Its towns order no more kit while it owes them `chest_backlog_days` (10) of its pace** (today's orders counted at
+  their goods' worth and premium); a town's first order goes in whatever its size.
+- **A barracks is paid for only when its capital can pay it whole today**: a short grant was drawn and lost before.
+- **Replayed** (seed 1717's year, war from day 180): Orgrimmar had 6,957 left at the war's start (was 4,187) and 1,720
+  at the year's end, never dry; its mercenaries came for the first time (25 in the field by day 300). Six battles:
+  the Alliance razed two Horde towns and was beaten off once, the Horde struck at the port three times and was beaten
+  off twice, the third on at the year's end. Theramore spent 13,049 in the war; its 5,623 left would last about 80
+  days more.

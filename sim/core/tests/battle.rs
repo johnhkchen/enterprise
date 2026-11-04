@@ -155,7 +155,7 @@ fn a_factions_war_spending_draws_on_its_capitals_chest_till_its_dry() {
     let b = s.battles();
     let d = &s.content().dials;
     assert!(b.chest_left(d, Faction::Horde) < 5000.0, "Orgrimmar's spent on it");
-    assert!(b.chest_left(d, Faction::Alliance) <= 10.0 && b.dry.contains_key(&Faction::Alliance), "Theramore's ran dry");
+    assert!(b.chest_left(d, Faction::Alliance) > 9.0, "Theramore's paid only its pace: no barracks it can't pay for whole");
     assert_eq!((Faction::Horde.capital(), Faction::Alliance.capital()), ("Orgrimmar", "Theramore"));
 }
 
@@ -303,4 +303,23 @@ fn the_horde_outnumbered_waits_to_be_struck() {
         let beaten_off = w[0].attacker == Some(1) && w[0].won_by == Some(Faction::Horde);
         assert_eq!(w[1].attacker, Some(if beaten_off { 0 } else { 1 }), "{:?}", towns.iter().map(|b| (b.town, b.attacker, b.won_by)).collect::<Vec<_>>());
     }
+}
+
+#[test]
+fn a_capitals_public_spending_keeps_to_its_pace_and_its_reserve() {
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.war_chest_horde = 1200.0;
+    let pace: f64 = 1200.0 * 0.75 / 120.0;
+    let mut last = 0.0;
+    for day in 2..60 {
+        s.advance(day * DAY);
+        let b = s.battles();
+        let d = s.content().dials.clone();
+        let spent = 1200.0 - b.chest_left(&d, Faction::Horde);
+        let paid_today = b.paid_today.get(&Faction::Horde).filter(|p| p.0 == day - 1).map_or(0.0, |p| p.1.to_f64());
+        assert!(paid_today <= pace + 1e-6, "day {day}: {paid_today} over its pace");
+        assert!(spent <= 1200.0 * 0.75 + 1e-6 + 30.0 * 8.0, "its reserve kept for soldiers: {spent}");
+        last = spent;
+    }
+    assert!(last > 0.0, "Orgrimmar paid its towns something");
 }
