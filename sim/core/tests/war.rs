@@ -119,3 +119,23 @@ fn an_army_whose_morale_breaks_routs_its_low_spirited_but_never_a_steady_hand() 
         assert!(m.spirits >= 0.35 || m.has(Habit::SteadyHand) || m.knack.is_some(), "{m:?}");
     }
 }
+
+#[test]
+fn a_barracks_kits_a_recruit_out_of_its_warehouse_graded_first() {
+    use enterprise_core::kit::Kits;
+    use enterprise_core::state::{Ledger, Stock};
+    let c = content();
+    let (sword, chest, shield) = (good(&c, "iron_sword"), good(&c, "iron_chestplate"), good(&c, "shield"));
+    let mut stock = Stock(vec![0.0; c.goods.len()]);
+    stock.0[sword] = 2.0;
+    stock.0[chest] = 1.0;
+    stock.0[shield] = 1.0;
+    let mut graded = std::collections::BTreeMap::new();
+    graded.insert(sword, [0.0, 0.0, 0.0, 1.0, 0.0]);
+    let mut ledger = Ledger { made: vec![0.0; c.goods.len()], used: vec![0.0; c.goods.len()],
+        delivered: vec![0.0; c.goods.len()], ..Default::default() };
+    let kit = army::outfit(&c, &mut ledger, &mut stock, &mut Kits::default(), Some(&mut graded));
+    assert_eq!(kit.weapon.as_ref().map(|w| (w.good, w.grade)), Some((sword, Some(Grade::Fine))), "the Fine sword first");
+    assert_eq!(kit.armour[1].as_ref().map(|w| w.good), Some(chest));
+    assert!(kit.shield.is_some() && stock.0[sword] == 1.0 && stock.0[chest] == 0.0 && graded.get(&sword).is_none());
+}

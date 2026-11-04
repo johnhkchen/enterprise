@@ -29,14 +29,34 @@ fn levy_of(content: &Content, roster: &Roster) -> usize {
     ((roster.residents() as f64 * content.dials.battle_levy).ceil() as usize).max(1)
 }
 
-/// Up to `n` of a town's hands for a side, marching from home to the hex (a levy's order: idle hands first).
+/// Up to `n` of a town's hands for a side, marching from home to the hex (a levy's order: idle hands first), each in
+/// the kit `kit` gives it (a barracks town's, out of its warehouse).
+#[allow(clippy::too_many_arguments)]
 fn raise(content: &Content, roster: &mut Roster, town: TownId, from: Option<Hex>, hex: Hex, side: usize, n: usize,
-        now: u64) -> Vec<Marching> {
+        now: u64, kit: &mut dyn FnMut() -> Option<crate::army::Outfit>) -> Vec<Marching> {
     let picked = levy_order(content, roster, n);
     let ticks = travel_ticks(blocks_between(from, Some(hex))) as u64;
-    picked.into_iter().filter_map(|i| crate::squad::stamp(roster, i)).map(|hand| Marching { side,
-        recruit: Recruit { home: town, hand: Some(hand), mustered: now, levy: None, pay: content.dials.soldier_pay },
-        arrives: now + ticks }).collect()
+    let hands: Vec<crate::roster::Hand> = picked.into_iter().filter_map(|i| crate::squad::stamp(roster, i)).collect();
+    hands.into_iter().map(|hand| Marching { side, recruit: Recruit { home: town, hand: Some(hand), mustered: now,
+        levy: None, pay: content.dials.soldier_pay, kit: kit() }, arrives: now + ticks }).collect()
+}
+
+/// A barracks town's day (`works::Kind::Barracks`): its idle hands (no trade, or Nitwits) at home drill at arms,
+/// five batches' skill a day (`skill_per_batch`; half again with a talent for it or Ambitious), up to their rank's.
+fn drill(content: &Content, roster: &Roster, persons: &mut crate::persons::Persons) {
+    use crate::persons::{draw, skill_cap, Habit, Work};
+    let d = &content.dials;
+    for h in roster.hands.iter().filter(|h| !h.is_baby() && !h.away
+            && content.trades.get(h.trade).is_some_and(|t| t.none || t.nitwit)) {
+        let m = persons.hands.entry(h.id).or_insert_with(|| draw(h.id, h.level, &[]));
+        for w in Work::ALL {
+            m.skills.entry(w).or_insert(3.0 * h.level.clamp(1, 5) as f64);
+        }
+        let gain = 5.0 * d.skill_per_batch * if m.gifted(Work::Arms) { 1.5 } else { 1.0 }
+            * if m.has(Habit::Ambitious) { 1.5 } else { 1.0 };
+        let skill = m.skills.entry(Work::Arms).or_insert(0.0);
+        *skill = (*skill + gain).min(skill_cap(h.level).max(*skill));
+    }
 }
 
 /// Soldiers walking home from the hex, as long as the road takes.
@@ -66,13 +86,33 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
         taxes: Res<crate::taxes::Taxes>, territory: Res<crate::territory::Territory>, map: Res<crate::map::Map>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<Book>, mut persons: ResMut<crate::persons::Persons>,
         mut charters: ResMut<crate::charters::Charters>, places: Query<&Town>, mut camps: Query<(&mut Stock, &mut Kits)>,
-        mut homes: Homes) {
+        mut homes: Homes, crown: Res<Army>, mut works: Query<&mut crate::works::Works>) {
     let (now, day) = (clock.now, content.day_ticks.max(1));
     let today = now / day;
     let d = &content.dials;
     let entity = |t: TownId| all.0.get(t).copied();
     let town_hex = |t: TownId| entity(t).and_then(|e| places.get(e).ok()).and_then(|x| x.hex);
     let battles = &mut *battles;
+    // Once a day: who's at war (its hands levied for a battle or serving the crown's army: it builds a barracks), and
+    // the barracks towns' drill.
+    if battles.drilled != Some(today) {
+        battles.drilled = Some(today);
+        for &e in &all.0 {
+            let Ok(t) = places.get(e) else { continue };
+            let levied = battles.battles.iter().any(|b| b.won_by.is_none() && b.levies.iter().flatten().any(|l| l.0 == t.id));
+            let serving = crown.serving_from(t.id) > 0 || crown.barracks.iter().any(|r| r.home == t.id);
+            let Ok(mut w) = works.get_mut(e) else { continue };
+            if w.at_war != (levied || serving) {
+                w.at_war = levied || serving;
+            }
+            if w.built(crate::works::Kind::Barracks) {
+                if let Ok((_, Some(roster), _)) = homes.get(e) {
+                    drill(&content, &roster, &mut persons);
+                }
+            }
+        }
+    }
+    let barracks = |e: Entity, works: &Query<&mut crate::works::Works>| works.get(e).is_ok_and(|w| w.built(crate::works::Kind::Barracks));
     // Seeded: the hex between the nearest Horde and Alliance towns, each side levied from its towns within reach.
     if d.battle_day > 0.0 && !battles.seeded && today as f64 >= d.battle_day {
         battles.seeded = true;
@@ -89,10 +129,17 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, at, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
                         let Some(e) = entity(t) else { continue };
-                        let Ok((_, Some(mut roster), _)) = homes.get_mut(e) else { continue };
+                        let kitted = barracks(e, &works);
+                        let Ok((mut people, Some(mut roster), _)) = homes.get_mut(e) else { continue };
                         let n = levy_of(&content, &roster);
                         battle.levies[side].push((t, n));
-                        battle.marching.extend(raise(&content, &mut roster, t, Some(at), hex, side, n, now));
+                        let mut camp = camps.get_mut(e).ok();
+                        let ledger = &mut *ledger;
+                        let mut kit = || -> Option<crate::army::Outfit> {
+                            let (stock, kits) = camp.as_mut().filter(|_| kitted)?;
+                            Some(crate::army::outfit(&content, ledger, stock, kits, Some(&mut people.graded)))
+                        };
+                        battle.marching.extend(raise(&content, &mut roster, t, Some(at), hex, side, n, now, &mut kit));
                     }
                 }
                 battles.battles.push(battle);
@@ -154,9 +201,16 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     let serving = b.armies[side].soldiers.iter().filter(|s| s.home == t).count()
                         + b.marching.iter().filter(|m| m.side == side && m.recruit.home == t).count();
                     let Some(e) = entity(t) else { continue };
-                    let Ok((_, Some(mut roster), _)) = homes.get_mut(e) else { continue };
+                    let kitted = barracks(e, &works);
+                    let Ok((mut people, Some(mut roster), _)) = homes.get_mut(e) else { continue };
                     if serving < n {
-                        b.marching.extend(raise(&content, &mut roster, t, town_hex(t), hex, side, n - serving, now));
+                        let mut camp = camps.get_mut(e).ok();
+                        let ledger = &mut *ledger;
+                        let mut kit = || -> Option<crate::army::Outfit> {
+                            let (stock, kits) = camp.as_mut().filter(|_| kitted)?;
+                            Some(crate::army::outfit(&content, ledger, stock, kits, Some(&mut people.graded)))
+                        };
+                        b.marching.extend(raise(&content, &mut roster, t, town_hex(t), hex, side, n - serving, now, &mut kit));
                     }
                 }
             }

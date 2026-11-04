@@ -104,6 +104,14 @@ public final class Buildings {
     /** In the order a town builds them. */
     public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, ROOT_CELLAR, COUNTING_HOUSE, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
 
+    /**
+     * A barracks: the core's (its rules are the core's alone, `works.rs` and `rules/battle.rs`: built by a town at war,
+     * it drills its idle hands at arms and kits out the hands it sends). Not among {@link #KINDS}, which the Java rules
+     * build by; here for where the core says to build one and a town's people have no kit for it.
+     */
+    public static final Kind BARRACKS = new Kind("barracks", 9, 4, 2, Set.of(), 0, 16,
+            "drills the town's idle hands at arms, and kits out the hands it sends to war");
+
     /** A square brings this much mood; with a Farmer's flower beds, this much more. */
     public static final double SQUARE_MOOD = 0.5;
     public static final double FLOWER_MOOD = 0.5;
@@ -130,7 +138,8 @@ public final class Buildings {
     }
 
     public static Optional<Kind> kind(String id) {
-        return KINDS.stream().filter(k -> k.id().equals(id)).findFirst();
+        return java.util.stream.Stream.concat(KINDS.stream(), java.util.stream.Stream.of(BARRACKS))
+                .filter(k -> k.id().equals(id)).findFirst();
     }
 
     /** Where it goes: the nearest open ground near the bell (a square close by); stone docks on the town's pier. */

@@ -350,6 +350,31 @@ pub struct Recruit {
     pub mustered: u64,
     pub levy: Option<usize>,
     pub pay: f64,
+    /// The kit it left home in, a barracks town's ([`outfit`]).
+    #[serde(default)]
+    pub kit: Option<Outfit>,
+}
+
+/// A soldier's kit: a weapon, a piece for each of the four places, a shield.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Outfit {
+    pub weapon: Option<Worn>,
+    pub armour: [Option<Worn>; 4],
+    pub shield: Option<Worn>,
+}
+
+/// A recruit's kit out of its town's warehouse (a barracks town's: `works::Kind::Barracks`), the best there is, graded
+/// first: a weapon, each piece of armour, and a shield unless it's a bow. Out of the world's goods, as a soldier's
+/// draw at the front.
+pub fn outfit(content: &Content, ledger: &mut Ledger, stock: &mut Stock, kits: &mut Kits,
+        mut graded: Option<&mut BTreeMap<GoodId, [f64; 5]>>) -> Outfit {
+    let mut tally = Army::default();
+    let weapon = tally.draw(content, ledger, stock, kits, graded.as_deref_mut(), WEAPONS.iter().map(|g| g.name));
+    let armour = std::array::from_fn(|place| tally.draw(content, ledger, stock, kits, graded.as_deref_mut(),
+        ARMOUR[place].iter().map(|g| g.name)));
+    let bow = weapon.as_ref().is_some_and(|w| bare(&content.goods[w.good].name) == BOW);
+    let shield = if bow { None } else { tally.draw(content, ledger, stock, kits, graded.as_deref_mut(), [SHIELD.name]) };
+    Outfit { weapon, armour, shield }
 }
 
 /// A soldier or recruit walking home (`CaravanLedger.walkHome`): at home again, in its town's roster, when it arrives.
@@ -446,8 +471,9 @@ impl Army {
     /// A recruit joins the army (`Army.enlist`): its town counts it raised.
     pub fn enlist(&mut self, recruit: Recruit, now: u64) {
         self.records.entry(recruit.home).or_default().raised += 1;
+        let kit = recruit.kit.unwrap_or_default();
         self.soldiers.push(Soldier { home: recruit.home, hand: recruit.hand, enlisted: now, levy: recruit.levy,
-            pay: recruit.pay, ..Default::default() });
+            pay: recruit.pay, weapon: kit.weapon, armour: kit.armour, shield: kit.shield, ..Default::default() });
     }
 
     /// Up to `n` waiting recruits leave the barracks for the front, the first come first (`Army.embark`).
@@ -730,13 +756,34 @@ impl Society {
         let Some(roster) = self.world.get::<Roster>(e) else { return 0 };
         let picked = levy_order(self.content(), roster, n);
         let mut roster = self.world.get_mut::<Roster>(e).expect("a roster");
-        let recruits: Vec<Recruit> = picked.into_iter()
-            .filter_map(|i| crate::squad::stamp(&mut roster, i))
-            .map(|hand| Recruit { home: town, hand: Some(hand), mustered: now, levy, pay })
-            .collect();
+        let hands: Vec<Hand> = picked.into_iter().filter_map(|i| crate::squad::stamp(&mut roster, i)).collect();
+        // (A barracks town kits them out of its warehouse.)
+        let barracks = self.world.get::<crate::works::Works>(e).is_some_and(|w| w.built(crate::works::Kind::Barracks));
+        let mut recruits = Vec::new();
+        for hand in hands {
+            let kit = barracks.then(|| self.outfit_from(e));
+            recruits.push(Recruit { home: town, hand: Some(hand), mustered: now, levy, pay, kit });
+        }
         let k = recruits.len();
         self.world.resource_mut::<Army>().barracks.extend(recruits);
         k
+    }
+
+    /// A recruit's kit out of a town's warehouse ([`outfit`]).
+    fn outfit_from(&mut self, e: bevy_ecs::entity::Entity) -> Outfit {
+        let content = self.content().clone();
+        let mut graded = self.world.get_mut::<People>(e).map(|mut p| std::mem::take(&mut p.graded));
+        let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
+        let mut stock = std::mem::take(&mut *self.world.get_mut::<Stock>(e).expect("a town"));
+        let mut kits = std::mem::take(&mut *self.world.get_mut::<Kits>(e).expect("a town"));
+        let kit = outfit(&content, &mut ledger, &mut stock, &mut kits, graded.as_mut());
+        *self.world.resource_mut::<Ledger>() = ledger;
+        *self.world.get_mut::<Stock>(e).unwrap() = stock;
+        *self.world.get_mut::<Kits>(e).unwrap() = kits;
+        if let (Some(g), Some(mut p)) = (graded, self.world.get_mut::<People>(e)) {
+            p.graded = g;
+        }
+        kit
     }
 
     /// Up to `n` recruits waiting at the capital reach the front and join the army, the first come first

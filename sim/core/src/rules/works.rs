@@ -125,7 +125,7 @@ pub fn imports_per_day(content: &Content, book: &CashBook, town: usize, now: u64
 #[allow(clippy::too_many_arguments)]
 fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
         stock: &[f64], now: u64, kind: Kind) -> bool {
-    if works.has_started(kind) {
+    if works.has_started(kind) || kind == Kind::Barracks && !works.at_war {
         return false;
     }
     let skills = skills(content, roster);

@@ -72,3 +72,33 @@ fn the_horde_and_the_alliance_fight_for_the_hex_between_them_and_its_holder_alon
     // Other ground, anyone.
     assert!(s.battles().may_settle(Hex::new(5, 9), None));
 }
+
+#[test]
+fn a_town_at_war_builds_a_barracks_which_drills_its_idle_hands_and_kits_out_those_it_sends() {
+    use enterprise_core::persons::Work;
+    use enterprise_core::works::Kind;
+    let mut s = Society::new(content());
+    s.content_mut().dials.battle_day = 1.0;
+    s.content_mut().dials.battle_levy = 0.25;
+    s.content_mut().dials.battle_reinforce_days = 5.0;
+    let orgrimmar = town(&mut s, "Orgrimmar", "orc", 0, 0, 20, 40.0, Some(Grade::Fine));
+    let stormwind = town(&mut s, "Stormwind", "stormwind", 12, 0, 20, 0.0, None);
+    // Orgrimmar's barracks stands already; Stormwind has none.
+    s.start_project(orgrimmar, enterprise_core::works::What::Hall(Kind::Barracks));
+    s.finish_project(orgrimmar, enterprise_core::works::What::Hall(Kind::Barracks));
+    assert!(s.built(orgrimmar, Kind::Barracks));
+    s.advance(2 * DAY);
+    assert!(s.works(orgrimmar).at_war && s.works(stormwind).at_war, "both levied for the battle");
+    // Its levy came in its Fine swords, out of its warehouse; Stormwind's bare (at the hex, its camp's kit: none).
+    let b = s.battles().battles[0].clone();
+    let fine = |side: usize| b.armies[side].soldiers.iter()
+        .filter(|x| x.weapon.as_ref().is_some_and(|w| w.grade == Some(Grade::Fine))).count();
+    assert!(fine(0) > 0 && fine(0) == b.armies[0].soldiers.len(), "{:?}", b.armies[0].soldiers);
+    assert_eq!(fine(1), 0);
+    // Its idle hands at home drill: more skilled at arms than a Journeyman's 9 after ten days.
+    s.advance(12 * DAY);
+    let home = s.roster(orgrimmar);
+    let drilled = home.hands.iter().filter(|h| !h.away && h.trade != 0)
+        .filter_map(|h| s.person(h.id)).filter(|m| m.skill(Work::Arms) > 9.0).count();
+    assert!(drilled > 0, "drilled hands");
+}

@@ -1229,13 +1229,18 @@ public final class LandAdapter {
     static final int HOME_WIDEST = 14;
     static final int HOME_DEEPEST = 7;
 
+    /** A hall's slot in a people's kit: {@code hall:} and its kind, but a barracks is among its war buildings. */
+    private static String slot(String kind) {
+        return kind.equals("barracks") ? "barracks" : "hall:" + kind;
+    }
+
     /** Where a hall or a field goes (empty for a bridge or the wall, which go where they must): the mod's sites. */
     private Optional<BlockPos> site(ServerLevel level, long town, BlockPos bell, Work work) {
         return switch (work) {
             case Work.Hall h -> {
                 // The kingdom's kit for the hall on a plot fronting a street, as a home's (`Plots`); else today's.
                 var kit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(),
-                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "hall:" + h.kind(), 31, 13, town,
+                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), slot(h.kind()), 31, 13, town,
                         bell).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
                 var plot = kit.flatMap(m -> dev.b28.enterprise.territory.Plots.site(level,
                         Optional.ofNullable(dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town)), bell, m));

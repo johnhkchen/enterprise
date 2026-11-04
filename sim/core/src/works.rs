@@ -90,12 +90,16 @@ pub enum Kind {
     /// Storehouses (`storage.rs`): weapons and armour, and wool and cloth, held out of the warehouse.
     Armory,
     Storehouse,
+    /// A barracks (John: "Add a barracks building to outfit and train soldiers"): built by a town at war (its hands
+    /// levied for a battle or serving the crown's army); its idle hands drill at arms each day, and the hands it sends
+    /// to war leave kitted out of its warehouse (`rules/battle.rs`, `army::outfit`).
+    Barracks,
 }
 
 /// Every kind, in the order a town builds them.
-pub const KINDS: [Kind; 12] = [Kind::Square, Kind::Granary, Kind::RootCellar, Kind::Storehouse, Kind::Armory,
+pub const KINDS: [Kind; 13] = [Kind::Square, Kind::Granary, Kind::RootCellar, Kind::Storehouse, Kind::Armory,
     Kind::CountingHouse, Kind::Temple, Kind::Library, Kind::Smithy, Kind::Watchtower, Kind::StoneDocks,
-    Kind::Caravanserai];
+    Kind::Caravanserai, Kind::Barracks];
 
 impl Kind {
     /// Its name (`Kind.id`).
@@ -113,13 +117,14 @@ impl Kind {
             Kind::Caravanserai => "caravanserai",
             Kind::Armory => "armory",
             Kind::Storehouse => "storehouse",
+            Kind::Barracks => "barracks",
         }
     }
 
     /// Its footprint (a square this many blocks a side) and height (`Kind.size`, `height`).
     pub fn size(self) -> u32 {
         match self {
-            Kind::Square | Kind::Caravanserai => 9,
+            Kind::Square | Kind::Caravanserai | Kind::Barracks => 9,
             Kind::Granary | Kind::CountingHouse | Kind::Temple | Kind::Library | Kind::Smithy | Kind::Armory
                 | Kind::Storehouse => 7,
             Kind::RootCellar => 5,
@@ -139,7 +144,7 @@ impl Kind {
     /// The Mason's level it needs (`Kind.masonLevel`).
     pub fn mason_level(self) -> u8 {
         match self {
-            Kind::Square | Kind::Granary | Kind::RootCellar | Kind::Armory | Kind::Storehouse => 2,
+            Kind::Square | Kind::Granary | Kind::RootCellar | Kind::Armory | Kind::Storehouse | Kind::Barracks => 2,
             Kind::StoneDocks => 4,
             Kind::Caravanserai => 5,
             _ => 3,
@@ -149,7 +154,7 @@ impl Kind {
     /// The trades it serves, by name (`Kind.partners`; none for a square).
     pub fn partners(self) -> &'static [&'static str] {
         match self {
-            Kind::Square => &[],
+            Kind::Square | Kind::Barracks => &[],
             Kind::Granary | Kind::RootCellar => &["farmer"],
             Kind::CountingHouse => &["librarian", "merchant"],
             Kind::Temple => &["cleric"],
@@ -166,7 +171,7 @@ impl Kind {
     /// The level one of its partners must have at home (`Kind.partnerLevel`).
     pub fn partner_level(self) -> u8 {
         match self {
-            Kind::Square => 0,
+            Kind::Square | Kind::Barracks => 0,
             Kind::Granary | Kind::RootCellar | Kind::Armory | Kind::Storehouse => 2,
             _ => 3,
         }
@@ -177,7 +182,7 @@ impl Kind {
         match self {
             Kind::Square | Kind::RootCellar | Kind::Watchtower => 8.0,
             Kind::Granary | Kind::Smithy | Kind::StoneDocks | Kind::Armory | Kind::Storehouse => 12.0,
-            Kind::CountingHouse | Kind::Temple | Kind::Library => 16.0,
+            Kind::CountingHouse | Kind::Temple | Kind::Library | Kind::Barracks => 16.0,
             Kind::Caravanserai => 24.0,
         }
     }
@@ -347,6 +352,10 @@ pub struct Works {
     /// The next hall it would start and is short of its timber (`hall_logs`): its worth, in emeralds, for the job draw.
     #[serde(default)]
     pub timber_wait: f64,
+    /// Is the town at war: its hands levied for a battle or serving the crown's army (`rules/battle.rs`, daily)? Only
+    /// then does it build a barracks.
+    #[serde(default)]
+    pub at_war: bool,
     pub projects: Vec<Project>,
     pub flowers: bool,
     pub dock: bool,

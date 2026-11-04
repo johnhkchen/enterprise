@@ -546,7 +546,7 @@ fn a_town_starts_the_bridge_that_repays_its_wages() {
 fn every_kind_is_in_the_order_a_town_builds_them() {
     let ids: Vec<&str> = KINDS.iter().map(|k| k.id()).collect();
     assert_eq!(ids, ["square", "granary", "root_cellar", "storehouse", "armory", "counting_house", "temple", "library",
-        "smithy", "watchtower", "stone_docks", "caravanserai"]);
+        "smithy", "watchtower", "stone_docks", "caravanserai", "barracks"]);
     assert_eq!(Kind::Temple.mason_level(), 3);
     assert_eq!(Kind::Caravanserai.mason_level(), 5);
     assert_eq!(Kind::StoneDocks.mason_level(), 4);

@@ -2807,3 +2807,20 @@ settling is allowed"; "One hex, seeded", "Faction armies, army vs army", "30 day
   from day 80 and won it on day 110. The replay parts from the game once its levies leave (660 of 11,023 requests
   refused, 28 towns at the year's end: towns the game's idle hands founded weren't founded): a lane with the dial is
   the run to read. The trace has `battles` and `battle_fights`; the host's report each battle.
+
+## Society: the barracks (2026-11-04)
+
+John: "Add a barracks building to outfit and train soldiers".
+
+- **A hall a town at war builds** (`works::Kind::Barracks`, last of the halls: 16 emeralds, a Mason of level 2, no
+  partner trade): only while it's at war (`Works::at_war`, daily: its hands levied for a battle or serving the
+  crown's army or waiting for it).
+- **It trains:** each day its idle hands at home (no trade, or Nitwits) drill at arms, five batches' skill
+  (`skill_per_batch`; half again with a talent for it or Ambitious), up to their rank's: its levy goes better
+  practised than a Journeyman's 9.
+- **It outfits:** the hands it sends to war (a battle's levy, or a host's muster for the crown) leave kitted out of
+  its warehouse, the best there is and graded first (`army::outfit`): a weapon, each piece of armour, a shield unless
+  a bow; the kit rides with them (`Recruit::kit`). The crown's wagons' levies are kitted at the front, as before.
+- **In the game,** its structure is the people's war kit's `barracks` slot (the orcs', dwarves', goblins'; the tauren's
+  braves' lodge), else the mod's plain hall of its size (`Buildings.BARRACKS`, a fallback the Java rules don't
+  build by): Stormwind, Lordaeron, Dalaran and the night elves have no barracks kit yet (the studio's).

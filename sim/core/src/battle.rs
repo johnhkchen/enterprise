@@ -91,6 +91,9 @@ impl Battle {
 pub struct Battles {
     pub battles: Vec<Battle>,
     pub seeded: bool,
+    /// The day the barracks towns last drilled (`works::Kind::Barracks`).
+    #[serde(default)]
+    pub drilled: Option<u64>,
 }
 
 impl Battles {

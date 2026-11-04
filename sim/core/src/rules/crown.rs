@@ -426,7 +426,7 @@ pub fn raise(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
                 // Mercenaries, as many as are owed, ready to go: their home that market.
                 for _ in 0..levy.owed() {
                     wagon.recruits.push(Recruit { home: route.to_id, hand: None, mustered: now, levy: Some(id),
-                        pay: levy.pay_per_day });
+                        pay: levy.pay_per_day, kit: None });
                 }
                 levy.owed()
             } else {
@@ -435,8 +435,9 @@ pub fn raise(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
                 let mut k = 0;
                 for i in picked {
                     if let Some(hand) = crate::squad::stamp(&mut roster, i) {
+                        // (Kitted at the front: the crown's wagon takes them as they are.)
                         wagon.recruits.push(Recruit { home: route.to_id, hand: Some(hand), mustered: now, levy: Some(id),
-                            pay: levy.pay_per_day });
+                            pay: levy.pay_per_day, kit: None });
                         k += 1;
                     }
                 }
