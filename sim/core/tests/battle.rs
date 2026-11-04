@@ -49,6 +49,7 @@ fn peoples_take_their_sides() {
 fn the_horde_and_the_alliance_fight_for_the_hex_between_them_and_its_holder_alone_may_settle_it() {
     let mut s = Society::new(content());
     s.content_mut().dials.battle_day = 1.0;
+    s.content_mut().dials.battle_mobilise_days = 0.0;
     s.content_mut().dials.battle_levy = 0.5;
     // The Horde with Fine swords, the Alliance with plain ones; a third town, of no side, out of the way.
     let orgrimmar = town(&mut s, "Orgrimmar", "orc", 0, 0, 20, 20.0, Some(Grade::Fine));
@@ -79,6 +80,7 @@ fn a_town_at_war_builds_a_barracks_which_drills_its_idle_hands_and_kits_out_thos
     use enterprise_core::works::Kind;
     let mut s = Society::new(content());
     s.content_mut().dials.battle_day = 1.0;
+    s.content_mut().dials.battle_mobilise_days = 0.0;
     s.content_mut().dials.battle_levy = 0.25;
     s.content_mut().dials.battle_reinforce_days = 5.0;
     let orgrimmar = town(&mut s, "Orgrimmar", "orc", 0, 0, 20, 40.0, Some(Grade::Fine));
@@ -103,4 +105,35 @@ fn a_town_at_war_builds_a_barracks_which_drills_its_idle_hands_and_kits_out_thos
     let drilled = home.hands.iter().filter(|h| !h.away && h.trade != 0)
         .filter_map(|h| s.person(h.id)).filter(|m| m.skill(Work::Arms) > 9.0).count();
     assert!(drilled > 0, "drilled hands");
+}
+
+#[test]
+fn a_battles_towns_arm_on_the_crowns_behalf_before_their_levies_march() {
+    use enterprise_core::crown::Sovereign;
+    use enterprise_core::training::Tenders;
+    let mut s = Society::new(content());
+    s.content_mut().dials.battle_day = 1.0;
+    s.content_mut().dials.battle_mobilise_days = 20.0;
+    s.content_mut().dials.battle_levy = 0.25;
+    let orgrimmar = town(&mut s, "Orgrimmar", "orc", 0, 0, 20, 0.0, None);
+    town(&mut s, "Stormwind", "stormwind", 12, 0, 20, 0.0, None);
+    s.advance(5 * DAY);
+    let b = s.battles().battles[0].clone();
+    assert!(!b.marched && b.marching.is_empty() && b.armies.iter().all(|a| a.soldiers.is_empty()), "not yet: {b:?}");
+    let n = b.levies[0][0].1 as f64;
+    // Its levy's swords, helmets, chestplates and shields wanted on its board, at the mobilising premium.
+    let sword = s.content().good("iron_sword").unwrap();
+    let sov = s.world.resource::<Sovereign>();
+    let wanted: f64 = sov.requisitions.iter().filter(|r| r.buyer == orgrimmar && r.goods == [sword]).map(|r| r.wanted).sum();
+    assert!(wanted >= n, "{n} swords for its levy: {:?}", sov.requisitions);
+    assert!(sov.requisitions.iter().filter(|r| r.buyer == orgrimmar).all(|r| r.premium == s.content().dials.mobilising_premium));
+    // Master smiths tendered for on its board, and its treasury made good to what it owes on them.
+    let tenders = s.world.resource::<Tenders>();
+    let tendered: f64 = tenders.on(orgrimmar).iter().map(|t| t.work.bonus.to_f64() * t.open as f64).sum();
+    assert!(tendered > 0.0, "smiths tendered for");
+    assert!(s.balance(enterprise_core::cash_book::Account::Treasury(orgrimmar)).unwrap().to_f64() >= 0.9 * tendered, "{} for {tendered} tendered (its day's spending since)", s.balance(enterprise_core::cash_book::Account::Treasury(orgrimmar)).unwrap().to_f64());
+    // Its levy marches when the run-up's over.
+    s.advance(30 * DAY);
+    let b = s.battles().battles[0].clone();
+    assert!(b.marched && (b.armies[0].soldiers.len() + b.marching.iter().filter(|m| m.side == 0).count()) > 0, "{b:?}");
 }

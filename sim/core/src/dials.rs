@@ -368,8 +368,10 @@ dials! {
     rout_morale: f64 = 0.75,
     /// A battle between factions for a hex (`battle.rs`): seeded on this day (none at 0) between the nearest Horde and
     /// Alliance towns; each side's towns within `battle_reach` hexes of it levy `battle_levy` of their residents, made
-    /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle.
+    /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle. Its levies
+    /// march `battle_mobilise_days` after it's seeded: till then its towns build barracks and procure their kit.
     battle_day: f64 = 0.0,
+    battle_mobilise_days: f64 = 30.0,
     battle_reach: f64 = 20.0,
     battle_levy: f64 = 0.1,
     battle_reinforce_days: f64 = 10.0,

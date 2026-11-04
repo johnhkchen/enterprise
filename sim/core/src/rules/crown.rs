@@ -114,7 +114,7 @@ pub fn mint(world: &mut World) {
 }
 
 /// The capital and the towns its roads reach that keep a roster (the mod's settlements), in the roads' order.
-fn realm(world: &mut World, capital: usize) -> Vec<usize> {
+pub(crate) fn realm(world: &mut World, capital: usize) -> Vec<usize> {
     let mut out = vec![capital];
     let towns = world.resource::<Towns>().0.clone();
     for r in route_facts(world) {
@@ -183,7 +183,7 @@ pub fn offer_training(world: &mut World, capital: usize) {
 /// beyond what's under contract and already requisitioned; unanswered a whole bidding window, it's posted as wanted
 /// too (`Sovereign.requisition`).
 #[allow(clippy::too_many_arguments)]
-fn requisition(env: &Env, sov: &mut Sovereign, capital: usize, goods: &[GoodId], by_points: bool, need: f64,
+pub(crate) fn requisition(env: &Env, sov: &mut Sovereign, capital: usize, goods: &[GoodId], by_points: bool, need: f64,
         premium: f64, now: u64) {
     let content = env.content;
     let coming: f64 = goods.iter()

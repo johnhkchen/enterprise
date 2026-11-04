@@ -2834,3 +2834,21 @@ John: "Add a barracks building to outfit and train soldiers".
   does coal, and a town's charcoal draws them. Seed 1717's year had no coal and 413 charcoal, and all 63 of its smiths
   Novices: no iron armour, no shields, 11 swords. Its journal replayed with them (parting from the game): Armorers a
   level 2 on average (the best 5), 45 swords in 7 towns; still no shields or iron armour.
+
+## Society: a battle's towns arm on the crown's behalf (2026-11-04)
+
+John: "Towns should procure on behalf of the crown, look at how the early war scenario involved plenty of incentives
+to get the production system in place early using public spending". Nothing had wanted arms: a town's book bids only
+for comforts and its trades' inputs, so its smiths, however skilled, made none for a battle.
+
+- **A run-up:** a battle's levies march `battle_mobilise_days` (30) after it's seeded; till then its towns arm.
+- **Each levied town procures as the crown does at its capital** (`rules/battle.rs` `procure`, the crown's
+  requisitions, awards and tenders): its levy's sword, helmet and chestplate each and shields for half, beyond what it
+  holds and has coming, requisitioned at the mobilising premium (the war's once its levies march), the bids awarded a
+  third up front; and tenders to train the two master Weaponsmiths and Armorers its roads' towns lack.
+- **Public spending:** its faction's war chest keeps its treasury up to what it owes on those contracts and tenders
+  (from outside the society, as the crown's mint).
+- **Seed 1717's year replayed with it** (parting from the game): by the march on day 60 the four levied towns had
+  barracks (from day 40) and held 5 iron chestplates, 5 helmets and 5 shields (none before), no swords; their Armorers
+  a level 4 on average; the fights scored about 9 a soldier (about 1 before), the Horde's 5 to the Alliance's 2 winning
+  all seven.

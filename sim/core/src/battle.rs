@@ -77,6 +77,11 @@ pub struct Battle {
     /// The day it was last fought (once a day).
     #[serde(default)]
     pub reckoned: Option<u64>,
+    /// When its levies march (`battle_mobilise_days` after it's seeded: till then its towns arm), and have they.
+    #[serde(default)]
+    pub marches: u64,
+    #[serde(default)]
+    pub marched: bool,
 }
 
 impl Battle {
@@ -94,6 +99,9 @@ pub struct Battles {
     /// The day the barracks towns last drilled (`works::Kind::Barracks`).
     #[serde(default)]
     pub drilled: Option<u64>,
+    /// The day its towns last procured their levies' kit (`rules/battle.rs` `procure`).
+    #[serde(default)]
+    pub procured: Option<u64>,
 }
 
 impl Battles {
