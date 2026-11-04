@@ -219,9 +219,18 @@ pub struct Firm {
     pub sold: f64,
     #[serde(default)]
     pub regular: u32,
-    /// Its name as a House, once its reputation made it one (a name, once made, it keeps).
+    /// Its name as a House, once its reputation made it one (a name, once made, it keeps); a branch has its House's.
     #[serde(default)]
     pub house: Option<String>,
+    /// The House it's a branch of, if it is one (owned by that business, in another town).
+    #[serde(default)]
+    pub branch_of: Option<FirmId>,
+    /// Money of its treasury riding with a wagon or waiting for one ([`Carried`]): not its to spend.
+    #[serde(default)]
+    pub pledged: Fixed,
+    /// A branch's takings beyond its working days, for its House: sent home with the House's next wagon to call.
+    #[serde(default)]
+    pub due: Fixed,
     /// Its head, past `firm_hands_unled` hands: one of them, by mandate (`charters.rs`).
     #[serde(default)]
     pub head: Option<Head>,
@@ -275,13 +284,72 @@ impl Firm {
     }
 }
 
-/// Every firm, the next firm's id, and the firms wound up (with the day).
+/// What money a business sends by wagon is for: a House's capital for a branch in the town it goes to, or a branch's
+/// takings home to its House.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Errand {
+    Branch,
+    Home,
+}
+
+/// Where money a business sends is: waiting for its route's next wagon, riding with it, or there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stage {
+    Waiting,
+    Riding,
+    There,
+}
+
+/// Money a business sends by its town's wagon (nothing crosses distance without a carrier): on the books its own until
+/// it's there, pledged meanwhile (`Firm::pledged`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Carried {
+    pub errand: Errand,
+    /// The business sending it.
+    pub firm: FirmId,
+    /// The town it's going to, by the route whose wagon carries it.
+    pub town: TownId,
+    pub route: usize,
+    pub amount: Fixed,
+    pub stage: Stage,
+    /// The tick it was sent (one riding too long is lost on the road: its pledge freed).
+    pub since: u64,
+}
+
+/// Every firm, the next firm's id, the firms wound up (with the day), and the money they send by wagon.
 #[derive(Resource, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Firms {
     pub firms: Vec<Firm>,
     pub next: FirmId,
     #[serde(default)]
     pub wound_up: Vec<(Firm, u64)>,
+    #[serde(default)]
+    pub carried: Vec<Carried>,
+}
+
+impl Firms {
+    /// A wagon left on `route`: the money waiting for it rides with it.
+    pub fn wagon_left(&mut self, route: usize) {
+        for c in self.carried.iter_mut().filter(|c| c.route == route && c.stage == Stage::Waiting) {
+            c.stage = Stage::Riding;
+        }
+    }
+
+    /// A wagon of `route` got to `town`, from `home`: what it carried there is there, and it takes up what the
+    /// branches there have due for their House at `home`, home with it.
+    pub fn wagon_at(&mut self, route: usize, town: TownId, home: TownId, now: u64) {
+        for c in self.carried.iter_mut().filter(|c| c.route == route && c.stage == Stage::Riding && c.town == town) {
+            c.stage = Stage::There;
+        }
+        let houses: Vec<FirmId> = self.firms.iter().filter(|f| f.town == home).map(|f| f.id).collect();
+        for f in self.firms.iter_mut().filter(|f| f.town == town && f.branch_of.is_some_and(|h| houses.contains(&h))
+                && f.due.is_positive()) {
+            self.carried.push(Carried { errand: Errand::Home, firm: f.id, town: home, route, amount: f.due,
+                stage: Stage::Riding, since: now });
+            f.pledged += f.due;
+            f.due = Fixed::ZERO;
+        }
+    }
 }
 
 impl Firms {

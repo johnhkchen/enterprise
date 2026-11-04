@@ -2668,3 +2668,27 @@ lading: only goods under contract, crops mostly, ride on pallets under one):
   fetching more): 21,565 graded pieces carried and sold in other towns of the year's 373,383 sold, most from town 3 to
   town 21 (1,456) and town 16 to town 1 (1,356); 21 bakeries, 5 weavers' and 5 bootmakers; three Houses (the weavers
   of towns 3 and 2, Vane and Sallow, and town 3's bootmaker, Wren); no tannery this time.
+
+## Society: branches (2026-11-04)
+
+Slice 3's last part (John: "Rides the wagon"). Nothing crosses distance without a carrier, money included:
+
+- **Saving:** a House keeps back, beyond its working days, its kind's capital and half again a branch's working days
+  at its own town's wages (a town down its roads may pay more), and pays its owners only beyond that.
+- **Sending:** once a day each House, not a branch itself, with no branch on its way and that much to spare, picks the
+  nearest town down its town's routes with no business of its kind, that wants its pieces and has a hand of its
+  trade, not a Homebody, who'd pay at the House's premium there; it pledges the money (`Firm::pledged`: on its books
+  its own, not to spend) for that route's next wagon (`firms::Carried`, `Errand::Branch`).
+- **Riding:** the wagon leaving takes it (`Firms::wagon_left`); at the far end it's there (`Firms::wagon_at`). Money
+  riding 60 days without getting there is taken as lost on the road, its pledge freed.
+- **The branch:** founded when its money gets there, if the town still has no business of its kind and a hand to
+  found it on: its capital the town's (it builds the workshop), its working days the branch's own; owned by the House
+  (`Party::Firm`), under its name with half its reputation (so its premium), `branch_of` the House; its head by the
+  House's mandate, never a Homebody, at any number of hands. Otherwise the money goes back to the House's books.
+- **Home:** a branch's takings beyond its working days are due its House (`Firm::due`); a wagon of the House's town
+  calling takes them up (`Errand::Home`) and, home, they're the House's ("branch takings"). A branch wound up leaves
+  what it holds to its town's treasury (its House is far off).
+- **Seed 1717's year, replayed** (21 of 11,023 requests refused): the weavers of town 2, the House of Sallow, sent for
+  four branches from day 317, in towns 11, 0, 21 and 7, each its 40 emeralds of capital to the town; by day 361 they
+  had made 3,531 carpets. The House of Vane (town 3's weavers) and of Wren (its bootmaker), Houses from days 303 and
+  333, sent none: they hadn't saved enough by the year's end. The trace's `firms` has `branch_of`.

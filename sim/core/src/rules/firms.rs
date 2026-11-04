@@ -12,7 +12,7 @@ use bevy_ecs::prelude::*;
 use crate::cash_book::{post, Account, CashBook, Reason, Side};
 use crate::charters::{Charters, Mandate, Party, Source, Verb};
 use crate::content::{Content, GoodId};
-use crate::firms::{added, bids, graded_wanted_for, price, ingredients, kinds, Firm, FirmId, Firms, Head, Kind};
+use crate::firms::{added, bids, graded_wanted_for, ingredients, kinds, price, Carried, Errand, Firm, FirmId, Firms, Head, Kind, Stage};
 use crate::fixed::Fixed;
 use crate::households::{earners, shares, Homes, HouseholdId, Households};
 use crate::persons::{draw, fundamentals, knack_of, roll, skill_cap, Event, Grade, Habit, Knack, Person, Persons, Work};
@@ -106,7 +106,7 @@ fn pace(d: &crate::content::Dials, hand: &Hand, m: &Person, head: Option<(HandId
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firms: ResMut<Firms>,
         mut households: ResMut<Households>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut charters: ResMut<Charters>, mut persons: ResMut<Persons>,
+        mut charters: ResMut<Charters>, mut persons: ResMut<Persons>, routes: Query<&crate::state::Route>,
         mut q: Query<(&Town, &mut People, &mut Stock, &mut Money, &Roster, Option<&Workshop>),
             (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>) {
     let kinds = kinds(&content);
@@ -254,17 +254,20 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             // more pay.
             let hands = firm.employees.len() as f64;
             let more = capacity < hire_for && hands >= d.firm_hands_unled && candidate(firm, persons, &employed).is_some();
-            if firm.head.is_none() && (hands > d.firm_hands_unled || more) {
+            // (A branch has its head always, by its House's mandate: never a Homebody, who won't run one.)
+            let branch = firm.branch_of;
+            if firm.head.is_none() && (hands > d.firm_hands_unled || more || branch.is_some()) {
                 let skill = |id: HandId| persons.hands.get(&id)
-                    .map_or(0.0, |m| kind.steps.iter().map(|s| m.skill(s.work)).fold(0.0, f64::max));
-                if let Some(i) = (0..firm.employees.len()).max_by(|&a, &b| {
+                    .filter(|m| branch.is_none() || !m.has(Habit::Homebody))
+                    .map_or(-1.0, |m| kind.steps.iter().map(|s| m.skill(s.work)).fold(0.0, f64::max));
+                if let Some(i) = (0..firm.employees.len()).filter(|&i| skill(firm.employees[i].0) >= 0.0).max_by(|&a, &b| {
                     let (x, y) = (firm.employees[a].0, firm.employees[b].0);
                     skill(x).total_cmp(&skill(y)).then(y.cmp(&x))
                 }) {
                     let hand = firm.employees[i].0;
                     let mandate = charters.next_mandate;
                     charters.next_mandate += 1;
-                    charters.mandates.push(Mandate { id: mandate, principal: Party::Firm(firm.id), agent: hand,
+                    charters.mandates.push(Mandate { id: mandate, principal: Party::Firm(branch.unwrap_or(firm.id)), agent: hand,
                         scope: vec![Verb::Hire, Verb::Command], source: Source::Appointment, since: now, term: Some(term),
                         until: None });
                     firm.head = Some(Head { hand, mandate });
@@ -283,7 +286,7 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             // A head let go, or over no more hands than its owners run themselves, is a hand again (paid as the
             // others).
             if let Some(h) = firm.head.filter(|h| !firm.employees.iter().any(|e| e.0 == h.hand)
-                    || firm.employees.len() as f64 <= d.firm_hands_unled) {
+                    || (firm.employees.len() as f64 <= d.firm_hands_unled && branch.is_none())) {
                 end_head(firm, &mut charters, now);
                 if let Some(e) = firm.employees.iter_mut().find(|e| e.0 == h.hand) {
                     e.1 = offer;
@@ -292,7 +295,7 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             // Its hands' wages, each its household's own, as far as its treasury goes.
             let mut short = false;
             for &(id, wage) in &firm.employees {
-                let paid = wage.min(firm.treasury.at_least_zero());
+                let paid = wage.min((firm.treasury - firm.pledged).at_least_zero());
                 short |= paid < wage;
                 post(&mut ledger, &mut book, Side::firm(firm.id, &mut firm.treasury), Side::households(t, &mut people.purse),
                     paid, Reason::Other("firm wages".into()), now, day);
@@ -302,9 +305,16 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             short |= firm.employees.is_empty();
             firm.broke_days = if short { firm.broke_days + 1 } else { 0 };
             if firm.broke_days as f64 >= d.firm_broke_days {
-                // Wound up: what's left of its treasury its owners', its hands back to the town's wages.
+                // Wound up: what's left of its treasury its owners' (a branch's, its town's: its House is far off),
+                // its hands back to the town's wages; what it was sending, not sent.
                 let left = firm.treasury;
-                pay_owners(firm, homes, people, &mut ledger, &mut book, left, "firm wound up", now, day);
+                if branch.is_some() {
+                    post(&mut ledger, &mut book, Side::firm(firm.id, &mut firm.treasury), Side::treasury(t, &mut money.0),
+                        left.at_least_zero(), Reason::Other("firm wound up".into()), now, day);
+                } else {
+                    pay_owners(firm, homes, people, &mut ledger, &mut book, left, "firm wound up", now, day);
+                }
+                firm.pledged = Fixed::ZERO;
                 end_head(firm, &mut charters, now);
                 for (id, _) in firm.employees.drain(..) {
                     employed.remove(&id);
@@ -312,18 +322,29 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
                 done.push(firm.id);
                 continue;
             }
-            // Beyond the days of wages it keeps, its takings are its owners'.
+            // Beyond the days of wages it keeps (and what it's sending), its takings are its owners': a branch's, its
+            // House's, due for the House's next wagon to call.
             let bill: Fixed = firm.employees.iter().map(|e| e.1).sum();
-            let keep = Fixed::ceil(bill.to_f64() * d.firm_working_days);
+            let mut keep = Fixed::ceil(bill.to_f64() * d.firm_working_days) + firm.pledged;
+            // (A House keeps back a branch's capital and half again its working days at home's wages, saving for one: a
+            // town down its roads may pay more.)
+            if firm.house.is_some() && branch.is_none() {
+                keep += Fixed::ceil(kind.capital) + Fixed::ceil(1.5 * offer.to_f64() * d.firm_working_days);
+            }
             if firm.treasury > keep {
                 let beyond = firm.treasury - keep;
-                pay_owners(firm, homes, people, &mut ledger, &mut book, beyond, "dividends", now, day);
+                if branch.is_some() {
+                    firm.due = beyond;
+                } else {
+                    pay_owners(firm, homes, people, &mut ledger, &mut book, beyond, "dividends", now, day);
+                }
             }
         }
         for id in done {
             let i = firms.firms.iter().position(|f| f.id == id).unwrap();
             let f = firms.firms.remove(i);
             firms.wound_up.push((f, now));
+            firms.carried.retain(|c| c.firm != id);
         }
         // Founded: of each kind the town has none of, by the household that can pay its capital and its working days,
         // the richest (or the two richest together, partners), where enough people live within its range and no
@@ -385,6 +406,182 @@ pub fn run(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut firm
             firm.employees.push((hand, offer));
             employed.insert(hand);
             firms.firms.push(firm);
+        }
+    }
+    let routes: Vec<(usize, usize, usize, u64)> = routes.iter().map(|r| (r.seq, r.from_id, r.to_id, r.travel_ticks)).collect();
+    branches(&content, &kinds, firms, persons, &all, &mut ledger, &mut book, &mut q, &towns.0, &routes, now);
+}
+
+/// A town's businesses' bids for their materials (`firms::bids`).
+fn bids_in(content: &Content, kinds: &[Kind], firms: &Firms, t: usize) -> BTreeMap<GoodId, f64> {
+    bids(content, firms.firms.iter().filter(|f| f.town == t).filter_map(|f| kinds.iter().find(|k| k.name == f.name)))
+}
+
+/// What a hand of town `t` would be offered by a business: more than it earns of the town's wages now.
+fn offer_in(content: &Content, book: &CashBook, firms: &Firms, roster: &Roster, t: usize, today: u64) -> Fixed {
+    let employed = firms.employed(t);
+    let free = roster.hands.iter().filter(|x| x.baby_until.is_none() && !employed.contains(&x.id)).count();
+    let d = &content.dials;
+    Fixed::ceil(earned(book, t, free, today).max(d.hand_wage) * (1.0 + d.firm_wage_premium))
+}
+
+/// The hand of town `t` a House's branch there would be founded round: of its trade and free, not a Homebody (who
+/// won't run a branch), the best at its work of those whose batches, at the grade they work at and the House's name's
+/// premium there (`premium`), pay more than they'd be offered.
+#[allow(clippy::too_many_arguments)]
+fn branch_hand(content: &Content, kind: &Kind, persons: &mut Persons, all: &[String], roster: &Roster,
+        employed: &BTreeSet<HandId>, bids: &BTreeMap<GoodId, f64>, premium: f64, offer: Fixed) -> Option<HandId> {
+    let mut best: Option<(f64, HandId)> = None;
+    for x in roster.hands.iter().filter(|x| x.trade == kind.trade && x.baby_until.is_none() && !employed.contains(&x.id)) {
+        let m = person(persons, x, all);
+        if m.has(Habit::Homebody) {
+            continue;
+        }
+        let w = best_step(content, kind, m).0;
+        if added(content, bids, &kind.conversion, Grade::of(w)) * (1.0 + premium) * pace(&content.dials, x, m, None)
+                > offer.to_f64() && best.is_none_or(|b| w > b.0) {
+            best = Some((w, x.id));
+        }
+    }
+    best.map(|b| b.1)
+}
+
+/// Two firms of the list, by id, both to change.
+fn two(firms: &mut [Firm], a: FirmId, b: FirmId) -> Option<(&mut Firm, &mut Firm)> {
+    let i = firms.iter().position(|f| f.id == a)?;
+    let j = firms.iter().position(|f| f.id == b)?;
+    match i.cmp(&j) {
+        std::cmp::Ordering::Less => { let (x, y) = firms.split_at_mut(j); Some((&mut x[i], &mut y[0])) }
+        std::cmp::Ordering::Greater => { let (x, y) = firms.split_at_mut(i); Some((&mut y[0], &mut x[j])) }
+        std::cmp::Ordering::Equal => None,
+    }
+}
+
+/// The days money a business sent by wagon may ride before it's taken as lost on the road (its pledge freed).
+const LOST_DAYS: u64 = 60;
+
+/// Branches (`docs/firms-plan.md` slice 3; John: "Rides the wagon"): the money businesses send by wagon, and the
+/// Houses that send for a branch. Money that's there: a House's capital founds its branch in the town it went to (its
+/// House's name, half its reputation, owned by it; its capital the town's, which builds its workshop, its working days
+/// the branch's own; round the hand it's founded on, whose head it is by the House's mandate), or comes back to it if
+/// there's no founding it now; a branch's takings home are its House's. Money riding longer than [`LOST_DAYS`] is
+/// taken as lost on the road, its pledge freed. Then each House reckoned today, not a branch, with no branch on its
+/// way and the capital and a branch's working days to spare beyond its own, sends for one in the nearest town down its
+/// roads with no business of its kind, that wants its pieces and has a hand who'd be founded on, by its route's next
+/// wagon.
+#[inline(never)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn branches(content: &Content, kinds: &[Kind], firms: &mut Firms, persons: &mut Persons, all: &[String],
+        ledger: &mut Ledger, book: &mut CashBook,
+        q: &mut Query<(&Town, &mut People, &mut Stock, &mut Money, &Roster, Option<&Workshop>),
+            (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>,
+        towns: &[Entity], routes: &[(usize, usize, usize, u64)], now: u64) {
+    let d = &content.dials;
+    let day = content.day_ticks.max(1);
+    let today = now / day;
+    let entity = |t: usize, q: &Query<(&Town, &mut People, &mut Stock, &mut Money, &Roster, Option<&Workshop>),
+            (Without<crate::realms::Realm>, Without<crate::realms::OffMap>)>| {
+        towns.iter().copied().find(|&e| q.get(e).is_ok_and(|x| x.0.id == t))
+    };
+    let mut kept = Vec::new();
+    for c in std::mem::take(&mut firms.carried) {
+        let unpledge = |firms: &mut Firms| if let Some(f) = firms.get_mut(c.firm) { f.pledged -= c.amount; };
+        match (c.stage, c.errand) {
+            (Stage::There, Errand::Home) => {
+                let house = firms.firms.iter().find(|f| f.id == c.firm).and_then(|f| f.branch_of);
+                match house.and_then(|h| two(&mut firms.firms, c.firm, h)) {
+                    Some((branch, house)) => {
+                        branch.pledged -= c.amount;
+                        let amount = c.amount.min(branch.treasury.at_least_zero());
+                        post(ledger, book, Side::firm(branch.id, &mut branch.treasury), Side::firm(house.id, &mut house.treasury),
+                            amount, Reason::Other("branch takings".into()), now, day);
+                    }
+                    None => unpledge(firms),
+                }
+            }
+            (Stage::There, Errand::Branch) => {
+                let Some(h) = firms.firms.iter().find(|f| f.id == c.firm).cloned() else { continue };
+                let kind = kinds.iter().find(|k| k.name == h.name);
+                let e = entity(c.town, q);
+                let taken = firms.firms.iter().any(|f| f.town == c.town && f.name == h.name);
+                let founded = match (kind, e, taken) {
+                    (Some(kind), Some(e), false) => {
+                        let bids = bids_in(content, kinds, firms, c.town);
+                        let employed = firms.employed(c.town);
+                        let Ok((_, _, _, mut money, roster, _)) = q.get_mut(e) else { continue };
+                        let offer = offer_in(content, book, firms, roster, c.town, today);
+                        let branch = Firm { house: h.house.clone(), reputation: h.reputation / 2.0, ..Default::default() };
+                        let hand = branch_hand(content, kind, persons, all, roster, &employed, &bids, branch.premium(d), offer);
+                        let capital = Fixed::ceil(kind.capital).min(c.amount);
+                        match hand {
+                            Some(hand) => {
+                                let id = firms.next;
+                                firms.next += 1;
+                                let mut b = Firm { id, town: c.town, name: h.name.clone(), recipe: h.recipe.clone(),
+                                    owners: vec![(Party::Firm(h.id), 1.0)], founded: now, reckoned: Some(now),
+                                    branch_of: Some(h.id), employees: vec![(hand, offer)], ..branch };
+                                let house = firms.get_mut(h.id).unwrap();
+                                house.pledged -= c.amount;
+                                post(ledger, book, Side::firm(house.id, &mut house.treasury), Side::treasury(c.town, &mut money.0),
+                                    capital, Reason::Other("branch capital".into()), now, day);
+                                post(ledger, book, Side::firm(house.id, &mut house.treasury), Side::firm(id, &mut b.treasury),
+                                    c.amount - capital, Reason::Other("branch founded".into()), now, day);
+                                firms.firms.push(b);
+                                true
+                            }
+                            None => false,
+                        }
+                    }
+                    _ => false,
+                };
+                if !founded {
+                    unpledge(firms);
+                }
+            }
+            (_, _) if now >= c.since + LOST_DAYS * day => unpledge(firms),
+            _ => kept.push(c),
+        }
+    }
+    kept.append(&mut firms.carried);
+    firms.carried = kept;
+    // Each House reckoned today sends for a branch where it would found one.
+    let houses: Vec<FirmId> = firms.firms.iter().filter(|f| f.house.is_some() && f.branch_of.is_none()
+        && f.reckoned == Some(now) && !firms.carried.iter().any(|c| c.firm == f.id && c.errand == Errand::Branch))
+        .map(|f| f.id).collect();
+    for h in houses {
+        let f = firms.firms.iter().find(|f| f.id == h).unwrap().clone();
+        let Some(kind) = kinds.iter().find(|k| k.name == f.name) else { continue };
+        let bill: Fixed = f.employees.iter().map(|e| e.1).sum();
+        let spare = f.treasury - f.pledged - Fixed::ceil(bill.to_f64() * d.firm_working_days);
+        let mut down: Vec<&(usize, usize, usize, u64)> = routes.iter().filter(|r| r.1 == f.town && r.2 != f.town).collect();
+        down.sort_by_key(|r| (r.3, r.0));
+        for &&(route, _, to, _) in &down {
+            if firms.firms.iter().any(|x| x.town == to && x.name == f.name)
+                || firms.carried.iter().any(|c| c.town == to && c.errand == Errand::Branch) {
+                continue;
+            }
+            let Some(e) = entity(to, q) else { continue };
+            let bids = bids_in(content, kinds, firms, to);
+            let employed = firms.employed(to);
+            let Ok((_, people, _, _, roster, hooks)) = q.get(e) else { continue };
+            let c = &kind.conversion;
+            let par = hooks.map_or(0.0, |h| h.par_of(c.output));
+            if graded_wanted_for(content, people, c.output, par, 0.0) < c.out {
+                continue;
+            }
+            let offer = offer_in(content, book, firms, roster, to, today);
+            let amount = Fixed::ceil(kind.capital) + Fixed::ceil(offer.to_f64() * d.firm_working_days);
+            if spare < amount {
+                break;
+            }
+            let branch = Firm { house: f.house.clone(), reputation: f.reputation / 2.0, ..Default::default() };
+            if branch_hand(content, kind, persons, all, roster, &employed, &bids, branch.premium(d), offer).is_none() {
+                continue;
+            }
+            firms.carried.push(Carried { errand: Errand::Branch, firm: h, town: to, route, amount, stage: Stage::Waiting,
+                since: now });
+            firms.get_mut(h).unwrap().pledged += amount;
+            break;
         }
     }
 }

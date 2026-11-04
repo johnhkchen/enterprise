@@ -294,7 +294,8 @@ pub(crate) fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
 pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>,
-        mut herds: Query<&mut crate::herds::Herds>, mut farms: Query<&mut crate::farms::Farm>) {
+        mut herds: Query<&mut crate::herds::Herds>, mut farms: Query<&mut crate::farms::Farm>,
+        mut firms: ResMut<crate::firms::Firms>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -302,6 +303,8 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         match state.arrived.take() {
             Some(Leg::Out) => {
                 state.last_sold = Some(now);
+                // What its businesses sent by it is there; what branches here owe their House rides home (`firms.rs`).
+                firms.wagon_at(route.seq, route.to_id, route.from_id, now);
                 let w = state.wagon.as_mut().unwrap();
                 // Where content has road food, its food turned it already, or it waits for food (`rules/road.rs`).
                 if w.leg == Leg::Out && w.waiting_since.is_none() {
@@ -317,6 +320,7 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 outbox.0.push(Output::WagonSold { route: crate::wire::no(route.seq), sold, takings: w.takings_here, graded });
             }
             Some(Leg::Home) => {
+                firms.wagon_at(route.seq, route.from_id, route.to_id, now);
                 let mut wagon = state.wagon.take().unwrap();
                 let (mut stock, mut money, _, _, mut people) = towns.get_mut(route.from).expect("home");
                 for (g, n) in wagon.cargo.iter().enumerate() {

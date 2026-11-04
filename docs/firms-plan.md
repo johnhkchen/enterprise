@@ -137,7 +137,11 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    Houses, their premium and draw done (2026-11-04): a piece sold earns its worth beyond a plain one's, fading 1% a
    day; at 200 a business is a House with a name; its pieces sell at up to 0.3 more; the hands newly of its trade in
    its town come gifted at its draw. Grades by wagon done: a wagon's goods carry their grades out, are sold by grade at
-   the far end (each grade's worth of the price), and its sale's grades go to the host. Branches next.
+   the far end (each grade's worth of the price), and its sale's grades go to the host. Branches done: a House saves a
+   branch's capital and working days, sends them by its town's next wagon down a road to a town with no business of
+   its kind that wants its pieces and has a hand (not a Homebody) it would pay; the branch is founded when the money
+   gets there, under the House's name with half its reputation, its head by the House's mandate, and its takings ride
+   home with the House's wagons. Slice 3 done but for masters moving between towns (the host's villagers).
 4. **Stations and chains** (moved up from 3, industry's heart and "capital investment for higher quality"): a
    process's station, its throughput and grade ceiling; multi-step chains (ore to steel).
 5. **War**: a skirmish as a task against a target with a twist, on the same engine.

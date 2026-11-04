@@ -243,7 +243,7 @@ impl Habit {
             Habit::Showman => "Its pieces earn its business half again the reputation. Its off-form spells are talked of: each costs a twentieth of its business's name.",
             Habit::Hothead => "Inspired twice as often. Off form half again as often, and quarrels twice as often.",
             Habit::Ambitious => "Learns half again as fast. Ten days in low spirits, it leaves.",
-            Habit::Homebody => "Never walks out. Won't run a branch (once businesses have branches).",
+            Habit::Homebody => "Never walks out. Won't run a branch: a House never founds one round it, nor makes it a branch's head.",
         }
     }
 

@@ -417,3 +417,40 @@ fn seconds_cost_a_business_its_name() {
     let worth: f64 = Grade::ALL.iter().map(|g| f.grades[g.index()] * (g.worth(&s.content().dials) - 1.0)).sum();
     assert!(made > 0.0 && (f.reputation < 0.0) == (worth < 0.0), "{} {:?}", f.reputation, f.grades);
 }
+
+#[test]
+fn a_house_sends_its_capital_by_wagon_for_a_branch_down_its_road_whose_takings_ride_home() {
+    // (Cookies at home the far town is short of: the road has trade.)
+    let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64).crop(), Good::new("bread", 0.2, 64).food(5.0),
+        Good::new("cookie", 1.0 / 18.0, 64).comfort(0)], DAY));
+    s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    s.content_mut().dials.standing_orders = false;
+    s.content_mut().dials.house_reputation = 1.0;
+    s.content_mut().dials.hand_wage = 0.01;
+    let home = town(&mut s, "Stormwind", 60, (0.0, 0.0), &["farmer", "farmer", "farmer", "merchant"], 600.0);
+    // Too few within its range for a bakery of its own.
+    let far = town(&mut s, "Goldshire", 20, (5000.0, 0.0), &["farmer", "farmer", "merchant"], 0.0);
+    s.add_route(home, far, 1.0, 0.0, 2.0);
+    let mut branch = None;
+    for _ in 0..40 {
+        s.deliver(home, WHEAT, 120.0);
+        s.deliver(home, 2, 100.0);
+        s.deliver(far, WHEAT, 120.0);
+        run(&mut s, 1);
+        branch = branch.or_else(|| s.firms().into_iter().find(|f| f.town == far));
+    }
+    let house = s.firms().into_iter().find(|f| f.town == home).expect("a House");
+    let b = branch.unwrap_or_else(|| panic!("a branch: {:?} {:?} {:?} {:?}", s.route(0), house.house, (house.treasury, house.pledged, house.reputation),
+        s.world.resource::<enterprise_core::firms::Firms>().carried));
+    assert_eq!((b.branch_of, b.house.clone(), b.owners.clone()), (Some(house.id), house.house.clone(),
+        vec![(Party::Firm(house.id), 1.0)]), "{b:?}");
+    // Its capital rode the wagon: out of the House's treasury into the branch's town's and the branch's.
+    let capital: f64 = s.account_book(Account::Firm(house.id), 400).iter()
+        .filter(|(_, w, _)| w == "branch capital" || w == "branch founded").map(|(_, _, e)| -e.to_f64()).sum();
+    assert!(capital > 0.0, "the House paid for it");
+    let head = s.firms().into_iter().find(|f| f.id == b.id).and_then(|f| f.head).map(|h| h.hand);
+    assert!(head.is_some_and(|h| !s.person(h).unwrap().has(Habit::Homebody)), "a head, not a Homebody: {head:?}");
+    let home_takings: f64 = s.account_book(Account::Firm(house.id), 400).iter()
+        .filter(|(_, w, _)| w == "branch takings").map(|(_, _, e)| e.to_f64()).sum();
+    assert!(home_takings > 0.0, "its takings rode home");
+}

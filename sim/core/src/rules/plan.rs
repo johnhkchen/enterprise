@@ -312,7 +312,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
         places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, mut pallets: ResMut<crate::pallet::Pallets>,
-        mut herds: Query<&mut crate::herds::Herds>, hiring: Res<crate::jobs::Hiring>) {
+        mut herds: Query<&mut crate::herds::Herds>, hiring: Res<crate::jobs::Hiring>,
+        mut firms: ResMut<crate::firms::Firms>) {
     let now = clock.now;
     let today = now / content.day_ticks.max(1);
     let d = &content.dials;
@@ -549,6 +550,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let saddled = crate::rules::squad::saddle(&content, &mut ledger, &mut state, &mut stock.0);
         let arrival = now + crate::squad::leg_ticks(&content, route.travel_ticks, saddled, 1.0);
         state.last_departure = Some(now);
+        // The money its businesses send by it rides with it (`firms.rs` `Carried`).
+        firms.wagon_left(route.seq);
         // What its last wagon could carry and the mouths that ate on the road, team included (`Desires.haulEach`); and
         // the shopping money it took, counted spent off its town's day's budget (the Accountant allowed it at the plan).
         state.last_capacity = slots;
