@@ -2752,3 +2752,31 @@ only on the hills, and a Toolsmith (who digs it) drawn only by its lockers' trad
 - **Seed 1717's year, replayed** (19 of 11,023 requests refused): Toolsmiths in 9 towns (6 before), raw iron held in
   16 towns at the year's end (2), coal in 10 (2), iron hoes in 13 and pickaxes in 10. Still no ironworks: each
   town's own Armorers smelt its raw iron as it comes up (`services.rs`' smelting).
+
+## Society: war on the engine of people at work (2026-11-04)
+
+Slice 5 of `docs/firms-plan.md` (John: "Ore, then slice 5 in one effort"; earlier, "a skirmish becomes a crafting
+contract with similar mechanics like a boss blind", "Generalize"). The army keeps its attrition as a rate
+(`army.rs`); a skirmish moves it.
+
+- **Soldiers are people** (`persons.rs`): a soldier with a town's hand is drawn as a business's hands are, its skill at
+  arms or archery (two new works) grown by fighting; one of no town's roster (a realm's levy, a mercenary) fights as
+  a Journeyman stranger (`war::stranger`).
+- **Fundamentals** (`war::fundamentals`): its skill at its weapon's work, four with a talent for it, four a
+  Perfectionist, its weapon's power past a wooden sword's and its edge (unarmed four less), a fifth of its armour's
+  points, and its kit's grades. Kit is drawn from the front's warehouse by grade, best first (`Worn::grade`), and a
+  graded piece lasts its grade's worth times as long: a bladesmith's Fine swords are a squad's fundamentals.
+- **A skirmish every `skirmish_days` (5)** of the campaign (none at 0: the attrition tests pin the mod's), against
+  `skirmish_target` (9) a soldier, a tenth more for each won in a row, with a twist (`war::Twist`: open ground; fog,
+  bows a half; a river, the army's score a quarter less; night, no inspiration and a tenth less morale). Morale is its
+  soldiers' spirits and its captain's habits (the most skilled, by the crown's mandate to command), less for the
+  unfed. Its score is each soldier's Fundamentals × Morale, give or take its draw, summed (a Taskmaster captain's
+  crew a quarter more); Second proof, Glass hands, House style and Unbroken bend it.
+- **Won:** the army's risk a half less till the next (`Army::edge`), its spirits up, its best soldier inspired (not at
+  night). **Lost:** its risk half again, its spirits down; with its morale under `rout_morale` (0.75), its soldiers in
+  low spirits rout and walk home as deserters (never a Steady hand, nor while a Peacemaker serves). Each fight makes
+  its soldiers more skilled.
+- **The study world's war** (`enterprise-sim 90 --war 5,10,85`): its mercenaries, Journeymen strangers, won 4 of 14
+  skirmishes at a target of 9 and lost 46 of 55 over 962 soldier-days (0.048 a day, 0.053 with no skirmishes); at 12
+  they won none. The host's report prints the skirmishes; the trace's `skirmishes` table has each (seed 1717's year
+  had no war).

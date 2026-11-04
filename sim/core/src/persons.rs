@@ -94,11 +94,15 @@ pub enum Work {
     Leatherwork,
     Smelting,
     Smithing,
+    /// A soldier's: fighting with a blade, an axe or bare hands (`war.rs`).
+    Arms,
+    /// A soldier's with a bow.
+    Archery,
 }
 
 impl Work {
-    pub const ALL: [Work; 6] = [Work::Baking, Work::Weaving, Work::Tanning, Work::Leatherwork, Work::Smelting,
-        Work::Smithing];
+    pub const ALL: [Work; 8] = [Work::Baking, Work::Weaving, Work::Tanning, Work::Leatherwork, Work::Smelting,
+        Work::Smithing, Work::Arms, Work::Archery];
 
     pub fn name(self) -> &'static str {
         match self {
@@ -108,6 +112,8 @@ impl Work {
             Work::Leatherwork => "leatherwork",
             Work::Smelting => "smelting",
             Work::Smithing => "smithing",
+            Work::Arms => "arms",
+            Work::Archery => "archery",
         }
     }
 
@@ -120,6 +126,8 @@ impl Work {
             Work::Leatherwork => "Leatherwork: leather cut and sewn into boots.",
             Work::Smelting => "Smelting: raw iron and coal into iron ingots.",
             Work::Smithing => "Smithing: iron ingots forged into swords and tools.",
+            Work::Arms => "Arms: fighting with a sword or an axe.",
+            Work::Archery => "Archery: fighting with a bow.",
         }
     }
 }

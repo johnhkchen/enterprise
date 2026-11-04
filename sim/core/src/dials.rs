@@ -360,6 +360,12 @@ dials! {
     /// A business buys a station's next tier when it would pay for itself in this many days (the masterworks its
     /// hands are held back from; at its most hands, the batches it's short of).
     station_payback_days: f64 = 60.0,
+    /// War (`war.rs`, `docs/firms-plan.md` slice 5): the army fights a skirmish every so many campaign days, against
+    /// this target a soldier (a tenth more for each won in a row); lost with its morale under `rout_morale`, its
+    /// soldiers in low spirits rout. (No skirmishes at 0: the mod's attrition alone.)
+    skirmish_days: f64 = 5.0,
+    skirmish_target: f64 = 9.0,
+    rout_morale: f64 = 0.75,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its

@@ -306,6 +306,10 @@ pub struct Worn {
     pub enchant: f64,
     pub unbreaking: u8,
     pub worn: f64,
+    /// Its grade, a graded piece's (`People::graded` at the front: a business's): a soldier's fundamentals
+    /// (`war.rs`), and it lasts its grade's worth times as long.
+    #[serde(default)]
+    pub grade: Option<crate::persons::Grade>,
 }
 
 impl Worn {
@@ -313,8 +317,9 @@ impl Worn {
     /// worn out. The mod's running sum against 1, dust and all: summed in doubles, 1/6, 1/10, 1/24 and 1/30 fall just
     /// short of 1 on their last day, so there a stone weapon lasts 7 days, an iron sword or bow 11, diamond armour 31,
     /// and the core's the same.
-    fn wear(&mut self, days: u32) -> bool {
-        self.worn += 1.0 / (days.max(1) as f64 * (1 + self.unbreaking as u32) as f64);
+    fn wear(&mut self, days: u32, d: &Dials) -> bool {
+        let lasts = self.grade.map_or(1.0, |g| g.worth(d));
+        self.worn += 1.0 / (days.max(1) as f64 * (1 + self.unbreaking as u32) as f64 * lasts);
         self.worn >= 1.0
     }
 }
@@ -394,6 +399,23 @@ pub struct Army {
     pub deserting: f64,
     pub walking: Vec<Walker>,
     pub pay_owed: BTreeMap<TownId, crate::fixed::Fixed>,
+    /// War (`war.rs`): the campaign's days fought, the skirmishes fought and the last kept, those won in a row, the
+    /// risk's change till the next (a half less after a win, half again after a loss), its captain by the crown's
+    /// mandate, and the share of its soldiers unfed on its last day.
+    #[serde(default)]
+    pub fought_days: u64,
+    #[serde(default)]
+    pub skirmishes_fought: u64,
+    #[serde(default)]
+    pub skirmishes: Vec<crate::war::Skirmish>,
+    #[serde(default)]
+    pub won_in_row: u32,
+    #[serde(default)]
+    pub edge: f64,
+    #[serde(default)]
+    pub captain: Option<crate::firms::Head>,
+    #[serde(default)]
+    pub unfed: f64,
 }
 
 impl Army {
@@ -462,7 +484,8 @@ impl Army {
     /// The best piece of these kinds the warehouse has, enchanted ones first (`Army.draw`): taken from it (and from its
     /// enchanted pieces), out of the world's goods, and tallied as issued.
     fn draw(&mut self, content: &Content, ledger: &mut Ledger, stock: &mut Stock, kits: &mut Kits,
-            kinds: impl IntoIterator<Item = &'static str>) -> Option<Worn> {
+            graded: Option<&mut BTreeMap<GoodId, [f64; 5]>>, kinds: impl IntoIterator<Item = &'static str>) -> Option<Worn> {
+        let mut graded = graded;
         for name in kinds {
             let Some(g) = good_named(content, name) else { continue };
             if whole(stock.0[g]) < 1.0 {
@@ -484,12 +507,19 @@ impl Army {
                 Some(i) => {
                     let k = &mut kits.pieces[i];
                     k.count -= 1;
-                    let worn = Worn { good: g, enchant: k.enchant_level, unbreaking: k.unbreaking, worn: 0.0 };
+                    let worn = Worn { good: g, enchant: k.enchant_level, unbreaking: k.unbreaking, ..Default::default() };
                     kits.pieces.retain(|k| k.count > 0);
                     worn
                 }
                 None => Worn { good: g, ..Default::default() },
             };
+            // (A piece drawn is the best graded one there, best first: `People::graded`.)
+            let mut piece = piece;
+            if let Some(m) = graded.as_deref_mut() {
+                let took = crate::people::take_graded(m, g, stock.0[g], 1.0);
+                piece.grade = crate::persons::Grade::ALL.into_iter().find(|gr| took[gr.index()] > 0.5)
+                    .filter(|&gr| gr != crate::persons::Grade::Plain);
+            }
             stock.0[g] -= 1.0;
             ledger.used[g] += 1.0;
             let enchanted = piece.enchant > 0.0 || piece.unbreaking > 0;
@@ -514,7 +544,7 @@ impl Army {
     /// best there is, serve (their towns' records and pay), wear their kit, and run their risk, whose sum is the day's
     /// expected fallen, carried. Returns the day's losses, already off the army.
     pub fn day(&mut self, content: &Content, ledger: &mut Ledger, book: &mut Book, stock: &mut Stock, kits: &mut Kits,
-            capital: Option<TownId>) -> Losses {
+            capital: Option<TownId>, mut graded: Option<&mut BTreeMap<GoodId, [f64; 5]>>) -> Losses {
         let d = &content.dials;
         let mut losses = Losses::default();
         // The day's rations, the best food first: as far as they go, the army is fed, and the heartier the meal, the
@@ -524,6 +554,7 @@ impl Army {
         let meal = mess(content, ledger, stock, wanted);
         self.eaten += meal.eaten;
         let fed = if wanted <= 0.0 { 1.0 } else { (meal.eaten / wanted).min(1.0) };
+        self.unfed = 1.0 - fed;
         let hearty = if meal.eaten <= 0.0 { 0.0 } else { meal.hearty / meal.eaten };
         self.hearty_sum += hearty * n as f64;
         self.meal_days += n as f64;
@@ -558,7 +589,7 @@ impl Army {
                     soldier.arrows += Self::take_arrows(content, ledger, stock, d.arrows_per_day * ARROW_DRAW_DAYS);
                 }
                 if soldier.weapon.is_none() {
-                    soldier.weapon = self.draw(content, ledger, stock, kits, WEAPONS.iter().map(|g| g.name));
+                    soldier.weapon = self.draw(content, ledger, stock, kits, graded.as_deref_mut(), WEAPONS.iter().map(|g| g.name));
                     if bow(&soldier) {
                         soldier.arrows += Self::take_arrows(content, ledger, stock, d.arrows_per_day * ARROW_DRAW_DAYS);
                     }
@@ -566,19 +597,20 @@ impl Army {
             }
             for (place, kinds) in ARMOUR.iter().enumerate() {
                 if soldier.armour[place].is_none() {
-                    soldier.armour[place] = self.draw(content, ledger, stock, kits, kinds.iter().map(|g| g.name));
+                    soldier.armour[place] = self.draw(content, ledger, stock, kits, graded.as_deref_mut(), kinds.iter().map(|g| g.name));
                 }
             }
             if soldier.shield.is_none() && !bow(&soldier) {
-                soldier.shield = self.draw(content, ledger, stock, kits, [SHIELD.name]);
+                soldier.shield = self.draw(content, ledger, stock, kits, graded.as_deref_mut(), [SHIELD.name]);
             }
             // How it serves today, and the risk it runs: a bow with no arrows is no weapon.
             let name = |w: &Worn| name_of(content, w);
             let arms = soldier.weapon.as_ref().filter(|_| !bow(&soldier) || soldier.arrows > 0);
             let edge = arms.map_or(0.0, |w| w.enchant);
             let worn: Vec<(&str, f64)> = soldier.armour.iter().flatten().map(|w| (name(w), w.enchant)).collect();
+            // (And as its last skirmish went, `war.rs`.)
             let risk = risk(d, arms.map(|w| (name(w), w.enchant)), &worn, soldier.shield.is_some())
-                * if hungry { d.hungry_risk } else { 1.0 - HEARTY_RISK * hearty };
+                * if hungry { d.hungry_risk } else { 1.0 - HEARTY_RISK * hearty } * (1.0 + self.edge);
             let power = arms.and_then(|w| weapon(name(w))).map_or(1.0, |g| g.power as f64);
             let armour_points = points(worn.iter().map(|(n, _)| *n));
             let record = self.records.entry(soldier.home).or_default();
@@ -607,17 +639,17 @@ impl Army {
                     soldier.arrows = soldier.arrows.saturating_sub(d.arrows_per_day);
                 }
                 let days = soldier.weapon.as_ref().and_then(|w| weapon(name(w))).map_or(1, |g| g.days);
-                if soldier.weapon.as_mut().is_some_and(|w| w.wear(days)) {
+                if soldier.weapon.as_mut().is_some_and(|w| w.wear(days, d)) {
                     soldier.weapon = None;
                 }
             }
             for place in 0..ARMOUR.len() {
                 let days = soldier.armour[place].as_ref().and_then(|w| armour(name(w))).map_or(1, |(_, g)| g.days);
-                if soldier.armour[place].as_mut().is_some_and(|w| w.wear(days)) {
+                if soldier.armour[place].as_mut().is_some_and(|w| w.wear(days, d)) {
                     soldier.armour[place] = None;
                 }
             }
-            if soldier.shield.as_mut().is_some_and(|w| w.wear(SHIELD.days)) {
+            if soldier.shield.as_mut().is_some_and(|w| w.wear(SHIELD.days, d)) {
                 soldier.shield = None;
             }
             soldier.exposure += risk;

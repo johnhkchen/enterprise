@@ -150,4 +150,10 @@ The finer tier the lockers buy of villagers' selling trades is Fine.
    days. The iron chain done: an ironworks (Armorers) smelts raw iron and coal or charcoal into graded ingots, a
    bladesmith (Weaponsmiths) and a toolmaker (Toolsmiths) forge them into swords and hoes, a town wanting two of each
    for its wearers; graded kit counts as its grade, as enchanted kit does (John: "Count like enchantment").
-5. **War**: a skirmish as a task against a target with a twist, on the same engine.
+5. **War**: a skirmish as a task against a target with a twist, on the same engine. Done (2026-11-04, `war.rs`):
+   every 5 campaign days the army fights a skirmish, its soldiers' Fundamentals (skill at arms or archery, talents,
+   weapon, armour and their grades) × Morale (spirits, hunger, its captain by the crown's mandate) against 9 a soldier,
+   a tenth more for each won in a row, with a twist (open ground, fog: bows a half, a river: a quarter less, night: no
+   inspiration). Won, the army's risk is half till the next and its best makes a heroic stand; lost, half again, and
+   with its morale broken its low-spirited rout (never a Steady hand, nor under a Peacemaker). Second proof, Glass
+   hands, House style and Unbroken bend a fight as they do a batch.

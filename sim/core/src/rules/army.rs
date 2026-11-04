@@ -28,6 +28,7 @@ pub fn register(schedule: &mut Schedule) {
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn campaign(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut army: ResMut<Army>,
         crown: Res<crate::realms::Crown>, mut ledger: ResMut<Ledger>, mut book: ResMut<Book>, places: Query<&Town>,
+        mut persons: ResMut<crate::persons::Persons>, mut charters: ResMut<crate::charters::Charters>,
         mut fronts: Query<(&mut Stock, &mut Kits)>,
         mut homes: Query<(&mut People, Option<&mut Roster>, Option<&mut Lockers>)>) {
     let now = clock.now;
@@ -59,7 +60,18 @@ pub fn campaign(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut a
     let front_hex = hex(front);
     for _ in 0..days {
         let Ok((mut stock, mut kits)) = fronts.get_mut(front) else { return };
-        let losses = army.day(&content, &mut ledger, &mut book, &mut stock, &mut kits, crown.capital);
+        let mut graded = homes.get_mut(front).ok().map(|(p, ..)| std::mem::take(&mut p.into_inner().graded));
+        let mut losses = army.day(&content, &mut ledger, &mut book, &mut stock, &mut kits, crown.capital, graded.as_mut());
+        if let (Some(g), Ok((mut people, ..))) = (graded, homes.get_mut(front)) {
+            people.graded = g;
+        }
+        // A skirmish every `skirmish_days` of the campaign (`war.rs`; none at 0): those who rout walk home, as
+        // deserters do.
+        army.fought_days += 1;
+        let every = content.dials.skirmish_days as u64;
+        if every > 0 && !army.soldiers.is_empty() && army.fought_days % every == 0 {
+            losses.deserted.extend(crate::war::skirmish(&content, army, &mut persons, &mut charters, now));
+        }
         // Fallen: gone from its town for good, which grieves.
         for soldier in losses.fallen {
             let Some(&e) = all.0.get(soldier.home) else { continue };

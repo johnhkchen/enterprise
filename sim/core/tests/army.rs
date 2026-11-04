@@ -19,7 +19,10 @@ fn content() -> Content {
         goods.push(Good::priced(g.name, 1));
     }
     goods.push(Good::priced("arrow", 64));
-    Content::new(goods, DAY)
+    let mut c = Content::new(goods, DAY);
+    // (The mod's attrition alone: no skirmishes, `war.rs`'s, to move its risk.)
+    c.dials.skirmish_days = 0.0;
+    c
 }
 
 fn good(c: &Content, name: &str) -> usize {

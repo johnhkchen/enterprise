@@ -271,6 +271,16 @@ pub fn end_report(st: &mut Study, tr: &Tracker, days: u64) -> String {
             let _ = writeln!(o, "{:>18}: raised {}, fallen {}, deserted {}, {} soldier-days ({} hungry), pay {:.1}",
                 s.town(*t).name, r.raised, r.fallen, r.deserted, r.days, r.hungry, r.pay);
         }
+        // Its skirmishes (`war.rs`), the last kept.
+        let won = army.skirmishes.iter().filter(|k| k.won).count();
+        let routed: u32 = army.skirmishes.iter().map(|k| k.routed).sum();
+        let _ = writeln!(o, "{:>18}  skirmishes: {} fought, of the last {} won {won}, {routed} routed; captain {:?}", "",
+            army.skirmishes_fought, army.skirmishes.len(), army.captain.map(|c| c.hand));
+        for k in army.skirmishes.iter().rev().take(6).rev() {
+            let _ = writeln!(o, "{:>18}  day {}: {} soldiers in {}, {:.0} against {:.0}: {}{}", "", k.day, k.soldiers,
+                k.twist.name(), k.score, k.target, if k.won { "won" } else { "lost" },
+                if k.routed > 0 { format!(", {} routed", k.routed) } else { String::new() });
+        }
     }
     for t in st.realms.iter().copied().chain(st.overseas) {
         if let Some(r) = s.realm(t) {

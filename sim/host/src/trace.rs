@@ -96,6 +96,8 @@ create table firms (day integer, town integer, firm integer, kind text, owners t
 create table firms_closed (firm integer, town integer, kind text, founded integer, closed integer, made real);
 create table firm_events (firm integer, town integer, day integer, hand integer, event text);
 create table persons (hand integer, habits text, talents text, skills text, spirits real, knack text);
+create table skirmishes (day integer, soldiers integer, twist text, target real, score real, won integer, captain integer,
+    hero integer, routed integer);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
@@ -309,6 +311,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             tx.execute("insert into households values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, h.id, h.members.len(),
                 enterprise_core::households::earners(&roster, &h, &employed), h.purse.to_f64(), st.name(), fields]).map_err(sql)?;
         }
+    }
+    // The army's skirmishes fought today (`war.rs`).
+    for k in s.army().skirmishes.iter().filter(|k| k.day == day) {
+        tx.execute("insert into skirmishes values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![k.day, k.soldiers,
+            k.twist.name(), k.target, k.score, k.won, k.captain, k.hero, k.routed]).map_err(sql)?;
     }
     let mut q = s.world.query::<(&Route, &RouteState)>();
     let mut routes: BTreeMap<usize, (Route, RouteState)> = BTreeMap::new();
