@@ -106,6 +106,34 @@ game shows battles as it does).
    `hero_worth` of its soldiers, lifts its morale `hero_morale`, keeps it from routing, and falls in a fight lost
    `hero_fall_odds` of the time, for good.
 
+8. **Supplies carried** (John: "Are we keeping track of how much supplies troops are carrying and need?"). As it
+   stands (2026-11-05): an army at a battle eats `army_ration` (8 points) a soldier a day and draws its kit straight
+   out of its camp's warehouse, however far: nothing carries it, against "nothing crosses distance without a carrier".
+   A squad on the march eats nothing. Cut off (surrounded, or posts on its camp's road), it draws nothing. On seed 1717
+   the marines' camp is Pyrewood, 20 hexes and more from their assaults; its farms keep 800 to 3,000 food points in its
+   warehouse through the war, so the marines are never hungry and their deep strikes cost no food.
+   - **A pack:** each soldier carries `pack_days` of rations (food points on `Soldier`), filled at its camp or home
+     when it sets out. On the march and at a battle it eats from the battle's depot first, then its pack; an empty pack
+     is a hungry soldier (fights worse, deserts: `Army::day` as now). A squad's days of food left is its smallest pack.
+   - **Supply wagons:** a battle's army eats from its depot (`Battle::depot`, a stock), not its camp's warehouse.
+     The camp sends a wagon when the depot holds under `depot_days` of the army's need: loaded from its warehouse
+     (`wagon_load` food points, arrows and kit), it travels the hexes on its planned way at a wagon's pace (`Map::going`
+     with `Carrier::Wagon`: roads quicker, no steeps), with `train_escort` soldiers, and unloads into the depot.
+   - **Cutting supply becomes raiding the wagons:** a hostile squad that meets a wagon fights its escort; if it wins
+     it takes the load (to its own side's nearest depot or town) and the wagon is lost. The Horde's council posts
+     squads on the wagons' way rather than only astride the road; surrounded, no wagon gets through, as now.
+   - **Open, John's call:**
+     - Where do the marines' rations come from: Theramore's ships (food carried with each convoy, paid of its chest),
+       Pyrewood's farms, or both?
+     - Does an army forage, eating off the land of the hexes it stands on (enemy fields first, cutting that town's
+       harvest)?
+   - **The trace and the map:** each battle's depot and each squad's days of food by day; wagons on the hexes with
+     their load, delivered or taken; the map draws the wagons and a squad's food as a bar.
+   - **Retuned after:** the two hero targets replayed again (3 to 5 minutes each). Longer supply lines should slow
+     the deep strikes, so the chest or `hero_worth` will move.
+   - **Checks:** a squad's pack empties on a long march and it goes hungry; a wagon fills a depot; a raided wagon
+     starves the army it fed; a surrounded army gets no wagon.
+
 ## Checks, sized to what they test
 
 Unit tests for each slice; the study host's world for the councils (a few dozen days); one lane of seed 1717 only
