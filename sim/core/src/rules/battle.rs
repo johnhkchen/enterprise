@@ -1666,6 +1666,19 @@ fn raze(world: &mut World, content: &Content, t: TownId) -> (u32, u32) {
     moved
 }
 
+/// The ruins' people come home from the war to nowhere: refugees too.
+fn ruins_home(world: &mut World, content: &Content, c: &mut Campaign) {
+    let ruins: Vec<TownId> = world.resource::<Battles>().ruins.iter().copied().collect();
+    let towns = world.resource::<Towns>().0.clone();
+    for t in ruins {
+        if world.get::<Roster>(towns[t]).is_some_and(|r| r.hands.iter().any(|h| !h.away)) {
+            let (taken, gone) = refugees(world, content, t, None);
+            c.refugees += taken;
+            c.lost += gone;
+        }
+    }
+}
+
 /// A ruin's people at home go to `refuge` (none: they leave the map). Returns (taken in, gone).
 fn refugees(world: &mut World, content: &Content, t: TownId, refuge: Option<TownId>) -> (u32, u32) {
     let towns = world.resource::<Towns>().0.clone();
@@ -1731,7 +1744,14 @@ pub fn campaign(world: &mut World) {
         return;
     }
     let mut c = world.resource::<Battles>().campaign.clone().expect("declared");
-    if c.won_by.is_some() || c.reckoned == Some(today) {
+    if c.reckoned == Some(today) {
+        return;
+    }
+    if c.won_by.is_some() {
+        // (Won, its soldiers still come home: to their ruins, refugees.)
+        c.reckoned = Some(today);
+        ruins_home(world, &content, &mut c);
+        world.resource_mut::<Battles>().campaign = Some(c);
         return;
     }
     c.reckoned = Some(today);
@@ -1849,16 +1869,8 @@ pub fn campaign(world: &mut World) {
             c.lost += gone;
         }
     }
-    // The ruins' people come home from the war to nowhere: refugees too.
-    let ruins: Vec<TownId> = world.resource::<Battles>().ruins.iter().copied().collect();
+    ruins_home(world, &content, &mut c);
     let towns = world.resource::<Towns>().0.clone();
-    for t in ruins {
-        if world.get::<Roster>(towns[t]).is_some_and(|r| r.hands.iter().any(|h| !h.away)) {
-            let (taken, gone) = refugees(world, &content, t, None);
-            c.refugees += taken;
-            c.lost += gone;
-        }
-    }
     // Won: a side with no towns left.
     let (horde, alliance) = (faction_towns(world, Faction::Horde), faction_towns(world, Faction::Alliance));
     c.won_by = if horde.is_empty() {

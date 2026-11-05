@@ -204,6 +204,7 @@ fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns(
     for t in &s.battles().ruins {
         assert!(s.territory().holding(*t).is_none_or(|h| h.hexes.is_empty()) && s.territory().owners.values().all(|o| o != t),
             "a ruin holds no land, nor grows it back: {t} {:?}", s.territory().holding(*t));
+        assert_eq!(s.roster(*t).hands.iter().filter(|h| !h.away).count(), 0, "no one home in a ruin, the war won or not: {t}");
     }
     let chest = s.content().dials.war_chest_alliance;
     assert!(s.battles().spent.get(&Faction::Alliance).is_some_and(|x| x.to_f64() <= chest));

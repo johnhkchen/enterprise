@@ -3217,3 +3217,10 @@ the win condition".
 - **Withdrawal isn't defeat**: Theramore's withdrawal ends its marines' war, not the war. The war is won only when a
   side has no towns left. With Theramore gone the Horde strikes every time: at the Alliance's base (Pyrewood) while it
   stands, then at its nearest town, each battle after the last; the Alliance's towns defend with their own levies.
+- **A won war's soldiers still come home**: the ruins' people coming home are refugees each day after the war is won
+  too (Pyrewood, razed on the day that won it, had its 12 levied hands back in its ruin the day after).
+- **Replayed** (seed 1717, war from day 100, 360 days past the journal, 75,000, ships every 15 days): with a hero
+  each Theramore clears the 22 Horde towns on day 496 (560 before) with 16,940 left, 11 of its 54 wagons taken;
+  Pyrewood ends with 60 people to peace's 58 (34 before), its output down 31% (100% before), the region's
+  person-days down 11% (39%). With Orgrimmar's second hero Theramore razes 10, runs dry and withdraws on day 597;
+  the Horde marches on Pyrewood and razes it on day 606, the Alliance's last town in the region.
