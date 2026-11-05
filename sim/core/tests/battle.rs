@@ -192,6 +192,9 @@ fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns(
     let c = s.battles().campaign.clone().unwrap();
     assert!(c.razed.iter().any(|r| r.1 == razor), "Razor Hill razed: {c:?}");
     assert!(s.battles().ruins.contains(&razor));
+    // Said to the host to lay waste, with the land it held (`Output::Razed`).
+    assert!(s.show_ruins().iter().any(|o| matches!(o, enterprise_core::wire::Output::Razed { town, hexes, .. }
+        if *town as usize == razor && hexes.len() > 1)), "Razor Hill's ruin said, with its land: {:?}", s.show_ruins());
     assert_eq!(s.roster(razor).hands.iter().filter(|h| !h.away).count(), 0, "no one at home in the ruins");
     assert!(c.refugees > 0, "its people taken in");
     assert!(s.battles().may_settle(Hex::new(0, 0), Some(Faction::Alliance))

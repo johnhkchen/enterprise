@@ -2,8 +2,12 @@
 """One survival study on a lane of its own: a world of SEED in core/run/lanes/N, its server, the study, the server
 stopped. The ground comes from a fixture when one was kept for these flags (fixtures.py), else it's made and kept.
 
-    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY] [--audit | --no-audit] [--bid B ...] [--dial NAME=VALUE ...] [--capital TOWN[:SPURS]]
+    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY] [--fork DAY] [--audit | --no-audit] [--bid B ...] [--dial NAME=VALUE ...] [--capital TOWN[:SPURS]]
         [-- study flags]
+
+`--fork DAY`: the `--dial`s set on the day after DAY, not the first, the run carried on from the kept run without them
+(the same flags but its dials) at its point of DAY: a war declared on a peace's year. Its own points are kept under its
+own flags (the dials and the day), its parent's journals with them.
 
 `--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds). `--bid
 TOWN:GOOD:PRICE:COUNT[@DAY]`: a player's buying order at that network town's shop, added to the study's flags (which
@@ -78,8 +82,12 @@ def main():
     flags = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else DEFAULT
     mine = sys.argv[:sys.argv.index("--")] if "--" in sys.argv else sys.argv
     latest = int(mine[mine.index("--from") + 1]) if "--from" in mine else None
+    fork = int(mine[mine.index("--fork") + 1]) if "--fork" in mine else None
     # A player's buying order and the dials on the study's network, its flags or the default's (survival_study.py's --bid, --dial).
+    parent_flags = flags + [x for k, a in enumerate(mine) if a in ("--bid", "--capital") for x in (a, mine[k + 1])]
     flags = flags + [x for k, a in enumerate(mine) if a in ("--bid", "--dial", "--capital") for x in (a, mine[k + 1])]
+    if fork is not None:
+        flags += ["--dial-day", str(fork + 1)]
     lane = REPO / "core" / "run" / "lanes" / str(n)
     lane.mkdir(parents=True, exist_ok=True)
     subprocess.run(["rm", "-rf", str(lane / "world"), str(lane / "config")], check=True)
@@ -93,6 +101,17 @@ def main():
     started = time.time()
     run = fixtures.run_dir(seed, flags)
     found = fixtures.resume_point(run, int(days), print, latest)
+    if fork is not None and (not found or int(found[0].name[3:]) <= fork):
+        # A fork: from its parent's point of DAY, the parent's journals beside its own (a point's chain names them).
+        parent = fixtures.run_dir(seed, parent_flags)
+        (run / "journals").mkdir(parents=True, exist_ok=True)
+        for j in (parent / "journals").glob("*"):
+            if not (run / "journals" / j.name).exists():
+                subprocess.run(["cp", "-c", str(j), str(run / "journals" / j.name)], check=True)
+        found = fixtures.resume_point(parent, fork + 1, print, fork)
+        if not found:
+            sys.exit(f"--fork {fork}: no point of the parent run {parent.relative_to(REPO)} at day {fork} holds")
+        print(f"fork: from {found[0].relative_to(REPO)}, the dials set on day {fork + 1}")
     audit = None
     if found and int(found[0].name[3:]) > 0 and "--no-audit" not in mine:
         changed = fixtures.unlisted_changes(found[0])

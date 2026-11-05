@@ -112,4 +112,9 @@ pub enum Output {
     /// `Input::Ground`), so the core plans over the land itself, not the guess a hex never loaded is (John: "make sure
     /// the map loads fully or that there's an exploration mechanic... as towns explore for routes to each other").
     Explore { hexes: Vec<HexAt> },
+    /// `town` was razed (`rules/battle.rs` `raze`): for the host to lay it waste (John: "just placing TNT at the heart
+    /// of each build and detonating it can work, along with removing the water sources of farms"), its bell at (`x`,
+    /// `z`) as the host placed it (else its hex's centre) and `hexes` the land it held. Said at every look, the ruin
+    /// its host's to remember it has laid waste.
+    Razed { town: TownNo, x: i32, z: i32, hexes: Vec<HexAt> },
 }

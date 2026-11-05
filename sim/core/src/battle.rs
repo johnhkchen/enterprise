@@ -282,6 +282,9 @@ pub struct Battles {
     /// warehouse, whose food it buys (`rules/battle.rs` `pay_for`).
     #[serde(default)]
     pub stores: std::collections::BTreeMap<TownId, Vec<f64>>,
+    /// Each ruin's land as it held it when razed, for the host to lay waste (`Output::Razed`).
+    #[serde(default)]
+    pub ruined_land: std::collections::BTreeMap<TownId, Vec<Hex>>,
 }
 
 impl Battles {

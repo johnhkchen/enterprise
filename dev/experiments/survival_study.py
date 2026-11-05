@@ -422,6 +422,8 @@ def place_bids(desks, day, say):
 # `--dial NAME=VALUE`: a core dial set on the first day (`/enterprise dial`), kept with the world after: a run of its own
 # (its flags key its points), the lanes side by side tuning one (`plots_per_farmer_level=40`).
 DIALS = [sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--dial"]
+# `--dial-day N`: the dials set on day N instead (a fork of a kept run from its day N-1 point: survival_lane.py --fork).
+DIAL_DAY = int(next((sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--dial-day"), 1))
 
 
 # `--capital TOWN[:SPURS]`: the network town TOWN (its place, 0 the first) named the crown's capital on the first day,
@@ -439,7 +441,7 @@ def name_capital(desks, day, say):
 
 
 def set_dials(day, say):
-    for d in DIALS if day == 1 else []:
+    for d in DIALS if day == DIAL_DAY else []:
         name, _, value = d.partition("=")
         said = rcon(f"enterprise dial {name} {value}").strip().splitlines()
         say(f"day {day}: dial: " + (said[-1] if said else "(no answer)"))

@@ -40,7 +40,8 @@ public sealed interface Output
                 Output.Found,
                 Output.Trail,
                 Output.Stall,
-                Output.Explore {
+                Output.Explore,
+                Output.Razed {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -78,6 +79,7 @@ public sealed interface Output
             case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode), in.bool(), in.u8());
             case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
             case 31 -> new Explore(in.list(2, HexAt::decode));
+            case 32 -> new Razed(in.u32(), in.i32(), in.i32(), in.list(2, HexAt::decode));
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -651,6 +653,28 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(31);
+            out.list(this.hexes, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * {@code town} was razed ({@code rules/battle.rs} {@code raze}): for the host to lay it waste (John: "just placing TNT at the heart
+     * of each build and detonating it can work, along with removing the water sources of farms"), its bell at ({@code x},
+     * {@code z}) as the host placed it (else its hex's centre) and {@code hexes} the land it held. Said at every look, the ruin
+     * its host's to remember it has laid waste.
+     */
+    record Razed(long town, int x, int z, List<HexAt> hexes) implements Output {
+        public Razed {
+            Objects.requireNonNull(hexes, "hexes");
+            hexes = List.copyOf(hexes);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(32);
+            out.u32(this.town);
+            out.i32(this.x);
+            out.i32(this.z);
             out.list(this.hexes, (o1, e1) -> e1.encode(o1));
         }
     }

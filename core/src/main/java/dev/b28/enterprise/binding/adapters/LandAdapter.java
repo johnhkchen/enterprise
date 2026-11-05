@@ -128,6 +128,12 @@ public final class LandAdapter {
     private final Map<List<Object>, Output.Build> asked = new LinkedHashMap<>();
     /** The towns a host's settlers founded that the core asked to have built, by town, till the next look. */
     private final Map<Long, Output.Found> founding = new LinkedHashMap<>();
+    /** The ruins the core said, by town, laid waste at the next look (`Output.Razed`). */
+    private final Map<Long, Output.Razed> razed = new LinkedHashMap<>();
+    /** Each ruin's chunks whose fields' water is gone this server run (all of them: it's drained). */
+    private final Map<Long, Set<ChunkPos>> drainedChunks = new HashMap<>();
+    /** Chunks of a ruin's land drained in one look, at most. */
+    static final int DRAIN_PER_LOOK = 48;
     /** Trails shown since the last look, for the world's {@link Trails}. */
     private final List<Trails.Trail> trailsShown = new ArrayList<>();
 
@@ -196,6 +202,7 @@ public final class LandAdapter {
     public List<Input> happenings(MinecraftServer server, boolean survey) {
         layAsked(server);
         buildFounded(server);
+        layWaste(server);
         layTrails(server);
         explore(server);
         growWaterfronts(server);
@@ -805,6 +812,66 @@ public final class LandAdapter {
                 // (No safety fences at founding: its land is shaped and walled before anyone lives there, and fences
                 // put up first stood on its main street's plots: r82.)
             }
+        }
+    }
+
+    /** A ruin the core said, to lay waste at the next look if it isn't yet (core mode). */
+    public void show(Output.Razed ruin) {
+        if (ownsLand) {
+            razed.put(ruin.town(), ruin);
+        }
+    }
+
+    /**
+     * The ruins the core said laid waste (`territory/Ruins`): its land's fields' water filled in, a few dozen chunks a
+     * look (held loaded till they are), then a charge at the heart of each building round its bell. Each once a town.
+     */
+    private void layWaste(MinecraftServer server) {
+        if (razed.isEmpty() || server == null) {
+            return;
+        }
+        List<Output.Razed> todo = new ArrayList<>(razed.values());
+        razed.clear();
+        ServerLevel level = server.overworld();
+        var ruins = dev.b28.enterprise.territory.Ruins.get(server);
+        int budget = DRAIN_PER_LOOK;
+        for (Output.Razed r : todo) {
+            if (ruins.laidWaste(r.town())) {
+                continue;
+            }
+            if (!ruins.drained(r.town())) {
+                List<Hex> hexes = r.hexes().stream().map(h -> new Hex(h.q(), h.r())).toList();
+                Set<ChunkPos> done = drainedChunks.computeIfAbsent(r.town(), t -> new HashSet<>());
+                List<ChunkPos> left = dev.b28.enterprise.territory.Ruins.chunks(hexes).stream().filter(c -> !done.contains(c)).toList();
+                List<ChunkPos> now = new ArrayList<>();
+                // (A look's worth asked for at a time: the rest held loaded for the looks after.)
+                for (ChunkPos c : left.subList(0, Math.min(left.size(), Math.max(0, budget)))) {
+                    if (loadedFor(level, List.of(c))) {
+                        now.add(c);
+                    }
+                }
+                if (!now.isEmpty()) {
+                    int filled = dev.b28.enterprise.territory.Ruins.drain(level, now);
+                    done.addAll(now);
+                    budget -= now.size();
+                    Enterprise.LOGGER.info("Ruin {}: its fields' water filled in across {} chunks ({} blocks), {} to go",
+                            r.town(), now.size(), filled, left.size() - now.size());
+                }
+                ruins.drained(r.town(), done.containsAll(left));
+                if (!ruins.drained(r.town())) {
+                    continue;
+                }
+            }
+            int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, r.x(), r.z());
+            BlockPos bell = dev.b28.enterprise.territory.TownPlans.get(server).plans().containsKey(r.town())
+                    ? dev.b28.enterprise.territory.TownPlans.get(server).of(r.town()).bell() : new BlockPos(r.x(), y, r.z());
+            if (!loadedFor(level, dev.b28.enterprise.territory.Ruins.round(bell))) {
+                continue;
+            }
+            var hearts = dev.b28.enterprise.territory.Ruins.hearts(level, bell, dev.b28.enterprise.territory.Ruins.REACH);
+            int lit = dev.b28.enterprise.territory.Ruins.blast(level, hearts);
+            ruins.blasted(r.town());
+            Enterprise.LOGGER.info("Ruin {}: {} charges lit round its bell at {}", r.town(), lit, bell.toShortString());
         }
     }
 

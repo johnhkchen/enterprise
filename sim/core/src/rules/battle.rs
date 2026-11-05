@@ -1651,12 +1651,13 @@ fn raze(world: &mut World, content: &Content, t: TownId) -> (u32, u32) {
     // Its land no one's.
     let mut territory = world.resource_mut::<crate::territory::Territory>();
     let held: Vec<Hex> = territory.holding(t).map(|h| h.hexes.clone()).unwrap_or_default();
-    for h in held {
+    for &h in &held {
         territory.cede(h);
     }
     // (Its culture with it: a ruin claims nothing again, `rules::territory::review`.)
     territory.holdings.remove(&t);
     drop(territory);
+    world.resource_mut::<Battles>().ruined_land.insert(t, held);
     if let Some(stores) = world.resource_mut::<Battles>().stores.remove(&t) {
         let mut ledger = world.resource_mut::<Ledger>();
         for (g, n) in stores.iter().enumerate() {

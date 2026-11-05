@@ -3224,3 +3224,15 @@ the win condition".
   Pyrewood ends with 60 people to peace's 58 (34 before), its output down 31% (100% before), the region's
   person-days down 11% (39%). With Orgrimmar's second hero Theramore razes 10, runs dry and withdraws on day 597;
   the Horde marches on Pyrewood and razes it on day 606, the Alliance's last town in the region.
+
+## Game: a razed town laid waste (2026-11-05)
+
+John: "next work on converting the terrain of razed towns"; "for this iteration, I'd say just placing TNT at the heart
+of each build and detonating it can work, along with removing the water sources of farms". The core says each ruin at
+every look (`Output::Razed`: its bell, else its hex's centre, and the hexes it held when razed, kept in
+`Battles::ruined_land`). The mod (`territory/Ruins`, remembered with the world so each step happens once a town):
+- **Its fields' water**: across its land, a few dozen chunks a look (held loaded till done), the still water within 4
+  blocks of farmland, level or one up (what waters it), filled with dirt, a pool of up to 40 blocks at a time; water
+  joined in a bigger body (a river, a lake, the sea) is left.
+- **Its buildings blown up**: the beds', workstations' and bell's points within 64 blocks of the bell, those within 6
+  of each other one building's; a lit charge of TNT at each building's heart, one going off every 6 ticks after 2s.

@@ -1102,6 +1102,15 @@ Output:
           - hexes:
               SEQ:
                 TYPENAME: HexAt
+    32:
+      Razed:
+        STRUCT:
+          - town: U32
+          - x: I32
+          - z: I32
+          - hexes:
+              SEQ:
+                TYPENAME: HexAt
 PackAmount:
   STRUCT:
     - good: STR

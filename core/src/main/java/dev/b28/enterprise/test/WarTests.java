@@ -209,4 +209,53 @@ public final class WarTests {
         helper.assertTrue(record.hungry() > 0 && record.deserted() >= 0, "unfed: they go hungry, and some desert");
         helper.succeed();
     }
+
+    /** A ruin's field's water (`territory/Ruins`): the still water by its farmland filled in. */
+    @GameTest(template = "floor")
+    public static void aRuinsFieldsWaterIsFilledIn(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos field = helper.absolutePos(new BlockPos(2, 1, 3)), water = helper.absolutePos(new BlockPos(3, 1, 3));
+        level.setBlock(field, Blocks.FARMLAND.defaultBlockState(), 3);
+        level.setBlock(water, Blocks.WATER.defaultBlockState(), 3);
+        BlockPos a = helper.absolutePos(new BlockPos(0, 1, 0)), b = helper.absolutePos(new BlockPos(6, 1, 6));
+        int filled = dev.b28.enterprise.territory.Ruins.drain(level, Math.min(a.getX(), b.getX()), Math.min(a.getZ(), b.getZ()),
+                Math.max(a.getX(), b.getX()), Math.max(a.getZ(), b.getZ()));
+        helper.assertTrue(filled == 1 && level.getFluidState(water).isEmpty(), "its water filled in: " + filled + " top "
+                + level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, field.getX(), field.getZ())
+                + " field " + field.toShortString() + " " + level.getBlockState(field) + " water " + level.getFluidState(water));
+        helper.succeed();
+    }
+
+    /** A field by a river keeps the river: water joined in a body past `Ruins.POOL` isn't a field's. */
+    @GameTest(template = "floor")
+    public static void aRuinsFieldByARiverLeavesTheRiver(GameTestHelper helper) {
+        var level = helper.getLevel();
+        // A river: 7 by 6, a block deep (42 blocks), a field at its edge.
+        for (int x = 0; x <= 6; x++) {
+            for (int z = 0; z <= 5; z++) {
+                level.setBlock(helper.absolutePos(new BlockPos(x, 1, z)), Blocks.WATER.defaultBlockState(), 3);
+            }
+        }
+        BlockPos field = helper.absolutePos(new BlockPos(3, 1, 6));
+        level.setBlock(field, Blocks.FARMLAND.defaultBlockState(), 3);
+        BlockPos a = helper.absolutePos(new BlockPos(0, 1, 0)), b = helper.absolutePos(new BlockPos(6, 1, 6));
+        int filled = dev.b28.enterprise.territory.Ruins.drain(level, Math.min(a.getX(), b.getX()), Math.min(a.getZ(), b.getZ()),
+                Math.max(a.getX(), b.getX()), Math.max(a.getZ(), b.getZ()));
+        helper.assertTrue(filled == 0, "the river left: " + filled);
+        helper.succeed();
+    }
+
+    /** A ruin's buildings' hearts: its workstations near each other one building's, one apart another's. */
+    @GameTest(template = "floor")
+    public static void aRuinsBuildingsAreFoundByTheirWorkstations(GameTestHelper helper) {
+        var level = helper.getLevel();
+        level.setBlock(helper.absolutePos(new BlockPos(0, 2, 0)), Blocks.COMPOSTER.defaultBlockState(), 3);
+        level.setBlock(helper.absolutePos(new BlockPos(1, 2, 1)), Blocks.LECTERN.defaultBlockState(), 3);
+        level.setBlock(helper.absolutePos(new BlockPos(6, 2, 6)), Blocks.BARREL.defaultBlockState(), 3);
+        helper.runAfterDelay(2, () -> {
+            var hearts = dev.b28.enterprise.territory.Ruins.hearts(level, helper.absolutePos(new BlockPos(3, 2, 3)), 5);
+            helper.assertTrue(hearts.size() == 2, "two buildings: " + hearts);
+            helper.succeed();
+        });
+    }
 }

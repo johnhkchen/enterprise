@@ -249,6 +249,19 @@ impl Society {
         }).collect()
     }
 
+    /// The ruins, for the host to lay waste (`Output::Razed`): each, with the land it held.
+    pub fn show_ruins(&self) -> Vec<crate::wire::Output> {
+        let b = self.world.resource::<crate::battle::Battles>();
+        b.ruins.iter().filter_map(|&t| {
+            let hex = self.town_hex(t)?;
+            let bell = self.world.resource::<crate::territory::Territory>().holding(t).and_then(|h| h.bell);
+            let (x, z) = bell.unwrap_or((hex.center_x(), hex.center_z()));
+            let hexes = b.ruined_land.get(&t).map_or_else(|| vec![hex], |h| h.clone());
+            Some(crate::wire::Output::Razed { town: crate::wire::no(t), x: x.round() as i32, z: z.round() as i32,
+                hexes: hexes.into_iter().map(crate::wire::HexAt::of).collect() })
+        }).collect()
+    }
+
     /// A village nobody trades with, at the point (x, z) in blocks: a placed town of three idle villagers with no
     /// Merchant and no route, which a town's settlers may make a market of.
     pub fn add_village(&mut self, x: f64, z: f64) -> TownId {
