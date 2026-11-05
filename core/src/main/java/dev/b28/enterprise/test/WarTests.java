@@ -226,17 +226,18 @@ public final class WarTests {
         helper.succeed();
     }
 
-    /** A field by a river keeps the river: water joined in a body past `Ruins.POOL` isn't a field's. */
+    /** A field by a river keeps the river: water deeper than a block isn't a field's channel. */
     @GameTest(template = "floor")
     public static void aRuinsFieldByARiverLeavesTheRiver(GameTestHelper helper) {
         var level = helper.getLevel();
-        // A river: 7 by 6, a block deep (42 blocks), a field at its edge.
+        // A river: 7 by 6, two blocks deep, a field at its edge.
         for (int x = 0; x <= 6; x++) {
             for (int z = 0; z <= 5; z++) {
                 level.setBlock(helper.absolutePos(new BlockPos(x, 1, z)), Blocks.WATER.defaultBlockState(), 3);
+                level.setBlock(helper.absolutePos(new BlockPos(x, 2, z)), Blocks.WATER.defaultBlockState(), 3);
             }
         }
-        BlockPos field = helper.absolutePos(new BlockPos(3, 1, 6));
+        BlockPos field = helper.absolutePos(new BlockPos(3, 2, 6));
         level.setBlock(field, Blocks.FARMLAND.defaultBlockState(), 3);
         BlockPos a = helper.absolutePos(new BlockPos(0, 1, 0)), b = helper.absolutePos(new BlockPos(6, 1, 6));
         int filled = dev.b28.enterprise.territory.Ruins.drain(level, Math.min(a.getX(), b.getX()), Math.min(a.getZ(), b.getZ()),

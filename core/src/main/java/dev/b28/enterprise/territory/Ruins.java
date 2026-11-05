@@ -1,21 +1,19 @@
 package dev.b28.enterprise.territory;
 
 import dev.b28.enterprise.hex.Hex;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
-import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -24,10 +22,12 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 /**
  * The towns the core razed laid waste (`Output.Razed`; John: "just placing TNT at the heart of each build and detonating
- * it can work, along with removing the water sources of farms"): the still water that watered its fields filled in
- * across the land it held, then a charge of TNT lit at the heart of each building round its bell (its beds' and
- * workstations' points, those near each other one building), each a moment after the last. Each step once a town,
- * remembered with the world: the core says a ruin at every look.
+ * it can work, along with removing the water sources of farms"): the water that watered its fields (a block deep, by
+ * its farmland: its channels and ponds, not a river or the sea) filled in across the land it held, then a charge of TNT
+ * set off at the heart of each building round its bell (its beds' and workstations' points, those near each other one
+ * building). Each step once a town, remembered with the world: the core says a ruin at every look. The charges go off
+ * at once, not as lit TNT: a ruin's chunks are loaded for it but don't tick entities, so a lit charge there never
+ * went off (seed 1717's first war, 16 lit round Town 0's bell, its houses all standing).
  */
 public final class Ruins extends SavedData {
     private static final String NAME = "enterprise_ruins";
@@ -35,10 +35,10 @@ public final class Ruins extends SavedData {
     public static final int REACH = 64;
     /** Points of interest this near each other are one building's. */
     static final int ONE_BUILDING = 6;
-    /** A field's water: still water this near farmland, in a pool no bigger than {@link #POOL} (no river, no sea). */
-    static final int WATERS = 4, POOL = 40;
-    /** Ticks before the first charge goes off, and between each. */
-    static final int FUSE = 40, STAGGER = 6;
+    /** A field's water: still water this near farmland, a block deep (its channels: no river, no sea). */
+    static final int WATERS = 4;
+    /** A charge's power: TNT's. */
+    static final float CHARGE = 4.0F;
 
     /** Towns whose fields' water is gone, and those blasted too (laid waste). */
     private final Set<Long> drained = new LinkedHashSet<>();
@@ -117,42 +117,20 @@ public final class Ruins extends SavedData {
         return filled;
     }
 
-    /** The still water watering the farmland at {@code field} (as the game reckons it: within 4, level or one up) filled. */
+    /**
+     * The still water watering the farmland at {@code field} (as the game reckons it: within 4, level or one up) filled
+     * where it's a block deep: a field's channels run long and join (seed 1717's ran past 40 blocks), but they're
+     * shallow; a river or the sea is deeper.
+     */
     private static int drainNear(ServerLevel level, BlockPos field) {
         int filled = 0;
         for (BlockPos p : BlockPos.betweenClosed(field.offset(-WATERS, 0, -WATERS), field.offset(WATERS, 1, WATERS))) {
-            if (level.getFluidState(p).is(Fluids.WATER)) {
-                List<BlockPos> pool = pool(level, p.immutable());
-                if (pool != null) {
-                    for (BlockPos w : pool) {
-                        level.setBlock(w, Blocks.DIRT.defaultBlockState(), 3);
-                        filled++;
-                    }
-                }
+            if (level.getFluidState(p).is(Fluids.WATER) && level.getFluidState(p.below()).isEmpty()) {
+                level.setBlock(p, Blocks.DIRT.defaultBlockState(), 3);
+                filled++;
             }
         }
         return filled;
-    }
-
-    /** The water joined to {@code start}, if it's a pool no bigger than {@link #POOL}; null if bigger (a river, the sea). */
-    private static List<BlockPos> pool(ServerLevel level, BlockPos start) {
-        List<BlockPos> out = new ArrayList<>();
-        Set<BlockPos> seen = new HashSet<>(List.of(start));
-        ArrayDeque<BlockPos> todo = new ArrayDeque<>(List.of(start));
-        while (!todo.isEmpty()) {
-            BlockPos p = todo.poll();
-            out.add(p);
-            if (out.size() > POOL) {
-                return null;
-            }
-            for (Direction d : Direction.values()) {
-                BlockPos n = p.relative(d);
-                if (d != Direction.UP && seen.add(n) && level.getFluidState(n).is(Fluids.WATER)) {
-                    todo.add(n);
-                }
-            }
-        }
-        return out;
     }
 
     /**
@@ -185,15 +163,12 @@ public final class Ruins extends SavedData {
         return out;
     }
 
-    /** A charge lit at each heart, one a moment after another: the charges lit. */
+    /** A charge set off at each heart: the charges. */
     public static int blast(ServerLevel level, List<BlockPos> hearts) {
-        int i = 0;
         for (BlockPos h : hearts) {
-            PrimedTnt tnt = new PrimedTnt(level, h.getX() + 0.5, h.getY(), h.getZ() + 0.5, null);
-            tnt.setFuse(FUSE + STAGGER * i++);
-            level.addFreshEntity(tnt);
+            level.explode(null, h.getX() + 0.5, h.getY() + 0.5, h.getZ() + 0.5, CHARGE, Level.ExplosionInteraction.TNT);
         }
-        return i;
+        return hearts.size();
     }
 
     public void drained(long town, boolean yes) {

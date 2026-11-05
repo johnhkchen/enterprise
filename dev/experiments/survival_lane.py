@@ -7,7 +7,9 @@ stopped. The ground comes from a fixture when one was kept for these flags (fixt
 
 `--fork DAY`: the `--dial`s set on the day after DAY, not the first, the run carried on from the kept run without them
 (the same flags but its dials) at its point of DAY: a war declared on a peace's year. Its own points are kept under its
-own flags (the dials and the day), its parent's journals with them.
+own flags (the dials and the day), its parent's journals with them. `--parent RUN` (with `--fork`): the parent run
+named, as `run-KEY` of the seed's (a change since that only plays in war leaves its peace's points sound; its core is
+still checked against its journals, `fixtures.resume_point`).
 
 `--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds). `--bid
 TOWN:GOOD:PRICE:COUNT[@DAY]`: a player's buying order at that network town's shop, added to the study's flags (which
@@ -103,7 +105,8 @@ def main():
     found = fixtures.resume_point(run, int(days), print, latest)
     if fork is not None and (not found or int(found[0].name[3:]) <= fork):
         # A fork: from its parent's point of DAY, the parent's journals beside its own (a point's chain names them).
-        parent = fixtures.run_dir(seed, parent_flags)
+        parent = (fixtures.run_dir(seed, parent_flags) if "--parent" not in mine
+                  else fixtures.STORE / f"seed-{seed}" / mine[mine.index("--parent") + 1])
         (run / "journals").mkdir(parents=True, exist_ok=True)
         for j in (parent / "journals").glob("*"):
             if not (run / "journals" / j.name).exists():

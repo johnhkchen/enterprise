@@ -169,6 +169,10 @@ pub struct Campaign {
     pub wagons_delivered: [u32; 2],
     #[serde(default)]
     pub wagons_taken: [u32; 2],
+    /// Food points each side foraged off the enemy's towns (`rules/battle.rs`: their packs on its land, their depot at
+    /// its battle).
+    #[serde(default)]
+    pub foraged: [f64; 2],
 }
 
 /// A squad of the war for the region (`docs/war-plan.md`, squads on the hexes; John: "hex-based squad movement"): a

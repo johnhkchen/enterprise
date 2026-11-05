@@ -3236,3 +3236,24 @@ every look (`Output::Razed`: its bell, else its hex's centre, and the hexes it h
   joined in a bigger body (a river, a lake, the sea) is left.
 - **Its buildings blown up**: the beds', workstations' and bell's points within 64 blocks of the bell, those within 6
   of each other one building's; a lit charge of TNT at each building's heart, one going off every 6 ticks after 2s.
+- **The charges go off at once** (`Level.explode`, TNT's power), not as lit TNT: a ruin's chunks were held loaded but
+  didn't tick entities, so 16 charges lit round seed 1717's Town 0 never went off and its houses stood.
+- **A field's water is what's a block deep** within 4 of its farmland: its channels run long and join (past 40
+  blocks on seed 1717), so a pool's size didn't tell them from a river; a river or the sea is deeper.
+
+## Society: armies forage (2026-11-05)
+
+John (planned 2026-11-05): "armies forage, enemy fields first". On seed 1717's game run (its towns grown otherwise
+than the kept run's: 7 Alliance towns to 16 Horde) no war was won in 520 days: the Horde's levies marched from each
+town in bands of 1 to 3 with empty packs (their warehouses held little food), went hungry and deserted (167 on the
+march down to 73 in 16 days), and some 9 reached each battle against 40.
+- **Enemy fields first**: a squad on an enemy town's land fills its packs from the town's harvest (its warehouse's
+  food, heartiest first: the town eats less); an army attacking an enemy town tops its depot up with a day's rations
+  of the town's, before its depot and packs.
+- **Off the land**: elsewhere on dry ground the land feeds `forage_wild` (10) soldiers a hex a day, shared among the
+  squads there, into their packs: a levy's band lives off it, an army of 40 goes hungry.
+- Each side's food foraged off the enemy is kept (`Campaign::foraged`).
+- **Replayed** (the game run's journal, war from day 100, 300 days past): 75,000 and a hero each, Theramore withdraws
+  on day 525 and the Horde razes 4 of the 7 Alliance towns after (none before foraging). Clear wins: with 250,000,
+  150 marines, ships every 10 days and two Alliance heroes the Alliance razes all 16 Horde towns by day 788; with
+  40,000 and three Horde heroes Theramore withdraws on day 299 and the Horde razes all 7 Alliance towns by day 510.

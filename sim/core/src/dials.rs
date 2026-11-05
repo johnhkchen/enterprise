@@ -466,6 +466,11 @@ dials! {
     ambush_squads: f64 = 1.0,
     ambush_reach: f64 = 3.0,
     convoy_rations: f64 = 1.0,
+    /// An army forages (John: "armies forage, enemy fields first"): a squad on an enemy town's land fills its packs
+    /// from that town's harvest (its warehouse's food, heartiest first), and an army at an enemy town's battle tops its
+    /// depot up with a day's rations of the town's; elsewhere on dry ground the land feeds `forage_wild` soldiers a hex
+    /// a day (into their packs, shared among the squads standing there): a levy's band lives off it, an army can't.
+    forage_wild: f64 = 10.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival

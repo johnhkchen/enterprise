@@ -871,7 +871,7 @@ public final class LandAdapter {
             var hearts = dev.b28.enterprise.territory.Ruins.hearts(level, bell, dev.b28.enterprise.territory.Ruins.REACH);
             int lit = dev.b28.enterprise.territory.Ruins.blast(level, hearts);
             ruins.blasted(r.town());
-            Enterprise.LOGGER.info("Ruin {}: {} charges lit round its bell at {}", r.town(), lit, bell.toShortString());
+            Enterprise.LOGGER.info("Ruin {}: {} charges set off round its bell at {}", r.town(), lit, bell.toShortString());
         }
     }
 

@@ -195,6 +195,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
         }
     }
     let mut heroes_fell: Vec<usize> = Vec::new();
+    let mut foraged = [0.0f64; 2];
     let (list, squads, next_squad) = (&mut battles.battles, &mut battles.squads, &mut battles.next_squad);
     for (bi, b) in list.iter_mut().enumerate().filter(|(_, b)| b.won_by.is_none() && b.reckoned != Some(today)) {
         b.reckoned = Some(today);
@@ -229,6 +230,14 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             }
             let mut graded = homes.get_mut(camp).ok().map(|(p, ..)| std::mem::take(&mut p.into_inner().graded));
             let losses = if away {
+                // At an enemy town's battle its attackers forage: a day's rations of the town's harvest into their
+                // depot (John: "enemy fields first").
+                if b.town.is_some() && b.attacker == Some(side) {
+                    if let Some(Ok((mut theirs, _))) = entity(b.camps[1 - side]).map(|e| camps.get_mut(e)) {
+                        let want = army.soldiers.len() as f64 * d.army_ration;
+                        foraged[side] += load_food(&content, &mut theirs.0, &mut depot.0, want);
+                    }
+                }
                 let losses = army.day(&content, &mut ledger, &mut book, &mut depot, &mut Kits::default(), None, None);
                 b.depots[side] = depot.0;
                 Some(losses)
@@ -450,8 +459,11 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
             }
         }
     }
-    // A hero fallen, for good.
+    // A hero fallen, for good; what was foraged.
     if let Some(c) = battles.campaign.as_mut() {
+        for side in 0..2 {
+            c.foraged[side] += foraged[side];
+        }
         for side in heroes_fell {
             c.heroes_alive[side] = c.heroes_alive[side].saturating_sub(1);
             c.heroes_fell[side] = Some(today);
@@ -598,6 +610,7 @@ pub fn march(world: &mut World) {
         *world.resource_mut::<Ledger>() = ledger;
         *world.resource_mut::<Battles>() = bt;
     }
+    forage(world, &content, &towns_of, &towns);
     let pace = d.squad_hexes_per_day.max(1.0);
     let map = world.resource::<crate::map::Map>().clone();
     let per_hex = crate::settlers::per_hex(&content);
@@ -810,6 +823,47 @@ fn way_on(map: &crate::map::Map, per_hex: f64, q: &mut crate::battle::Squad, goa
             .unwrap_or_else(|| Hex::line(q.hex, goal)[1..].to_vec());
     }
     q.way.remove(0)
+}
+
+/// The squads on the march forage (John: "armies forage, enemy fields first"): on an enemy town's land each fills its
+/// packs from the town's harvest (`fill_packs` of its warehouse: the town eats less); elsewhere on dry ground the land
+/// feeds `forage_wild` soldiers a hex, shared among those standing there.
+fn forage(world: &mut World, content: &Content, towns_of: &[Vec<(TownId, Hex)>; 2], towns: &[Entity]) {
+    let d = &content.dials;
+    let cap = d.pack_days.max(0.0) * d.army_ration;
+    let wild = d.forage_wild.max(0.0) * d.army_ration;
+    let mut on_hex: std::collections::BTreeMap<Hex, usize> = std::collections::BTreeMap::new();
+    for q in world.resource::<Battles>().squads.iter().filter(|q| q.battle.is_none()) {
+        *on_hex.entry(q.hex).or_default() += q.soldiers.len();
+    }
+    let side_of: std::collections::BTreeMap<TownId, usize> =
+        (0..2).flat_map(|s| towns_of[s].iter().map(move |x| (x.0, s))).collect();
+    let territory = world.resource::<crate::territory::Territory>().clone();
+    let map = world.resource::<crate::map::Map>().clone();
+    let mut bt = std::mem::take(&mut *world.resource_mut::<Battles>());
+    let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
+    for k in 0..bt.squads.len() {
+        let (side, hex) = (bt.squads[k].side, bt.squads[k].hex);
+        if bt.squads[k].battle.is_some() || bt.squads[k].soldiers.is_empty() {
+            continue;
+        }
+        let enemy = territory.owner(hex).filter(|t| side_of.get(t).is_some_and(|&s| s != side));
+        if let Some(mut stock) = enemy.and_then(|t| world.get_mut::<Stock>(towns[t])) {
+            let before: f64 = bt.squads[k].soldiers.iter().map(|s| s.pack).sum();
+            fill_packs(content, &mut ledger, &mut stock, &mut bt.squads[k].soldiers);
+            let after: f64 = bt.squads[k].soldiers.iter().map(|s| s.pack).sum();
+            if let Some(c) = bt.campaign.as_mut() {
+                c.foraged[side] += after - before;
+            }
+        } else if wild > 0.0 && map.ground(hex).water_share <= 0.5 {
+            let each = (wild / on_hex.get(&hex).copied().unwrap_or(1).max(1) as f64).min(d.army_ration);
+            for s in bt.squads[k].soldiers.iter_mut() {
+                s.pack = (s.pack + each).min(cap.max(s.pack));
+            }
+        }
+    }
+    *world.resource_mut::<Ledger>() = ledger;
+    *world.resource_mut::<Battles>() = bt;
 }
 
 /// Fills soldiers' packs from a warehouse, up to `pack_days` of rations each, the heartiest food first (`army::mess`:

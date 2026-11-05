@@ -580,6 +580,7 @@ fn a_squad_eats_its_packs_on_the_march_and_goes_hungry_when_they_run_out() {
     let (mut s, _) = squads_world(Hex::new(0, 0), 10, Hex::new(80, 0), 5);
     s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
     s.content_mut().dials.squad_hexes_per_day = 2.0;
+    s.content_mut().dials.forage_wild = 0.0; // (its packs alone: no living off the land)
     s.advance(DAY + DAY / 2);
     let q = s.battles().squads[0].clone();
     let ration = s.content().dials.army_ration;
@@ -647,4 +648,45 @@ fn the_marines_clear_a_horde_post_off_their_supply_way() {
             .any(|q| q.capital && q.side == 1 && q.battle.is_none() && q.goal.is_some_and(|g| posts.contains(&g) && g.distance(b.hex) > 2)))
     };
     assert!(any_day(&mut s, 90, sally), "a sally on the post: {:?}", s.battles().squads);
+}
+
+#[test]
+fn a_squad_living_off_the_land_goes_hungry_later_or_not_at_all() {
+    // John: "armies forage": on dry ground no enemy holds the land feeds `forage_wild` soldiers a hex: a band of 10 lives
+    // off it, an army of 40 goes hungry.
+    for (n, fed) in [(10, true), (40, false)] {
+        // (West, away from every town: no one's land, its packs empty to start.)
+        let (mut s, _) = squads_world(Hex::new(-2, -2), n, Hex::new(-80, -2), 5);
+        s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+        s.content_mut().dials.squad_hexes_per_day = 2.0;
+        s.content_mut().dials.forage_wild = 10.0;
+        s.advance(11 * DAY);
+        let q = s.battles().squads.first().cloned().unwrap();
+        assert_eq!(q.soldiers.iter().all(|x| x.hungry_days == 0), fed, "{n} soldiers fed off the land? {q:?}");
+    }
+}
+
+#[test]
+fn a_squad_on_an_enemy_towns_land_fills_its_packs_from_its_harvest() {
+    // John: "enemy fields first": a Horde squad crossing Southshore's land eats Southshore's food.
+    let (mut s, [_, _, port, _]) = squads_world(Hex::new(5, 0), 10, Hex::new(80, 0), 5);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+    s.content_mut().dials.squad_hexes_per_day = 1.0;
+    s.content_mut().dials.forage_wild = 0.0;
+    for r in 0..12 {
+        s.claim_hex(port, Hex::new(5, r));
+    }
+    {
+        let mut b = s.world.resource_mut::<enterprise_core::battle::Battles>();
+        b.squads[0].goal = Some(Hex::new(5, 12));
+        for x in b.squads[0].soldiers.iter_mut() {
+            x.pack = 0.0;
+        }
+    }
+    let bread = s.content().good("bread").unwrap();
+    let before = s.town(port).stock[bread];
+    s.advance(8 * DAY);
+    let q = s.battles().squads.first().cloned().unwrap();
+    assert!(q.soldiers.iter().all(|x| x.hungry_days == 0), "fed of the enemy's fields: {q:?}");
+    assert!(s.town(port).stock[bread] < before, "Southshore's food eaten: {} of {before}", s.town(port).stock[bread]);
 }
