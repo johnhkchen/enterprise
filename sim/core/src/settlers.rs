@@ -253,7 +253,9 @@ impl Society {
     /// Merchant and no route, which a town's settlers may make a market of.
     pub fn add_village(&mut self, x: f64, z: f64) -> TownId {
         let n = self.town_count();
-        let t = self.add_town(&format!("Village {n}"), 0.0);
+        let taken: std::collections::BTreeSet<String> = (0..n).map(|t| self.town(t).name).collect();
+        let name = HAMLETS.iter().find(|h| !taken.contains(**h)).map_or_else(|| format!("Village {n}"), |h| h.to_string());
+        let t = self.add_town(&name, 0.0);
         self.place_town(t, x, z);
         self.set_roster(t, &[("none", 1), ("none", 1), ("none", 1)]);
         self.set_people(t, 3.0, 3.0, OPEN_LAND);
@@ -553,6 +555,18 @@ pub const SETTLEMENTS: [(&str, &[&str]); 8] = [
         "Rustbolt", "Fuselight", "Kajaro Field", "Bilgewater Port", "Coinfall", "Profit Point", "Cogspin",
         "Greasewick", "Copperdrift", "Tidemoney", "Kaboom Bay", "Shipwreck Shore", "Trade Prince's Rest",
         "Venture Bay", "Slagtown", "Gearwhistle", "Gilded Wharf"]),
+];
+
+/// The names of the villages a host finds (`Society::add_village`), nobody's people's yet: the first no town has, in
+/// order (John: "a few random \"Village 14\" type towns"); a village a town's settlers make a market of takes their
+/// people's name for it.
+pub const HAMLETS: &[&str] = &[
+    "Driftwood Bay", "Ironbrook", "Briarwick", "Oakhurst", "Pikestaff", "Hollowmere", "Quarry Hill", "Mossbank",
+    "Tallowmere", "Cinderford", "Wrenfield", "Felstone Field", "Dewpond", "Ambergate", "Ravenholdt",
+    "Gullcrest", "Kirthaven", "Bramblewood", "Mosshide", "Gnarlpine Hollow", "Windshear Crag", "Mirkfallon",
+    "Bogpaddle", "Fizzlebrook", "Mudrock", "Thistlefur", "Sandy Hollow", "Crossroads Inn", "Old Mill", "Hollowbrook",
+    "Fairbreeze", "Larkwick", "Ashenvale Fork", "Willowmere", "Highperch", "Copperbend", "Saltmarsh", "Reedwater",
+    "Thornfield", "Foxglove",
 ];
 
 impl Society {

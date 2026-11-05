@@ -123,11 +123,13 @@ fn a_village_the_host_found_is_settled_and_its_desk_asked_of_the_host() {
     let mut s = host.unwrap();
     let v = s.town_count() - 1;
     assert_eq!(s.town_hex(v), Some(at), "a village where the host found it");
+    let hamlet = s.town(v).name;
+    assert!(enterprise_core::settlers::HAMLETS.contains(&hamlet.as_str()), "a hamlet's name till it's a town: {hamlet}");
     assert!(s.village_seen(at.center_x() + 20.0, at.center_z()).is_none(), "found again: the same village");
     s.advance(2 * DAY);
     assert_eq!(s.settled(), vec![v], "settled by a Merchant: {:?}", s.parties());
     let found: Vec<Output> = s.show_founded();
-    assert!(matches!(&found[..], [Output::Found { town, name, .. }] if *town as usize == v && !name.starts_with("Village")),
+    assert!(matches!(&found[..], [Output::Found { town, name, .. }] if *town as usize == v && name != &hamlet),
         "its desk asked of the host, a settlement's name: {found:?}");
     assert!(s.roster(v).merchant.is_some(), "its Merchant among its villagers");
 }
@@ -684,4 +686,13 @@ fn a_claim_near_a_rival_factions_watch_is_fought_for_and_lost_turns_home() {
     assert!(!fr[0].won, "two bare-handed hands against a watch of {}", fr[0].watch);
     assert!(s.settled().is_empty(), "no town");
     assert_eq!(s.roster(home).residents(), 12, "all home again");
+}
+
+#[test]
+fn the_villages_a_host_finds_take_hamlets_names_none_twice() {
+    // John: "a few random \"Village 14\" type towns": each its own name.
+    let (mut s, _) = world(100.0);
+    let names: Vec<String> = (0..5).map(|i| { let v = village(&mut s, Hex::new(6 * i + 4, 0)); s.town(v).name }).collect();
+    assert_eq!(names.iter().collect::<std::collections::BTreeSet<_>>().len(), 5, "{names:?}");
+    assert!(names.iter().all(|n| !n.starts_with("Village ")), "{names:?}");
 }

@@ -3111,8 +3111,8 @@ Alliance invasion's force and warchest budget."
   on (capital squads merge only bound for one goal); one sallying round its assault isn't called. The whole deathball
   turned back to every raid of 10: 150 days without a town razed, its chest spent on pay.
 - **Past a journal's end**: `ENT_REPLAY_PAST=N` carries a replay on N days with no game asking (the towns run on the
-  core's ledgers), so a long war can be read on seed 1717's year. No caravans leave past the journal (wagons go at the
-  game's asking): its people, money and mood carry on, its trade doesn't.
+  core's ledgers), so a long war can be read on seed 1717's year. Its caravans carry on too (the core plans and sends
+  them; said wrongly here at first, 2026-11-05: the trace had kept no trips past the journal, now it does).
 - **Replayed** (war from day 100, 360 days past the journal): the defaults (50 marines, 28,000, ships every 30 days, no
   heroes) raze 3 and lose the port; a navy well supplied (`expedition_size` 80, `war_chest_alliance` 40,000,
   `convoy_days` 15) with a hero each clears the region's 22 Horde towns on day 450 with 945 left; with Orgrimmar's
@@ -3185,3 +3185,15 @@ Pyrewood 20 hexes off and were never hungry.
   heroes, 28,000): 6 razed, out on day 475.
 - **Not yet**: kit travels only as arrows (a soldier's broken sword isn't replaced away from home); no foraging off
   the land (John's "enemy fields first" is planned, not built).
+
+## Society: hamlets' names, and the trace past the journal (2026-11-05)
+
+John: "there's also a few random \"Village 14\" type towns, so I guess we ran out of names. Adjust for that. Also, I
+don't want to see the wagons stop being tracked". The names hadn't run out (each people has 30): a "Village N" was a
+village the host found (`Input::Village`) that no settlers had made a market of. Such a village now takes the first
+of `settlers::HAMLETS` no town has (40, none a people's settlement's), "Village N" only past them; settlers making a
+market of it name it for their people as before. And a replay carried on past its journal (`ENT_REPLAY_PAST`) traces
+each day's plans and trips as a request's are: the caravans had gone on all along (seed 1717's peace: 357 wagons left
+in the 20 days from day 380, 331 in the 20 before the journal ended), only untraced. The trace's `places` follows a
+town's people as they change (it kept its first day's: Goldshire, founded by Stormwind's settlers, goblin from day 17,
+was drawn the Alliance's till it was razed).

@@ -229,7 +229,11 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
         let Some(s) = society.as_mut() else { break };
         let dt = s.content().day_ticks.max(1);
         let next = (s.now() / dt + 1) * dt;
-        s.advance(next);
+        let outputs: Vec<Value> = s.advance(next).iter().map(|o| serde_json::to_value(o).unwrap()).collect();
+        // (The day's plans and trips, as a request's are.)
+        let goods: Vec<String> = s.content().goods.iter().map(|g| bare(&g.name)).collect();
+        plans(&tx, society.as_mut().unwrap(), &mut planned, &goods)?;
+        trips(&tx, society.as_mut().unwrap(), &outputs, &mut out_on_road, &mut pallets)?;
         snapshot(&tx, &mut society, next / dt, asking.unwrap())?;
     }
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
@@ -299,8 +303,9 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             tx.execute("insert into places values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![t, s.town(t).name, people, faction,
                 h.q, h.r, day]).map_err(sql)?;
         } else if placed > 0 && !people.is_empty() {
-            // (Its people, and the name they give it, once it has them.)
-            tx.execute("update places set people = ?2, faction = ?3, name = ?4 where town = ?1 and people = ''",
+            // (Its people, and the name they give it, once it has them and whenever they change: a ruin's are gone, and
+            // it keeps the side it fell as.)
+            tx.execute("update places set people = ?2, faction = ?3, name = ?4 where town = ?1 and people != ?2",
                 params![t, people, faction, s.town(t).name]).map_err(sql)?;
         }
     }

@@ -19,6 +19,7 @@ import gzip
 import html
 import json
 import math
+import re
 import sqlite3
 import struct
 import sys
@@ -444,8 +445,14 @@ def main():
     db = sqlite3.connect(trace)
     names = dict(db.execute("select town, name from towns order by day"))  # each town's latest name
     # The day each town is first in the trace by its name: its founding (a village the run began with, its first day;
-    # a settlers' village, "Village 7" till it's a town, the day it took its name).
-    founded = dict(db.execute("select town, min(day) from towns where name not like 'Village %' group by town"))
+    # a village the host found, a hamlet's name (`settlers.rs` `HAMLETS`, or "Village 7") till it's a town, the day it
+    # took its name).
+    core = (Path(__file__).resolve().parents[2] / "sim/core/src/settlers.rs").read_text()
+    hamlets = set(re.findall(r'"([^"]+)"', core[core.index("pub const HAMLETS"):core.index("];", core.index("pub const HAMLETS"))]))
+    founded = {}
+    for town, name, day in db.execute("select town, name, min(day) from towns group by town, name"):
+        if not name.startswith("Village ") and name not in hamlets:
+            founded[town] = min(day, founded.get(town, day))
     last = db.execute("select max(day) from towns").fetchone()[0]
     folk = {t: (v, round(m, 2), c) for t, v, m, c in
             db.execute("select town, villagers, mood, comforts from towns where day=?", (last,))}
