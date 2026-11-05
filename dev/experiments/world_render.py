@@ -245,12 +245,12 @@ def taut(path, bells):
     return out
 
 
-def png(width, height, rows):
-    """A PNG of RGB rows (bytes each)."""
+def png(width, height, rows, alpha=False):
+    """A PNG of RGB rows (bytes each; RGBA with `alpha`)."""
     raw = b"".join(b"\x00" + bytes(r) for r in rows)
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6 if alpha else 2, 0, 0, 0))
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
@@ -363,6 +363,74 @@ def picture(world, x0, z0, x1, z1, bells, step=1):
         rows = [bytes(b for x in range(0, w, step) for b in row[3 * x:3 * x + 3]) for row in rows[::step]]
     image = base64.b64encode(png(len(range(0, w, step)), len(rows), rows)).decode()
     return image, counts, lo, hi
+
+
+def _overview_region(job):
+    """One region's sampled columns for `overview`: {(i, j): (rgb, kind, height)}."""
+    rf, x0, z0, x1, z1, step = job
+    out = {}
+    for nbt in chunks_in(Path(rf)):
+        if nbt.get("Status") not in ("minecraft:full", "full"):
+            continue
+        c = Chunk(nbt)
+        if c.top is None or (c.cx + 1) * 16 <= x0 or c.cx * 16 > x1 or (c.cz + 1) * 16 <= z0 or c.cz * 16 > z1:
+            continue
+        for lz in range(16):
+            Z = c.cz * 16 + lz
+            if (Z - z0) % step or not z0 <= Z <= z1:
+                continue
+            for lx in range(16):
+                X = c.cx * 16 + lx
+                if (X - x0) % step or not x0 <= X <= x1:
+                    continue
+                i = lz * 16 + lx
+                y = c.top[i] - 1 + MIN_Y
+                name = c.block(lx, y, lz)
+                col, k = colour(name, c.block(lx, y + 1, lz))
+                if name.endswith("spruce_planks") and "water" in c.block(lx, y - 1, lz):
+                    col, k = BRIDGE, "bridge"
+                if k == "land" and name.endswith("_log"):
+                    col, k = LOG, "tree"
+                out[((X - x0) // step, (Z - z0) // step)] = (col, k, c.ground[i] - 1 + MIN_Y)
+    return out
+
+
+def overview(world, x0, z0, x1, z1, step=4, procs=4):
+    """The world's columns from above as `picture` draws them, a column for each `step` x `step` blocks (its north-west
+    one; no pastures or walls, which want every block), hill-shaded, columns never generated clear: a wide map's ground
+    in a minute. (image, width, height): a PNG, base64."""
+    from multiprocessing import Pool
+    w, h = (x1 - x0) // step + 1, (z1 - z0) // step + 1
+    jobs = []
+    for rf in sorted((world / "region").glob("r.*.mca")):
+        _, rx, rz, _ = rf.name.split(".")
+        rx, rz = int(rx), int(rz)
+        if (rx + 1) * 512 <= x0 or rx * 512 > x1 or (rz + 1) * 512 <= z0 or rz * 512 > z1:
+            continue
+        jobs.append((str(rf), x0, z0, x1, z1, step))
+    rgb = [[(24, 28, 34)] * w for _ in range(h)]
+    kind = [[None] * w for _ in range(h)]
+    height = [[None] * w for _ in range(h)]
+    with Pool(procs) as pool:
+        for part in pool.imap_unordered(_overview_region, jobs):
+            for (i, j), (col, k, y) in part.items():
+                rgb[j][i], kind[j][i], height[j][i] = col, k, y
+    hs = [y for row in height for y in row if y is not None]
+    lo, hi = (min(hs), max(hs)) if hs else (0, 1)
+    rows = []
+    for z in range(h):
+        row = bytearray()
+        for x in range(w):
+            r, g, b = rgb[z][x]
+            y = height[z][x]
+            if y is not None and kind[z][x] != "water":
+                nw = height[z - 1][x - 1] if z > 0 and x > 0 and height[z - 1][x - 1] is not None else y
+                light = max(0.62, min(1.32, 1 + 0.11 * (y - nw) / step))
+                f = light * (0.9 + 0.2 * (y - lo) / max(1, hi - lo))
+                r, g, b = (min(255, int(r * f)), min(255, int(g * f)), min(255, int(b * f)))
+            row += bytes((r, g, b, 0 if kind[z][x] is None else 255))
+        rows.append(row)
+    return base64.b64encode(png(w, h, rows, alpha=True)).decode(), w, h
 
 
 def unpack(v):

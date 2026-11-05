@@ -3197,3 +3197,23 @@ each day's plans and trips as a request's are: the caravans had gone on all alon
 in the 20 days from day 380, 331 in the 20 before the journal ended), only untraced. The trace's `places` follows a
 town's people as they change (it kept its first day's: Goldshire, founded by Stormwind's settlers, goblin from day 17,
 was drawn the Alliance's till it was razed).
+
+## Society: Theramore pays for its food, ruins hold no land, and the war goes on past a withdrawal (2026-11-05)
+
+John: "yes, theramore should pay for the food. And razed towns should lose their territory's hexes"; "the horde
+should also march on and attempt to raze Pyrewood/remaining cities if the Alliance pulls out, match shouldn't end at
+the win condition".
+- **Theramore's stores**: the bread its ships land (`convoy_rations`, paid of its chest) is its own, kept at its camp
+  (`Battles::stores`, counted in the world's goods), not put in the camp town's warehouse. Its supply wagons and its
+  squads' packs draw on the stores first.
+- **Bought, past the stores**: what the Alliance's wagons and packs then take of an Alliance town's warehouse (food,
+  and the wagons' arrows) Theramore pays the town for, at the town's price for each good (`Market::mark`: what it
+  last traded at there, else its worth), out of its chest into the town's treasury, as far as the chest goes (a
+  payment it can't make in full counts it dry). The Horde's towns still feed their own soldiers unpaid.
+- **A ruin holds no land**: razing ceded a town's hexes, but the next day's count claimed its home hex again and spent
+  its leftover culture regrowing the rest (seed 1717: Briarwick's 19 hexes back within days). A ruin isn't counted any
+  more, and its holding goes with its culture; its hex stays the razers' to settle (`may_settle`). A ruin's stores are
+  looted with its warehouse.
+- **Withdrawal isn't defeat**: Theramore's withdrawal ends its marines' war, not the war. The war is won only when a
+  side has no towns left. With Theramore gone the Horde strikes every time: at the Alliance's base (Pyrewood) while it
+  stands, then at its nearest town, each battle after the last; the Alliance's towns defend with their own levies.

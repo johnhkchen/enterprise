@@ -278,6 +278,10 @@ pub struct Battles {
     /// Each supply wagon taken: the day, the hex, and the side whose it was.
     #[serde(default)]
     pub raids: Vec<(u64, Hex, usize)>,
+    /// What Theramore's ships landed at its camp for its expedition, by town: its own, drawn on before the town's
+    /// warehouse, whose food it buys (`rules/battle.rs` `pay_for`).
+    #[serde(default)]
+    pub stores: std::collections::BTreeMap<TownId, Vec<f64>>,
 }
 
 impl Battles {

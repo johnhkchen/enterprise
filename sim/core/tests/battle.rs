@@ -201,6 +201,10 @@ fn theramore_lands_at_the_alliance_port_nearest_the_horde_and_razes_their_towns(
     s.advance(200 * DAY);
     let c = s.battles().campaign.clone().unwrap();
     assert!(c.razed.len() >= 2, "{c:?}");
+    for t in &s.battles().ruins {
+        assert!(s.territory().holding(*t).is_none_or(|h| h.hexes.is_empty()) && s.territory().owners.values().all(|o| o != t),
+            "a ruin holds no land, nor grows it back: {t} {:?}", s.territory().holding(*t));
+    }
     let chest = s.content().dials.war_chest_alliance;
     assert!(s.battles().spent.get(&Faction::Alliance).is_some_and(|x| x.to_f64() <= chest));
     match c.won_by {
@@ -216,8 +220,13 @@ fn theramore_spent_withdraws_and_the_horde_has_held() {
     s.advance(60 * DAY);
     let c = s.battles().campaign.clone().unwrap();
     assert!(c.withdrew.is_some(), "Theramore's chest dry: {c:?}");
-    assert_eq!(c.won_by.map(|w| w.1), Some(Faction::Horde));
     assert!(s.battles().battles.iter().all(|b| b.armies[1].soldiers.iter().all(|x| !x.from_capital)), "its marines gone home");
+    // The war goes on (John: "the horde should also march on and attempt to raze Pyrewood/remaining cities if the
+    // Alliance pulls out"): the Horde strikes at the Alliance's towns, till one side has none.
+    let withdrew = c.withdrew.unwrap();
+    assert!(c.won_by.is_none_or(|w| w.1 == Faction::Horde && w.0 * DAY > withdrew), "not won by the withdrawal: {c:?}");
+    assert!(any_day(&mut s, 200, |s| s.battles().battles.iter().any(|b| b.began > withdrew && b.attacker == Some(0)
+        && b.town.is_some())), "the Horde marches on the Alliance's towns: {:?}", s.battles().campaign);
 }
 
 #[test]
@@ -586,6 +595,21 @@ fn supply_wagons_fill_the_marines_depot_from_their_camp() {
         && b.depots[1].iter().any(|n| *n > 0.0));
     assert!(any_day(&mut s, 60, fed), "a depot filled: {:?}", s.battles().campaign);
     assert!(s.battles().campaign.as_ref().unwrap().wagons_delivered[1] >= 1);
+}
+
+#[test]
+fn theramore_loads_its_ships_bread_first_and_buys_the_rest_of_its_camp() {
+    // John: "theramore should pay for the food": its ships' bread is its own, in its stores at its camp; what its
+    // wagons take of the camp's warehouse it pays the town for.
+    let (mut s, [_, _, port, _]) = war_world(20000.0);
+    s.content_mut().dials.ambush_squads = 0.0;
+    assert!(any_day(&mut s, 30, |s| s.battles().stores.get(&port).is_some_and(|x| x.iter().any(|n| *n > 0.0))),
+        "the ships' bread in Theramore's stores");
+    let (mut s, [_, _, port, _]) = war_world(20000.0);
+    s.content_mut().dials.ambush_squads = 0.0;
+    s.content_mut().dials.convoy_rations = 0.0;
+    let paid = |s: &Society| s.cash_book(port, 90).iter().any(|(_, why, n)| why.contains("Theramore") && n.to_f64() > 0.0);
+    assert!(any_day(&mut s, 60, paid), "the port paid for its food: {:?}", s.cash_book(port, 60));
 }
 
 #[test]

@@ -110,7 +110,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
         <span><i class="sw" style="background:var(--alliance);border-radius:1px"></i>A supply wagon (hollow going home empty)</span>
         <span><i class="sw" style="background:var(--ember);border-radius:50%"></i>A fight, as big as its dead, fading over 12 days</span>
-        <span><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water</span>
+        <span id="keyGround"><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water <i class="sw" style="background:none;border-bottom:3px solid var(--river);border-radius:0"></i>River</span>
       </div>
       <h2>What happened</h2>
       <ol id="log"></ol>
@@ -143,6 +143,11 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 
 <script>
 const RUNS = __DATA__;
+// The world's own ground, from its region files (`world_render.overview`), if the map was made with one.
+const WORLD = __WORLD__;
+const worldImg = WORLD ? new Image() : null;
+if (WORLD) document.getElementById("keyGround").textContent = "The ground as the world has it: rivers, woods, fields by crop, towns" + (WORLD.note ? ", " + WORLD.note : "");
+if (worldImg) { worldImg.onload = () => { terrain = null; show(day); }; worldImg.src = "data:image/png;base64," + WORLD.img; }
 let D, run = 0;
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -235,6 +240,14 @@ function drawTerrain() {
       const t = (h - hLo) / (hHi - hLo);
       g.fillStyle = t > 0.5 ? `rgba(255,255,255,${(t - 0.5) * 0.35})` : `rgba(0,0,0,${(0.5 - t) * 0.18})`; g.fill();
     }
+  }
+  // The world's blocks over the hexes where it has them (a hex is 46.19 blocks centre to corner): rivers by their
+  // courses. Else each river hex joined to its neighbours'.
+  if (worldImg && worldImg.complete && worldImg.naturalWidth) {
+    const k = S / (80 / SQ3);
+    g.imageSmoothingQuality = "high"; g.globalAlpha = 0.85;
+    g.drawImage(worldImg, ox + k * WORLD.x0, oy + k * WORLD.z0, k * WORLD.step * WORLD.w, k * WORLD.step * WORLD.h);
+    return;
   }
   g.strokeStyle = palette.river; g.lineCap = "round"; g.lineWidth = Math.max(1.5, S * 0.22);
   for (const [q, r, , , , river] of D.ground) {

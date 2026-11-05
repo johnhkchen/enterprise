@@ -63,9 +63,10 @@ impl Society {
                 goods[g] += shop.shelf;
             }
         }
-        // The war's depots and its supply wagons' loads (`battle.rs`).
+        // The war's depots, its supply wagons' loads and Theramore's stores (`battle.rs`).
         let battles = self.world.resource::<crate::battle::Battles>();
-        for held in battles.battles.iter().flat_map(|b| b.depots.iter()).chain(battles.supplies.iter().map(|s| &s.load)) {
+        for held in battles.battles.iter().flat_map(|b| b.depots.iter()).chain(battles.supplies.iter().map(|s| &s.load))
+                .chain(battles.stores.values()) {
             for (g, count) in held.iter().enumerate().take(n) {
                 goods[g] += count;
             }

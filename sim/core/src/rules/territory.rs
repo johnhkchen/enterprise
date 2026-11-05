@@ -20,14 +20,17 @@ pub fn register(schedule: &mut Schedule) {
 
 /// A town's count, once a day (`Territory.afterCensus`): it claims its home hex, then its culture grows by its
 /// people's worth (and its works') times the days since and its mood's factor, and buys the hexes it can. A first
-/// count counts as one day (`CensusTaker`).
+/// count counts as one day (`CensusTaker`). A ruin counts no more: its land is no one's (`battle::raze`).
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
-        q: Query<(&Town, &People)>) {
+        battles: Res<crate::battle::Battles>, q: Query<(&Town, &People)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
     for &e in &towns.0 {
         let Ok((town, people)) = q.get(e) else { continue };
         let Some(home) = town.hex else { continue };
+        if battles.ruins.contains(&town.id) {
+            continue;
+        }
         let days = match territory.holdings.get(&town.id).and_then(|h| h.reviewed) {
             None => 1.0,
             Some(last) if now >= last + day => (now - last) as f64 / day as f64,

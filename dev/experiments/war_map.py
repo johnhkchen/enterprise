@@ -2,9 +2,12 @@
 """The war for the region on its hexes, day by day, from a replay's trace (`enterprise-sim --trace`).
 
     python3 dev/experiments/war_map.py TRACE.db OUT.html [--title "Seed 1717's War"] [--note "..."] [--label "One hero"]
-        [--also LABEL TRACE2.db NOTE ...]
+        [--also LABEL TRACE2.db NOTE ...] [--world WORLD [--step 4] [--world-note "as it stood on day 360"]]
 
-Each `--also` adds another run of the same seed (another dial's war), switched between on the page.
+Each `--also` adds another run of the same seed (another dial's war), switched between on the page. `--world`: the
+world's own ground beneath the hexes, from its region files (a run's last kept point, `RUN/dayN/world`): its rivers'
+courses, fields by crop, woods and towns as they stood, a pixel for each `--step` blocks (about 15s); the hexes'
+terrain where it never generated.
 
 The ground beneath (its land, water, rivers and heights: the trace's `ground`); each side's zone of control over it,
 a gradient from its towns (by their people) and squads (by their soldiers), fading with distance; each town's land
@@ -18,6 +21,7 @@ fading after a while.
 Publish OUT.html as an Artifact.
 """
 import json
+import math
 import sqlite3
 import sys
 from pathlib import Path
@@ -38,8 +42,20 @@ def main():
     for i, a in enumerate(args):
         if a == "--also":
             runs.append({"label": args[i + 1], "note": args[i + 3], "data": build(args[i + 2])})
+    world = None
+    if "--world" in args:
+        # The world's own ground beneath, from its region files (`world_render.overview`): the hexes' bounds.
+        from world_render import overview, SIZE
+        step = int(opt("--step", "4"))
+        xs = [SIZE * math.sqrt(3) * (g[0] + g[1] / 2) for g in runs[0]["data"]["ground"]]
+        zs = [SIZE * 1.5 * g[1] for g in runs[0]["data"]["ground"]]
+        x0, z0 = int(min(xs) - SIZE) // step * step, int(min(zs) - SIZE) // step * step
+        x1, z1 = int(max(xs) + SIZE), int(max(zs) + SIZE)
+        img, w, h = overview(Path(opt("--world", "")), x0, z0, x1, z1, step)
+        world = {"img": img, "x0": x0, "z0": z0, "step": step, "w": w, "h": h, "note": opt("--world-note", "")}
     page = Path(__file__).with_name("war_map.html").read_text()
-    page = page.replace("__TITLE__", title).replace("__DATA__", json.dumps(runs, separators=(",", ":")))
+    page = (page.replace("__TITLE__", title).replace("__DATA__", json.dumps(runs, separators=(",", ":")))
+            .replace("__WORLD__", json.dumps(world, separators=(",", ":"))))
     out.write_text(page)
     print(f"{out}: {len(runs)} runs, {out.stat().st_size // 1024} KB")
 

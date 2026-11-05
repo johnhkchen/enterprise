@@ -550,20 +550,35 @@ pub fn march(world: &mut World) {
     let towns_of = [faction_towns(world, factions[0]), faction_towns(world, factions[1])];
     let towns = world.resource::<Towns>().0.clone();
     let homes: Vec<Option<Hex>> = towns.iter().map(|&e| world.get::<Town>(e).and_then(|x| x.hex)).collect();
-    // A squad not fighting at a town of its side fills its packs there (`pack_days` of rations a soldier).
-    let refills: Vec<(usize, Entity)> = world.resource::<Battles>().squads.iter().enumerate()
+    // A squad not fighting at a town of its side fills its packs there (`pack_days` of rations a soldier): the
+    // Alliance's of Theramore's stores first, then of the town's warehouse, bought.
+    let refills: Vec<(usize, TownId)> = world.resource::<Battles>().squads.iter().enumerate()
         .filter(|(_, q)| q.battle.is_none() && !q.soldiers.is_empty())
-        .filter_map(|(k, q)| towns_of[q.side].iter().find(|x| x.1 == q.hex).map(|x| (k, towns[x.0]))).collect();
+        .filter_map(|(k, q)| towns_of[q.side].iter().find(|x| x.1 == q.hex).map(|x| (k, x.0))).collect();
     if !refills.is_empty() {
+        let mut bt = std::mem::take(&mut *world.resource_mut::<Battles>());
         let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
-        for (k, e) in refills {
-            let mut soldiers = std::mem::take(&mut world.resource_mut::<Battles>().squads[k].soldiers);
-            if let Some(mut stock) = world.get_mut::<Stock>(e) {
-                fill_packs(&content, &mut ledger, &mut stock, &mut soldiers);
+        for (k, t) in refills {
+            let (side, mut soldiers) = (bt.squads[k].side, std::mem::take(&mut bt.squads[k].soldiers));
+            if let Some(stores) = bt.stores.get_mut(&t).filter(|_| side == 1) {
+                let mut held = Stock(std::mem::take(stores));
+                held.0.resize(content.goods.len(), 0.0);
+                fill_packs(&content, &mut ledger, &mut held, &mut soldiers);
+                *stores = held.0;
             }
-            world.resource_mut::<Battles>().squads[k].soldiers = soldiers;
+            if let Some(mut stock) = world.get_mut::<Stock>(towns[t]) {
+                let before = stock.0.clone();
+                fill_packs(&content, &mut ledger, &mut stock, &mut soldiers);
+                let taken: Vec<f64> = before.iter().zip(&stock.0).map(|(a, b)| a - b).collect();
+                drop(stock);
+                if side == 1 {
+                    pay_for(world, &content, &mut bt, &mut ledger, t, &taken, today);
+                }
+            }
+            bt.squads[k].soldiers = soldiers;
         }
         *world.resource_mut::<Ledger>() = ledger;
+        *world.resource_mut::<Battles>() = bt;
     }
     // Elsewhere, from its side's depot on the hex, if a battle left one there: a forward base.
     {
@@ -882,27 +897,30 @@ pub fn supply(world: &mut World) {
         }
     }
     for (i, side, camp, camp_hex, goal) in sends {
-        let Some(mut stock) = world.get_mut::<Stock>(towns[camp]) else { continue };
+        // Loaded of Theramore's stores there first, then of the camp's warehouse, bought.
         let mut load = vec![0.0; n_goods];
         let mut points = 0.0;
-        for g in crate::army::heartiest_first(&content, &stock) {
-            let left = d.wagon_load - points;
-            if left <= 1e-9 {
-                break;
-            }
-            let food = content.goods[g].food;
-            let taken = (left / food - 1e-9).ceil().min(crate::kit::whole(stock.0[g]));
-            stock.0[g] -= taken;
-            load[g] += taken;
-            points += taken * food;
+        if let Some(stores) = b.stores.get_mut(&camp).filter(|_| side == 1) {
+            stores.resize(n_goods, 0.0);
+            points += load_food(&content, stores, &mut load, d.wagon_load);
         }
+        let Some(mut stock) = world.get_mut::<Stock>(towns[camp]) else { continue };
+        let mut bought = vec![0.0; n_goods];
+        points += load_food(&content, &mut stock.0, &mut bought, d.wagon_load - points);
         if points <= 0.0 {
             continue;
         }
         if let Some(a) = arrow {
             let taken = crate::kit::whole(stock.0[a]).min(d.wagon_arrows.max(0.0).floor());
             stock.0[a] -= taken;
-            load[a] += taken;
+            bought[a] += taken;
+        }
+        drop(stock);
+        for (g, n) in bought.iter().enumerate() {
+            load[g] += n;
+        }
+        if side == 1 {
+            pay_for(world, &content, &mut b, &mut ledger, camp, &bought, today);
         }
         // Its escort: the capital's soldiers waiting at the camp, some left there.
         let escort_n = d.wagon_escort.max(0.0) as usize;
@@ -1044,11 +1062,52 @@ fn ship_rations(world: &mut World, content: &Content, camp: TownId, today: u64) 
     let affordable = if worth > 0.0 { (battles.chest_left(d, Faction::Alliance) / worth).floor() } else { loaves };
     let loaves = loaves.min(affordable);
     battles.draw(d, Faction::Alliance, crate::fixed::Fixed::ceil(loaves * worth), today);
-    let towns = world.resource::<Towns>().0.clone();
-    if let Some(mut stock) = towns.get(camp).and_then(|&e| world.get_mut::<Stock>(e)) {
-        stock.0[bread] += loaves;
-        world.resource_mut::<Ledger>().made[bread] += loaves;
+    let stores = battles.stores.entry(camp).or_default();
+    stores.resize(content.goods.len(), 0.0);
+    stores[bread] += loaves;
+    drop(battles);
+    world.resource_mut::<Ledger>().made[bread] += loaves;
+}
+
+/// Food loaded heartiest first out of `held` into `load`, up to `points` (whole items, the last one over); the points
+/// loaded.
+fn load_food(content: &Content, held: &mut [f64], load: &mut [f64], points: f64) -> f64 {
+    let mut loaded = 0.0;
+    for g in crate::army::heartiest_first(content, &Stock(held.to_vec())) {
+        let left = points - loaded;
+        if left <= 1e-9 {
+            break;
+        }
+        let food = content.goods[g].food;
+        let taken = (left / food - 1e-9).ceil().min(crate::kit::whole(held[g]));
+        held[g] -= taken;
+        load[g] += taken;
+        loaded += taken * food;
     }
+    loaded
+}
+
+/// Theramore buys what its marines take of an Alliance town's warehouse (John: "theramore should pay for the food"):
+/// `taken` at the town's price for each (`Market::mark`), paid of its chest into the town's treasury, as much as it
+/// has left.
+fn pay_for(world: &mut World, content: &Content, b: &mut Battles, ledger: &mut Ledger, t: TownId, taken: &[f64], today: u64) {
+    let market = world.resource::<crate::market::Market>();
+    let worth: f64 = taken.iter().enumerate().filter(|(_, n)| **n > 0.0).map(|(g, n)| n * market.mark(content, t, g)).sum();
+    if worth <= 0.0 {
+        return;
+    }
+    let paid = b.draw(&content.dials, Faction::Alliance, crate::fixed::Fixed::ceil(worth), today);
+    if paid <= crate::fixed::Fixed::ZERO {
+        return;
+    }
+    let (now, day) = (world.resource::<Clock>().now, content.day_ticks.max(1));
+    let e = world.resource::<Towns>().0[t];
+    let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());
+    if let Some(mut money) = world.get_mut::<Money>(e) {
+        post(ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), paid,
+            Reason::Other(format!("{}'s war chest", Faction::Alliance.capital())), now, day);
+    }
+    *world.resource_mut::<CashBook>() = cash;
 }
 
 /// What a squad would bring to a fight on open ground: its soldiers' fundamentals summed (a council's reckoning).
@@ -1595,6 +1654,15 @@ fn raze(world: &mut World, content: &Content, t: TownId) -> (u32, u32) {
     for h in held {
         territory.cede(h);
     }
+    // (Its culture with it: a ruin claims nothing again, `rules::territory::review`.)
+    territory.holdings.remove(&t);
+    drop(territory);
+    if let Some(stores) = world.resource_mut::<Battles>().stores.remove(&t) {
+        let mut ledger = world.resource_mut::<Ledger>();
+        for (g, n) in stores.iter().enumerate() {
+            ledger.used[g] += n;
+        }
+    }
     moved
 }
 
@@ -1629,10 +1697,11 @@ fn refugees(world: &mut World, content: &Content, t: TownId, refuge: Option<Town
 /// Theramore's marines land when it's over. Each day the capitals pay their soldiers in the field (Theramore dry, it
 /// withdraws: its marines sail home), its expedition made up again for each battle; Orgrimmar sends its mercenaries
 /// at a last stand; a town its attackers held is
-/// razed; a side with no towns left has lost, as has the Alliance once Theramore withdrew; and with no battle on, the
-/// next: the Horde strikes at the Alliance's camp (its base) when it beat off an attack, or when its towns outnumber
-/// the Alliance `pin_odds` to one and its own last strike wasn't beaten off; else the Alliance strikes the Horde town
-/// nearest its base.
+/// razed; a side with no towns left has lost (Theramore withdrawn, the war goes on: John, "the horde should also march
+/// on and attempt to raze Pyrewood/remaining cities if the Alliance pulls out"); and with no battle on, the next: the
+/// Horde strikes at the Alliance's camp (its base) when it beat off an attack, when its towns outnumber the Alliance
+/// `pin_odds` to one and its own last strike wasn't beaten off, or whenever Theramore has gone; else the Alliance
+/// strikes the Horde town nearest its base.
 pub fn campaign(world: &mut World) {
     let content = world.resource::<Content>().clone();
     let d = &content.dials;
@@ -1790,11 +1859,11 @@ pub fn campaign(world: &mut World) {
             c.lost += gone;
         }
     }
-    // Won: a side with no towns left; or Theramore withdrew.
+    // Won: a side with no towns left.
     let (horde, alliance) = (faction_towns(world, Faction::Horde), faction_towns(world, Faction::Alliance));
     c.won_by = if horde.is_empty() {
         Some((today, Faction::Alliance))
-    } else if alliance.is_empty() || c.withdrew.is_some() {
+    } else if alliance.is_empty() {
         Some((today, Faction::Horde))
     } else {
         None
@@ -1816,7 +1885,8 @@ pub fn campaign(world: &mut World) {
             + alliance.iter().filter_map(|&(t, _)| world.get::<Roster>(towns[t])).map(|r| levy_of(&content, r)).sum::<usize>();
         let outnumbers = pin as f64 >= d.pin_odds * theirs.max(1) as f64;
         let horde_beaten = beaten_off.is_some_and(|(att, ..)| att == Faction::Horde);
-        let horde_strikes = beaten_off.is_some_and(|(att, ..)| att == Faction::Alliance) || !horde_beaten && outnumbers;
+        let horde_strikes = c.withdrew.is_some() || beaten_off.is_some_and(|(att, ..)| att == Faction::Alliance)
+            || !horde_beaten && outnumbers;
         let (attacker, target) = if horde_strikes {
             // At the Alliance's camp, its base while it stands; else its town nearest.
             let from = beaten_off.map(|b| b.2).or(last.as_ref().map(|b| b.hex)).unwrap_or(horde[0].1);
