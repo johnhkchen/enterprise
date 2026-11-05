@@ -178,7 +178,7 @@ fn fight(content: &Content, army: &Army, persons: &Persons, twist: Twist, no: u6
     let spirits = army.soldiers.iter().map(|s| id(s).and_then(|h| persons.hands.get(&h)).map_or(0.5, |m| m.spirits))
         .sum::<f64>() / army.soldiers.len().max(1) as f64;
     let morale = crate::persons::morale(spirits, captain.as_ref().map(|c| &c.1)) - 0.3 * army.unfed
-        - if night { 0.1 } else { 0.0 };
+        - if night { 0.1 } else { 0.0 } + if army.heroes > 0 { d.hero_morale } else { 0.0 };
     let masters: Vec<(HandId, Vec<crate::persons::Talent>)> = army.soldiers.iter()
         .filter(|s| s.hand.as_ref().is_some_and(|h| h.level >= 5))
         .filter_map(|s| id(s).and_then(|h| persons.hands.get(&h).map(|m| (h, m.talents.clone())))).collect();
@@ -217,6 +217,10 @@ fn fight(content: &Content, army: &Army, persons: &Persons, twist: Twist, no: u6
         if id(s).is_some() && best.is_none_or(|b| one > b.0) {
             best = Some((one, h));
         }
+    }
+    // (Its heroes, each `hero_worth` of its soldiers as they fought.)
+    if army.heroes > 0 && !army.soldiers.is_empty() {
+        score *= 1.0 + army.heroes as f64 * d.hero_worth.max(0.0) / army.soldiers.len() as f64;
     }
     if twist == Twist::River {
         score *= 0.75;
@@ -262,8 +266,8 @@ fn after(content: &Content, army: &mut Army, persons: &mut Persons, fought: &Fou
         let gain = d.combat_skill * ((master - *skill) / master).max(0.0) * lift;
         *skill = (*skill + gain).min(master.max(*skill));
     }
-    // Routed: lost with its morale broken (no Peacemaker serving), its soldiers in low spirits, never a Steady hand.
-    let peace = army.soldiers.iter().any(|s| id(s).and_then(|h| persons.hands.get(&h)).is_some_and(|m| m.knack == Some(Knack::Peacemaker)));
+    // Routed: lost with its morale broken (no Peacemaker or hero serving), its soldiers in low spirits, never a Steady hand.
+    let peace = army.heroes > 0 || army.soldiers.iter().any(|s| id(s).and_then(|h| persons.hands.get(&h)).is_some_and(|m| m.knack == Some(Knack::Peacemaker)));
     let mut routed = Vec::new();
     if !won && fought.morale < d.rout_morale && !peace {
         let mut i = 0;

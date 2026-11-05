@@ -357,6 +357,55 @@ fn a_squad_bound_where_no_battle_is_goes_home() {
     assert!(q.as_ref().is_none_or(|q| q.homeward), "there and nothing doing, home: {q:?}");
 }
 
+#[test]
+fn a_hero_carries_the_fight_for_whichever_side_it_leads() {
+    // John: "a heroic unit leading things"; "Both sides get one": ten to ten on the march, the side with the hero wins.
+    for side in [0, 1] {
+        let (mut s, _) = squads_world(Hex::new(4, 0), 10, Hex::new(6, 0), 10);
+        s.content_mut().dials.skirmish_odds = 0.0;
+        s.content_mut().dials.hero_worth = 10.0;
+        // (A war over, its heroes still leading.)
+        let mut heroes_alive = [0, 0];
+        heroes_alive[side] = 1;
+        s.world.resource_mut::<enterprise_core::battle::Battles>().campaign = Some(enterprise_core::battle::Campaign {
+            heroes_alive, won_by: Some((0, enterprise_core::battle::Faction::Horde)), ..Default::default() });
+        s.advance(5 * DAY);
+        let b = s.battles().battles.iter().find(|b| b.field).cloned().expect("they met");
+        assert_eq!(b.won_by, Some(b.factions[side]), "the hero's side: {b:?}");
+        assert_eq!(b.armies[side].heroes, 1, "it led them");
+    }
+}
+
+#[test]
+fn each_capital_sends_its_heroes_once_when_theramore_lands_to_lead_its_largest_force() {
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.hero_alliance = 1.0;
+    s.content_mut().dials.hero_horde = 2.0;
+    s.content_mut().dials.hero_cost = 500.0;
+    let led = |s: &Society, side: usize| s.battles().battles.iter().filter(|b| b.won_by.is_none())
+        .map(|b| b.armies[side].heroes).sum::<u32>();
+    assert!(any_day(&mut s, 20, |s| led(s, 1) == 1), "the captain of renown leads: {:?}", s.battles().campaign);
+    let c = s.battles().campaign.clone().unwrap();
+    assert_eq!(c.heroes_alive, [2, 1], "{c:?}");
+    let spent = |f| s.battles().spent.get(&f).map_or(0.0, |x| x.to_f64());
+    assert!(spent(enterprise_core::battle::Faction::Horde) >= 1000.0, "two warchiefs paid for");
+    assert!(spent(enterprise_core::battle::Faction::Alliance) >= 500.0, "a captain paid for");
+    let largest = s.battles().battles.iter().filter(|b| b.won_by.is_none()).max_by_key(|b| b.armies[1].soldiers.len()).unwrap();
+    assert_eq!(largest.armies[1].heroes, 1, "with the marines");
+}
+
+#[test]
+fn theramore_keeps_a_garrison_at_its_base() {
+    // (`base_garrison` of the expedition posted at the port; the rest march.)
+    let (mut s, [_, _, port, _]) = war_world(20000.0);
+    let hex = s.town_hex(port).unwrap();
+    assert!(any_day(&mut s, 20, |s| s.battles().squads.iter().any(|q| q.capital && q.side == 1 && q.waits
+        && q.goal == Some(hex) && q.size(&s.battles().battles) == 6)), "six of thirty posted: {:?}", s.battles().squads);
+    let marching = s.battles().squads.iter().filter(|q| q.capital && q.side == 1 && !q.waits).map(|q| q.size(&s.battles().battles))
+        .sum::<usize>();
+    assert!(marching > 0 && marching <= 24, "the rest march: {marching}");
+}
+
 /// Each day of the war world for `days`, what `seen` makes of it, any day.
 fn any_day(s: &mut Society, days: u64, seen: impl Fn(&Society) -> bool) -> bool {
     (1..=days).any(|day| {
@@ -483,4 +532,3 @@ fn a_capitals_public_spending_keeps_to_its_pace_and_its_reserve() {
     }
     assert!(last > 0.0, "Orgrimmar paid its towns something");
 }
-

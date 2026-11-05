@@ -368,7 +368,8 @@ dials! {
     rout_morale: f64 = 0.75,
     /// A battle between factions for a hex (`battle.rs`): seeded on this day (none at 0) between the nearest Horde and
     /// Alliance towns; each side's towns within `battle_reach` hexes of it levy `battle_levy` of their residents, made
-    /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle. Its levies
+    /// up every `battle_reinforce_days`; held `battle_hold_days` in a row, it's its holder's, to settle (a town's assault
+    /// beaten `assault_breaks` fights in a row breaks off sooner: its defenders' then). Its levies
     /// march `battle_mobilise_days` after it's seeded: till then its towns build barracks and procure their kit.
     battle_day: f64 = 0.0,
     /// Each faction's war chest at its capital off the map, in emeralds (`docs/war-plan.md` slice 2): Theramore's for
@@ -402,10 +403,14 @@ dials! {
     /// `surround_sides` squads round it (an army on its battle's hex with hostile squads on that many sides, or one on
     /// the road to its camp, draws nothing from its camp); while the marines are `raid_hexes` from an Alliance town it
     /// raids it. The side holding a hex's ground fights `hills_lift`, `woods_lift`, `river_lift` the better there.
+    /// Theramore keeps `base_garrison` of its expedition posted at its base, made up first when its ships come.
     /// Each side's score in a battle is times its numbers over the enemy's to the `numbers_weight` (0: numbers count
     /// only by their sum). Each fight of a battle kills `combat_losses` of each side's soldiers by the enemy's share of
     /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
-    /// skill (`skill_cap` 5), whatever its trade's level.
+    /// skill (`skill_cap` 5), whatever its trade's level. A capital's heroes (`hero_alliance`, `hero_horde` of them;
+    /// John: "a heroic unit leading things"), sent for `hero_cost` each of its chest when Theramore lands, lead its
+    /// largest force: each fights as `hero_worth` of its soldiers; with any, its morale is `hero_morale` up and it never
+    /// routs; each falls in a fight lost `hero_fall_odds` of the time.
     war_day: f64 = 0.0,
     expedition_size: f64 = 50.0,
     capital_soldier_pay: f64 = 1.0,
@@ -420,6 +425,7 @@ dials! {
     pin_levy: f64 = 0.2,
     pin_odds: f64 = 1.5,
     raze_hold_days: f64 = 5.0,
+    base_garrison: f64 = 0.2,
     convoy_days: f64 = 30.0,
     squad_hexes_per_day: f64 = 4.0,
     capital_squad: f64 = 20.0,
@@ -434,6 +440,12 @@ dials! {
     numbers_weight: f64 = 0.0,
     combat_losses: f64 = 0.15,
     combat_skill: f64 = 1.0,
+    hero_alliance: f64 = 0.0,
+    hero_horde: f64 = 0.0,
+    hero_worth: f64 = 10.0,
+    hero_morale: f64 = 0.2,
+    hero_cost: f64 = 2000.0,
+    hero_fall_odds: f64 = 0.1,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival
@@ -446,6 +458,7 @@ dials! {
     battle_levy: f64 = 0.1,
     battle_reinforce_days: f64 = 10.0,
     battle_hold_days: f64 = 30.0,
+    assault_breaks: f64 = 3.0,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.
     firm_wage_premium: f64 = 0.25,
     /// Days of its wages a firm keeps in its treasury, put in at its founding beside its capital; beyond that its

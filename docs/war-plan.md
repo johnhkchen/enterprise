@@ -93,7 +93,18 @@ game shows battles as it does).
      the six hexes round the marines cut them off on every side, their spirits falling each day.
 4. **Ground in a fight** (done): a hill, forest or river crossing lifts the side holding it.
 5. **The trace and the map** (the trace's `squads` done; the map to do): `squads` by day (side, home, hex, soldiers, goal); the war map's frames show them.
-6. **Tuned by replays:** `numbers_weight`, `skirmish_odds`, the convoys, against seed 1717's year.
+6. **Tuned by replays:** `numbers_weight`, `skirmish_odds`, the convoys, against seed 1717's year. The aim (John,
+   2026-11-05): "a single alliance town with 50 marines shouldn't be able to totally raze a region of horde towns. On
+   the other hand, that's exactly what we might want to happen with sufficient material support from the Theramore
+   navy and a heroic unit leading things": the defaults a long war Theramore can't finish alone; a richer chest,
+   ships more often and a hero, a hard-won Alliance victory; neither side's impossible. And (John): "an evenly matched
+   hero count with well supplied navy barely pulls off a clearing of the region ... a second added hero unit on the
+   horde side results in a stalemate". Done (2026-11-05): `docs/decisions.md`, heroes, and a war Theramore can win only
+   well supplied.
+7. **Heroes** (John: "Both sides get one"; done). `hero_alliance`, `hero_horde` (how many; off by default): when
+   Theramore lands, each for `hero_cost` of its chest, once. A side's heroes lead its largest force: each fights as
+   `hero_worth` of its soldiers, lifts its morale `hero_morale`, keeps it from routing, and falls in a fight lost
+   `hero_fall_odds` of the time, for good.
 
 ## Checks, sized to what they test
 

@@ -3089,3 +3089,31 @@ campaign).
   Horde's masses of 7 at 4.1 a soldier to the Alliance's 9.8); all together, the Alliance razed three and lost its port
   on day 301, its marines worn to 17 with 20,560 unspent. The raid never came: seed 1717's Alliance has its port only.
   The result swings with small changes: the balance is slice 6's.
+
+## Society: heroes, and a war Theramore can win only well supplied (2026-11-05)
+
+John: "a single alliance town with 50 marines shouldn't be able to totally raze a region of horde towns. On the other
+hand, that's exactly what we might want to happen with sufficient material support from the Theramore navy and a
+heroic unit leading things"; heroes: "Both sides get one"; and the aim: "an evenly matched hero count with well
+supplied navy barely pulls off a clearing of the region, after a long difficult campaign. And a second added hero unit
+on the horde side results in a stalemate where the local horde economy manages to out produce and outlast the
+Alliance invasion's force and warchest budget."
+
+- **Heroes** (`hero_alliance`, `hero_horde`: how many; off by default): sent once when Theramore lands, `hero_cost`
+  (2,000) each of its capital's chest. A side's heroes lead its largest force (`Army::heroes`, set each day before the
+  fights): each fights as `hero_worth` (10) of its soldiers as they fought, its morale is `hero_morale` (0.2) up and it
+  never routs; each falls in a fight lost `hero_fall_odds` (0.1) of the time, for good. A hero first marched as a
+  soldier in a squad: it deserted hungry when cut off, was left behind with one squad, and led nothing.
+- **An assault breaks off** after `assault_breaks` (3) fights lost in a row: its defenders' then, not 30 days on.
+- **Theramore's garrison**: `base_garrison` (0.2) of its expedition posted at its base, made up first when its ships
+  come. Without it a raid of 18 took the port (its last town) while the marines were at an assault.
+- **A raid on its towns draws a detachment** of the marines not fighting, `overrun_odds` the raiders, the rest marching
+  on (capital squads merge only bound for one goal); one sallying round its assault isn't called. The whole deathball
+  turned back to every raid of 10: 150 days without a town razed, its chest spent on pay.
+- **Past a journal's end**: `ENT_REPLAY_PAST=N` carries a replay on N days with no game asking (the towns run on the
+  core's ledgers), so a long war can be read on seed 1717's year. No caravans leave past the journal (wagons go at the
+  game's asking): its people, money and mood carry on, its trade doesn't.
+- **Replayed** (war from day 100, 360 days past the journal): the defaults (50 marines, 28,000, ships every 30 days, no
+  heroes) raze 3 and lose the port; a navy well supplied (`expedition_size` 80, `war_chest_alliance` 40,000,
+  `convoy_days` 15) with a hero each clears the region's 22 Horde towns on day 450 with 945 left; with Orgrimmar's
+  second hero, Theramore's chest runs dry on day 453 with one Horde town standing, and it withdraws.

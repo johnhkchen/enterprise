@@ -102,12 +102,13 @@ create table skirmishes (day integer, soldiers integer, twist text, target real,
 create table battles (day integer, battle integer, q integer, r integer, holder text, held_days integer, won_by text,
     horde integer, alliance integer, marching integer, fights integer, town integer, attacker text);
 create table war (day integer, base integer, landed integer, marines integer, mercenaries integer, razed integer,
-    refugees integer, lost integer, withdrew integer, won_by text, horde_towns integer, alliance_towns integer);
+    refugees integer, lost integer, withdrew integer, won_by text, horde_towns integer, alliance_towns integer,
+    heroes_horde integer, heroes_alliance integer, hero_horde_fell integer, hero_alliance_fell integer);
 create table razed (day integer, town integer, by_faction text);
 create table squads (day integer, squad integer, side text, home integer, capital integer, soldiers integer, q integer,
     r integer, goal_q integer, goal_r integer, homeward integer, battle integer);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
-    won integer, routed integer);
+    won integer, routed integer, heroes integer);
 create table chests (day integer, capital text, spent real, left_over real, dry integer);
 create table frontier (day integer, from_town integer, q integer, r integer, rival integer, escort integer, watch integer,
     won integer);
@@ -211,6 +212,15 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
             snapshot(&tx, &mut society, day, asking.unwrap())?;
             snapped = Some(day);
         }
+    }
+    // (`ENT_REPLAY_PAST=N`: the society carried on N days past the journal's end, no game asking: a long war.)
+    let past: u64 = std::env::var("ENT_REPLAY_PAST").ok().and_then(|n| n.parse().ok()).unwrap_or(0);
+    for _ in 0..past {
+        let Some(s) = society.as_mut() else { break };
+        let dt = s.content().day_ticks.max(1);
+        let next = (s.now() / dt + 1) * dt;
+        s.advance(next);
+        snapshot(&tx, &mut society, next / dt, asking.unwrap())?;
     }
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
     let day = s.now() / s.content().day_ticks.max(1);
@@ -355,8 +365,9 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             b.attacker.map(|a| b.factions[a].name())]).map_err(sql)?;
         for (side, army) in b.armies.iter().enumerate() {
             for k in army.skirmishes.iter().filter(|k| k.day == day) {
-                tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", params![day, i,
-                    b.factions[side].name(), k.soldiers, k.twist.name(), k.score, k.target, k.won, k.routed]).map_err(sql)?;
+                tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![day, i,
+                    b.factions[side].name(), k.soldiers, k.twist.name(), k.score, k.target, k.won, k.routed,
+                    army.heroes]).map_err(sql)?;
             }
         }
     }
@@ -373,9 +384,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         let peoples = s.world.resource::<enterprise_core::taxes::Taxes>().peoples.clone();
         let count = |f: enterprise_core::battle::Faction| (0..s.town_count()).filter(|t| !s.battles().ruins.contains(t)
             && peoples.get(t).and_then(|p| enterprise_core::battle::Faction::of(p)) == Some(f)).count();
-        tx.execute("insert into war values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", params![day, c.base, c.landed,
-            c.marines, c.mercenaries, c.razed.len(), c.refugees, c.lost, c.withdrew.map(|w| w / dt), c.won_by.map(|w| w.1.name()),
-            count(enterprise_core::battle::Faction::Horde), count(enterprise_core::battle::Faction::Alliance)]).map_err(sql)?;
+        tx.execute("insert into war values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)", params![day,
+            c.base, c.landed, c.marines, c.mercenaries, c.razed.len(), c.refugees, c.lost, c.withdrew.map(|w| w / dt),
+            c.won_by.map(|w| w.1.name()), count(enterprise_core::battle::Faction::Horde),
+            count(enterprise_core::battle::Faction::Alliance), c.heroes_alive[0], c.heroes_alive[1], c.heroes_fell[0],
+            c.heroes_fell[1]]).map_err(sql)?;
         for r in c.razed.iter().filter(|r| r.0 == day) {
             tx.execute("insert into razed values (?1, ?2, ?3)", params![r.0, r.1, r.2.name()]).map_err(sql)?;
         }

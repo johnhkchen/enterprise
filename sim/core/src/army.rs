@@ -448,6 +448,10 @@ pub struct Army {
     pub skirmishes: Vec<crate::war::Skirmish>,
     #[serde(default)]
     pub won_in_row: u32,
+    /// Its capital's heroes leading it today (`rules/battle.rs` `fight`; John: "a heroic unit leading things"):
+    /// Theramore's captain of renown, Orgrimmar's warchief, each fighting as `hero_worth` soldiers.
+    #[serde(default)]
+    pub heroes: u32,
     #[serde(default)]
     pub edge: f64,
     #[serde(default)]

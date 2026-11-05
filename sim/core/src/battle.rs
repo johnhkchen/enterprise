@@ -151,6 +151,13 @@ pub struct Campaign {
     /// When Theramore's last ships came with marines (each `convoy_days` at most).
     #[serde(default)]
     pub sailed: Option<u64>,
+    /// The day each side's heroes came (Orgrimmar's, Theramore's), how many still lead, and the day one last fell.
+    #[serde(default)]
+    pub heroes: [Option<u64>; 2],
+    #[serde(default)]
+    pub heroes_alive: [u32; 2],
+    #[serde(default)]
+    pub heroes_fell: [Option<u64>; 2],
 }
 
 /// A squad of the war for the region (`docs/war-plan.md`, squads on the hexes; John: "hex-based squad movement"): a
