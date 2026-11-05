@@ -93,6 +93,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <dt>Marines in the field</dt><dd id="sMarines">0</dd>
         <dt>Theramore's chest left</dt><dd id="sChest">0</dd>
         <dt>Wagons, last 30 days</dt><dd id="sTrade">0</dd>
+        <dt>Theramore's supply wagons through</dt><dd id="sSupply">0</dd>
+        <dt>Theramore's supply wagons taken</dt><dd id="sTaken">0</dd>
       </dl>
       <div class="key">
         <div class="zoc" aria-hidden="true"></div>
@@ -102,6 +104,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <span><i class="sw" style="background:var(--neutral)"></i>Hamlets of no side</span>
         <span><i class="sw" style="background:var(--ruin);outline:2px solid var(--ember)"></i>A razed town's ruin</span>
         <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
+        <span><i class="sw" style="background:var(--alliance);border-radius:1px"></i>A supply wagon (hollow going home empty)</span>
         <span><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water</span>
       </div>
       <h2>What happened</h2>
@@ -141,6 +144,9 @@ const byTown = new Map(D.places.map(p => [p.t, p]));
 const battlesOn = new Map(), squadsOn = new Map();
 for (const b of D.battles) (battlesOn.get(b[0]) || battlesOn.set(b[0], []).get(b[0])).push(b);
 for (const s of D.squads) (squadsOn.get(s[0]) || squadsOn.set(s[0], []).get(s[0])).push(s);
+const suppliesOn = new Map();
+for (const w of D.supplies) (suppliesOn.get(w[0]) || suppliesOn.set(w[0], []).get(w[0])).push(w);
+const wagonsBy = d => { for (let x = d; x >= 0; x--) if (D.wagons[x]) return D.wagons[x]; return [0, 0, 0, 0]; };
 const tripDays = new Map();
 for (const [r, d] of D.trips) (tripDays.get(r) || tripDays.set(r, []).get(r)).push(d);
 for (const v of tripDays.values()) v.sort((a, b) => a - b);
@@ -306,6 +312,14 @@ function draw(d) {
     else ctx.arc(x, y, rad, 0, 2 * Math.PI);
     ctx.fill(); ctx.stroke();
   }
+  // The supply wagons on their way: a square, hollow when it's going home empty.
+  for (const [, side, q, r, food, , homeward] of suppliesOn.get(d) || []) {
+    const [x, y] = px(q, r), h = Math.max(3, S * 0.42);
+    ctx.lineWidth = 1.4; ctx.strokeStyle = homeward ? palette.side[side] : palette.paper;
+    ctx.fillStyle = palette.side[side];
+    if (homeward && !food) ctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h);
+    else { ctx.fillRect(x - h / 2, y - h / 2 - S * 0.5, h, h); ctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h); }
+  }
   // The towns, as big as their people; a ruin charred.
   ctx.textAlign = "center";
   for (const p of D.places) {
@@ -357,6 +371,9 @@ function ledger(d) {
   const m = D.series.marines[d], ch = D.series.chest[d];
   $("sMarines").textContent = m == null ? "–" : m; $("sChest").textContent = ch == null ? "–" : ch.toLocaleString();
   $("sTrade").textContent = d <= D.tradedTo ? D.trade[d] : "not traced";
+  const wg = wagonsBy(d);
+  $("sSupply").textContent = wg[1].toLocaleString();
+  $("sTaken").textContent = wg[2].toLocaleString();
   $("untraced").hidden = d <= D.tradedTo;
   const won = D.events.find(e => e[1].startsWith("Won") && e[0] <= d);
   $("phase").textContent = won ? "After the war" : d >= D.firstWar ? "At war" : "Growth";

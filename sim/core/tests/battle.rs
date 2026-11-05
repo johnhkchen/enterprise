@@ -559,3 +559,64 @@ fn a_capitals_public_spending_keeps_to_its_pace_and_its_reserve() {
     }
     assert!(last > 0.0, "Orgrimmar paid its towns something");
 }
+
+#[test]
+fn a_squad_eats_its_packs_on_the_march_and_goes_hungry_when_they_run_out() {
+    // John: "Are we keeping track of how much supplies troops are carrying and need?": filled at home, `pack_days`
+    // of rations, eaten a day at a time; far from its towns, hungry, and some desert.
+    let (mut s, _) = squads_world(Hex::new(0, 0), 10, Hex::new(80, 0), 5);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+    s.content_mut().dials.squad_hexes_per_day = 2.0;
+    s.advance(DAY + DAY / 2);
+    let q = s.battles().squads[0].clone();
+    let ration = s.content().dials.army_ration;
+    assert!(q.soldiers.iter().all(|x| x.pack > ration), "filled at home, a day eaten: {:?}", q.soldiers[0].pack);
+    s.advance(9 * DAY + DAY / 2);
+    let q = s.battles().squads.first().cloned().unwrap();
+    assert!(q.soldiers.iter().all(|x| x.pack < ration && x.hungry_days > 0), "its packs empty: {q:?}");
+    assert!(q.soldiers.len() < 10, "the hungry desert: {}", q.soldiers.len());
+}
+
+#[test]
+fn supply_wagons_fill_the_marines_depot_from_their_camp() {
+    // A battle away from its camp eats from its depot on the hex, filled by wagons on the hexes.
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.ambush_squads = 0.0;
+    let fed = |s: &Society| s.battles().battles.iter().any(|b| b.town.is_some() && b.attacker == Some(1)
+        && b.depots[1].iter().any(|n| *n > 0.0));
+    assert!(any_day(&mut s, 60, fed), "a depot filled: {:?}", s.battles().campaign);
+    assert!(s.battles().campaign.as_ref().unwrap().wagons_delivered[1] >= 1);
+}
+
+#[test]
+fn the_horde_waits_on_the_marines_supply_way_and_takes_a_wagon() {
+    // John: "attacking the convoys should constitute a core strategy for the horde forces": a squad posted on the
+    // wagons' way from the port, away from the town and the port, takes one that comes with no escort.
+    let (mut s, [.., port, _]) = war_world(20000.0);
+    s.content_mut().dials.wagon_escort = 0.0;
+    s.content_mut().dials.choke_reach = 0.0; // (no choke point to post at: a squad waiting out there is the ambush)
+    s.content_mut().dials.overrun_odds = 20.0; // (and no sally the marines can spare to clear it)
+    let base = s.town_hex(port).unwrap();
+    let reach = s.content().dials.ambush_reach as i32;
+    let on_the_way = |s: &Society| s.battles().battles.iter().filter(|b| b.won_by.is_none() && b.attacker == Some(1))
+        .any(|b| s.battles().squads.iter().any(|q| q.side == 0 && q.waits && q.goal.is_some_and(|g| g.distance(b.hex) >= reach
+            && g.distance(base) >= reach && g.distance(base) + g.distance(b.hex) <= base.distance(b.hex) + 2)));
+    assert!(any_day(&mut s, 40, on_the_way), "an ambush posted: {:?}", s.battles().squads);
+    assert!(any_day(&mut s, 60, |s| s.battles().campaign.as_ref().is_some_and(|c| c.wagons_taken[1] >= 1)),
+        "a wagon taken: {:?}", s.battles().campaign);
+}
+
+#[test]
+fn the_marines_clear_a_horde_post_off_their_supply_way() {
+    // The answer to an ambush: a sally `overrun_odds` the post's size on a Horde post by the wagons' way.
+    let (mut s, _) = war_world(20000.0);
+    s.content_mut().dials.choke_reach = 0.0;
+    s.content_mut().dials.surround_sides = 0.0; // (no posts round the town: the one out on the way is the ambush)
+    let sally = |s: &Society| {
+        let posts: Vec<Hex> = s.battles().squads.iter().filter(|q| q.side == 0 && q.waits && q.battle.is_none()
+            && !q.soldiers.is_empty()).map(|q| q.hex).collect();
+        s.battles().battles.iter().filter(|b| b.won_by.is_none() && b.attacker == Some(1)).any(|b| s.battles().squads.iter()
+            .any(|q| q.capital && q.side == 1 && q.battle.is_none() && q.goal.is_some_and(|g| posts.contains(&g) && g.distance(b.hex) > 2)))
+    };
+    assert!(any_day(&mut s, 90, sally), "a sally on the post: {:?}", s.battles().squads);
+}

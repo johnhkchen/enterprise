@@ -119,6 +119,10 @@ pub struct Battle {
     /// The side that held the hex's ground when it began (a field battle's: the side waiting there).
     #[serde(default)]
     pub ground_side: Option<usize>,
+    /// Each side's depot on the hex (goods by id: food, arrows), which its army eats and draws from, filled by its
+    /// supply wagons from its camp (`Supply`); a side at home eats from its town's warehouse.
+    #[serde(default)]
+    pub depots: [Vec<f64>; 2],
 }
 
 impl Battle {
@@ -158,6 +162,13 @@ pub struct Campaign {
     pub heroes_alive: [u32; 2],
     #[serde(default)]
     pub heroes_fell: [Option<u64>; 2],
+    /// Each side's supply wagons sent, come to their depot, and taken by the enemy (the Horde's, Theramore's).
+    #[serde(default)]
+    pub wagons_sent: [u32; 2],
+    #[serde(default)]
+    pub wagons_delivered: [u32; 2],
+    #[serde(default)]
+    pub wagons_taken: [u32; 2],
 }
 
 /// A squad of the war for the region (`docs/war-plan.md`, squads on the hexes; John: "hex-based squad movement"): a
@@ -185,6 +196,9 @@ pub struct Squad {
     /// Its way to its goal on foot, the hexes still to cross (planned anew when its goal changes: `rules/battle.rs`).
     #[serde(default)]
     pub way: Vec<Hex>,
+    /// Its hungry's summed chance of deserting, carried (as `Army::deserting`).
+    #[serde(default)]
+    pub deserting: f64,
 }
 
 impl Squad {
@@ -193,6 +207,25 @@ impl Squad {
         self.soldiers.len() + self.battle.and_then(|i| battles.get(i))
             .map_or(0, |b| b.armies[self.side].soldiers.iter().filter(|s| s.squad == Some(self.id)).count())
     }
+}
+
+/// A supply wagon of the war for the region (John: "the long supply chains in hostile territory should carry a
+/// vulnerability and ... attacking the convoys should constitute a core strategy for the horde forces"): loaded at its
+/// side's camp for battle `battle`'s depot, it goes the hexes on its way at a wagon's pace with its escort, unloads,
+/// and comes home empty. A hostile squad that meets it fights its escort, and beating it takes the load.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Supply {
+    pub id: u32,
+    pub side: usize,
+    pub battle: usize,
+    pub camp: TownId,
+    pub hex: Hex,
+    pub way: Vec<Hex>,
+    /// Its goods by id (counted in the world's goods while it carries them).
+    pub load: Vec<f64>,
+    pub escort: Vec<crate::army::Soldier>,
+    pub homeward: bool,
+    pub left: u64,
 }
 
 /// The battles for hexes, and whether `battle_day`'s was seeded.
@@ -235,6 +268,13 @@ pub struct Battles {
     pub next_squad: u32,
     #[serde(default)]
     pub squads_moved: Option<u64>,
+    /// The supply wagons on the hexes, the next one's id, and the day they last went.
+    #[serde(default)]
+    pub supplies: Vec<Supply>,
+    #[serde(default)]
+    pub next_supply: u32,
+    #[serde(default)]
+    pub supplied: Option<u64>,
 }
 
 impl Battles {

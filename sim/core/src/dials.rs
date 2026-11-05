@@ -446,6 +446,26 @@ dials! {
     hero_morale: f64 = 0.2,
     hero_cost: f64 = 0.0,
     hero_fall_odds: f64 = 0.1,
+    /// Supplies carried (John: "the long supply chains in hostile territory should carry a vulnerability and ...
+    /// attacking the convoys should constitute a core strategy for the horde forces"). Each soldier carries `pack_days`
+    /// of its rations, filled at its side's towns, eaten on the march and at a battle whose depot is bare. A battle's
+    /// side away from home eats from its depot, filled by supply wagons from its camp: one leaves when the depot and
+    /// the wagons on their way hold under `depot_days` of the army's rations, `wagon_load` food points and
+    /// `wagon_arrows` arrows on it, with `wagon_escort` of the capital's soldiers at the camp, going `wagon_hexes_per_day`
+    /// of open ground a day. A hostile squad within a hex of it fights its escort; stronger, it takes the load (its
+    /// food into the raiders' packs, the rest spoilt). The Horde posts `ambush_squads` of a town's defenders on the
+    /// marines' supply way, `ambush_reach` hexes or more from the town and the marines. Theramore's ships bring
+    /// `convoy_rations` of the expedition's rations till they come again (`convoy_days`) each time they come, paid of
+    /// its chest at the bread's worth, into its camp.
+    pack_days: f64 = 4.0,
+    depot_days: f64 = 4.0,
+    wagon_load: f64 = 1600.0,
+    wagon_arrows: f64 = 64.0,
+    wagon_escort: f64 = 4.0,
+    wagon_hexes_per_day: f64 = 6.0,
+    ambush_squads: f64 = 1.0,
+    ambush_reach: f64 = 3.0,
+    convoy_rations: f64 = 1.0,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's
     /// first watch (John: "garrisons needed to found cities"); landing within `frontier_reach` hexes of a rival

@@ -346,6 +346,10 @@ pub struct Soldier {
     /// The squad it marches with (`battle::Squad`), in the war for the region.
     #[serde(default)]
     pub squad: Option<u32>,
+    /// The food it carries, in food points (`pack_days` of its rations at most): filled at its side's towns, eaten
+    /// on the march and at a battle whose depot is bare (`rules/battle.rs`).
+    #[serde(default)]
+    pub pack: f64,
 }
 
 /// A recruit as a soldier, in the kit it left home in.
@@ -592,7 +596,17 @@ impl Army {
         // better it fights and the less it falls or deserts.
         let n = self.soldiers.len();
         let wanted = n as f64 * d.army_ration;
-        let meal = mess(content, ledger, stock, wanted);
+        let mut meal = mess(content, ledger, stock, wanted);
+        // (What the warehouse lacks, out of its soldiers' packs: plain fare, no heartier than bread.)
+        let carried: f64 = self.soldiers.iter().map(|s| s.pack).sum();
+        let short = (wanted - meal.eaten).max(0.0).min(carried);
+        if short > 0.0 {
+            let keep = 1.0 - short / carried;
+            for s in &mut self.soldiers {
+                s.pack *= keep;
+            }
+            meal.eaten += short;
+        }
         self.eaten += meal.eaten;
         let fed = if wanted <= 0.0 { 1.0 } else { (meal.eaten / wanted).min(1.0) };
         self.unfed = 1.0 - fed;

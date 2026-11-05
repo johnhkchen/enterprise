@@ -63,6 +63,13 @@ impl Society {
                 goods[g] += shop.shelf;
             }
         }
+        // The war's depots and its supply wagons' loads (`battle.rs`).
+        let battles = self.world.resource::<crate::battle::Battles>();
+        for held in battles.battles.iter().flat_map(|b| b.depots.iter()).chain(battles.supplies.iter().map(|s| &s.load)) {
+            for (g, count) in held.iter().enumerate().take(n) {
+                goods[g] += count;
+            }
+        }
         let mut routes = self.world.query::<(&Route, &RouteState)>();
         for (route, state) in routes.iter(&self.world) {
             let purse = state.wagon.as_ref().map_or(Fixed::ZERO, |w| w.purse);

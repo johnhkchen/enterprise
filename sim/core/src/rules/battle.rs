@@ -24,6 +24,7 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         march.in_set(Step::Pay).after(super::army::campaign).before(fight),
+        supply.in_set(Step::Pay).after(march).before(fight),
         fight.in_set(Step::Pay).after(super::army::campaign).before(super::territory::upkeep),
         procure.in_set(Step::Review).after(super::crown::review).after(super::market::review).before(super::training::lapse),
         campaign.in_set(Step::Pay).after(fight).before(super::territory::upkeep),
@@ -171,7 +172,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     camps: [h.0, a.0], levies: Default::default(), marching: Vec::new(), holder: None, held_since: None,
                     won_by: None, began: now, days: 0, fights: 0, reckoned: None,
                     marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false, town: None,
-                    attacker: None, settled: false, field: false, raid: false, ground_side: None };
+                    attacker: None, settled: false, field: false, raid: false, ground_side: None, depots: Default::default() };
                 // Each side's towns near it are levied; their levies march once its towns have had time to arm.
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, _, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
@@ -214,22 +215,25 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 }
             }
         }
-        // Each side's day at its camp: it eats, draws its kit (its graded pieces first), runs its risks. Cut off from
-        // its camp (`cut_off`), it draws nothing.
-        let posted: Vec<(usize, Hex)> = squads.iter().filter(|q| q.battle.is_none() && q.waits && !q.soldiers.is_empty())
-            .map(|q| (q.side, q.hex)).collect();
+        // Each side's day: at home it eats and draws its kit at its town (its graded pieces first); away, at its depot
+        // on the hex (what its supply wagons brought: `supply`), then its packs; it runs its risks.
         for side in 0..2 {
             let Some(camp) = entity(b.camps[side]) else { continue };
-            let cut = b.town.is_some() && cut_off(d, side, hex, town_hex(b.camps[side]), &posted);
+            let away = b.town.is_some() && town_hex(b.camps[side]) != Some(hex) || b.field;
+            let mut depot = Stock(std::mem::take(&mut b.depots[side]));
+            depot.0.resize(content.goods.len(), 0.0);
             let army = &mut b.armies[side];
             if army.soldiers.is_empty() {
+                b.depots[side] = depot.0;
                 continue;
             }
             let mut graded = homes.get_mut(camp).ok().map(|(p, ..)| std::mem::take(&mut p.into_inner().graded));
-            let losses = if cut {
-                let mut bare = Stock(vec![0.0; content.goods.len()]);
-                Some(army.day(&content, &mut ledger, &mut book, &mut bare, &mut Kits::default(), None, None))
+            let losses = if away {
+                let losses = army.day(&content, &mut ledger, &mut book, &mut depot, &mut Kits::default(), None, None);
+                b.depots[side] = depot.0;
+                Some(losses)
             } else {
+                b.depots[side] = depot.0;
                 match camps.get_mut(camp) {
                     Ok((mut stock, mut kits)) => Some(army.day(&content, &mut ledger, &mut book, &mut stock, &mut kits, None,
                         graded.as_mut())),
@@ -475,7 +479,7 @@ fn squad(id: u32, side: usize, home: TownId, capital: bool, mut soldiers: Vec<So
         s.squad = Some(id);
     }
     crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None, bound: None, waits: false,
-        way: Vec::new() }
+        way: Vec::new(), deserting: 0.0 }
 }
 
 /// A town's hex.
@@ -546,6 +550,39 @@ pub fn march(world: &mut World) {
     let towns_of = [faction_towns(world, factions[0]), faction_towns(world, factions[1])];
     let towns = world.resource::<Towns>().0.clone();
     let homes: Vec<Option<Hex>> = towns.iter().map(|&e| world.get::<Town>(e).and_then(|x| x.hex)).collect();
+    // A squad not fighting at a town of its side fills its packs there (`pack_days` of rations a soldier).
+    let refills: Vec<(usize, Entity)> = world.resource::<Battles>().squads.iter().enumerate()
+        .filter(|(_, q)| q.battle.is_none() && !q.soldiers.is_empty())
+        .filter_map(|(k, q)| towns_of[q.side].iter().find(|x| x.1 == q.hex).map(|x| (k, towns[x.0]))).collect();
+    if !refills.is_empty() {
+        let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
+        for (k, e) in refills {
+            let mut soldiers = std::mem::take(&mut world.resource_mut::<Battles>().squads[k].soldiers);
+            if let Some(mut stock) = world.get_mut::<Stock>(e) {
+                fill_packs(&content, &mut ledger, &mut stock, &mut soldiers);
+            }
+            world.resource_mut::<Battles>().squads[k].soldiers = soldiers;
+        }
+        *world.resource_mut::<Ledger>() = ledger;
+    }
+    // Elsewhere, from its side's depot on the hex, if a battle left one there: a forward base.
+    {
+        let mut bt = std::mem::take(&mut *world.resource_mut::<Battles>());
+        let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
+        for k in 0..bt.squads.len() {
+            let (side, hex) = (bt.squads[k].side, bt.squads[k].hex);
+            if bt.squads[k].battle.is_some() || bt.squads[k].soldiers.is_empty() || towns_of[side].iter().any(|x| x.1 == hex) {
+                continue;
+            }
+            let Some(i) = bt.battles.iter().position(|x| x.hex == hex && food_points(&content, &x.depots[side]) > 0.0) else { continue };
+            let mut depot = Stock(std::mem::take(&mut bt.battles[i].depots[side]));
+            depot.0.resize(content.goods.len(), 0.0);
+            fill_packs(&content, &mut ledger, &mut depot, &mut bt.squads[k].soldiers);
+            bt.battles[i].depots[side] = depot.0;
+        }
+        *world.resource_mut::<Ledger>() = ledger;
+        *world.resource_mut::<Battles>() = bt;
+    }
     let pace = d.squad_hexes_per_day.max(1.0);
     let map = world.resource::<crate::map::Map>().clone();
     let per_hex = crate::settlers::per_hex(&content);
@@ -561,6 +598,31 @@ pub fn march(world: &mut World) {
             let Some(k) = b.squads.iter().position(|q| q.id == id) else { continue };
             if b.squads[k].battle.is_some() {
                 continue;
+            }
+            // Its day's rations out of its packs; the hungry desert at the army's rate, carried, the hungriest first: a
+            // town's hands home, a capital's soldiers gone.
+            {
+                let q = &mut b.squads[k];
+                let mut hungry: Vec<usize> = Vec::new();
+                for (i, s) in q.soldiers.iter_mut().enumerate() {
+                    if s.pack + 1e-9 >= d.army_ration {
+                        s.pack -= d.army_ration;
+                    } else {
+                        s.pack = 0.0;
+                        s.hungry_days += 1;
+                        hungry.push(i);
+                    }
+                }
+                q.deserting += hungry.len() as f64 * d.desertion;
+                let going = (q.deserting.floor().max(0.0) as usize).min(hungry.len());
+                if going > 0 {
+                    q.deserting -= going as f64;
+                    hungry.sort_by(|&a, &c| q.soldiers[c].hungry_days.cmp(&q.soldiers[a].hungry_days).then(c.cmp(&a)));
+                    let mut gone: Vec<usize> = hungry[..going].to_vec();
+                    gone.sort_unstable_by(|a, c| c.cmp(a));
+                    let hands: Vec<crate::roster::Hand> = gone.into_iter().filter_map(|i| q.soldiers.remove(i).hand).collect();
+                    home.push((q.home, hands));
+                }
             }
             // (Its day's going: `pace` hexes of open ground, harder ground costing more of it, a road less.)
             let mut left = pace;
@@ -651,7 +713,7 @@ pub fn march(world: &mut World) {
                         b.battles.push(Battle { hex, factions, armies: Default::default(), camps, levies: Default::default(),
                             marching: Vec::new(), holder: None, held_since: None, won_by: None, began: now, days: 0,
                             fights: 0, reckoned: None, marches: now, marched: false, town: None, attacker: None,
-                            settled: false, field: true, raid: false, ground_side });
+                            settled: false, field: true, raid: false, ground_side, depots: Default::default() });
                         let i = b.battles.len() - 1;
                         for j in ours.into_iter().chain(theirs) {
                             b.squads[j].hex = hex;
@@ -670,7 +732,8 @@ pub fn march(world: &mut World) {
                     break;
                 }
                 let next = way_on(&map, per_hex, &mut b.squads[k], goal);
-                let going = map.going(at, next, crate::map::Carrier::Llama);
+                let going = Some(map.going(at, next, crate::map::Carrier::Llama)).filter(|g| g.is_finite())
+                    .unwrap_or_else(|| map.going(at, next, crate::map::Carrier::Boat));
                 let going = if going.is_finite() { going.max(0.25) } else { pace };
                 // (A step harder than its day's going whole, on a fresh day.)
                 if going > left && left < pace {
@@ -721,16 +784,270 @@ pub fn march(world: &mut World) {
 }
 
 /// The next hex of a squad's way to `goal` on foot (`Map::plan` as a llama goes: round water, over the steeps the
-/// harder), planned when its goal changes or it's been moved off its way; no way there, straight.
+/// harder), planned when its goal changes or it's been moved off its way; no way round on land within the planner's
+/// reach (a bay), by boat; no way at all, straight.
 fn way_on(map: &crate::map::Map, per_hex: f64, q: &mut crate::battle::Squad, goal: Hex) -> Hex {
     if q.way.last() != Some(&goal) || q.way.first().is_none_or(|h| h.distance(q.hex) != 1) {
         let none = Default::default();
-        q.way = [crate::map::Carrier::Llama, crate::map::Carrier::Wagon].into_iter()
+        q.way = [crate::map::Carrier::Llama, crate::map::Carrier::Wagon, crate::map::Carrier::Boat].into_iter()
             .find_map(|c| map.plan(q.hex, goal, per_hex, 0.0, &none, &Default::default(), c, &Default::default()))
             .map(|p| p.hexes[1..].to_vec()).filter(|w| !w.is_empty())
             .unwrap_or_else(|| Hex::line(q.hex, goal)[1..].to_vec());
     }
     q.way.remove(0)
+}
+
+/// Fills soldiers' packs from a warehouse, up to `pack_days` of rations each, the heartiest food first (`army::mess`:
+/// out of the world's goods, eaten as it's carried).
+fn fill_packs(content: &Content, ledger: &mut Ledger, stock: &mut Stock, soldiers: &mut [Soldier]) {
+    let cap = content.dials.pack_days.max(0.0) * content.dials.army_ration;
+    let need: f64 = soldiers.iter().map(|s| (cap - s.pack).max(0.0)).sum();
+    if need <= 1e-9 {
+        return;
+    }
+    let meal = crate::army::mess(content, ledger, stock, need);
+    let share = (meal.eaten / need).min(1.0);
+    for s in soldiers.iter_mut() {
+        s.pack += (cap - s.pack).max(0.0) * share;
+    }
+}
+
+/// The food points in goods held (a depot, a wagon's load).
+fn food_points(content: &Content, goods: &[f64]) -> f64 {
+    goods.iter().enumerate().map(|(g, n)| n * content.goods.get(g).map_or(0.0, |x| x.food)).sum()
+}
+
+/// A wagon's way between two hexes (`Map::plan` as a wagon goes: roads, round water; a llama's if a wagon has none;
+/// by boat across a bay; else the line), the hexes after `from`.
+fn supply_way(map: &crate::map::Map, per_hex: f64, from: Hex, to: Hex) -> Vec<Hex> {
+    let none = Default::default();
+    [crate::map::Carrier::Wagon, crate::map::Carrier::Llama, crate::map::Carrier::Boat].into_iter()
+        .find_map(|c| map.plan(from, to, per_hex, 0.0, &none, &Default::default(), c, &Default::default()))
+        .map(|p| p.hexes[1..].to_vec()).filter(|w| !w.is_empty())
+        .unwrap_or_else(|| Hex::line(from, to)[1..].to_vec())
+}
+
+/// The war's supply wagons, once a day, after the squads march (John: "the long supply chains in hostile territory
+/// should carry a vulnerability and ... attacking the convoys should constitute a core strategy for the horde
+/// forces"): each side of a town's battle away from its camp is sent a wagon when its depot and the wagons on their
+/// way hold under `depot_days` of its rations (one a day), loaded at its camp with `wagon_load` food points and
+/// `wagon_arrows` arrows and escorted by `wagon_escort` of its capital's soldiers there; each goes
+/// `wagon_hexes_per_day` of open ground on its way, unloads at the depot and comes home. A hostile squad within a hex
+/// of a wagon fights its escort: stronger, it takes the load (the food into its packs, the rest spoilt) and the escort
+/// falls; else it falls back a hex.
+pub fn supply(world: &mut World) {
+    let content = world.resource::<Content>().clone();
+    let d = &content.dials;
+    let (now, day) = (world.resource::<Clock>().now, content.day_ticks.max(1));
+    let today = now / day;
+    {
+        let b = world.resource::<Battles>();
+        if b.supplied == Some(today) || b.campaign.is_none() && b.supplies.is_empty() {
+            return;
+        }
+    }
+    let map = world.resource::<crate::map::Map>().clone();
+    let per_hex = crate::settlers::per_hex(&content);
+    let towns = world.resource::<Towns>().0.clone();
+    let n_goods = content.goods.len();
+    let factions = [Faction::Horde, Faction::Alliance];
+    let towns_of = [faction_towns(world, factions[0]), faction_towns(world, factions[1])];
+    let hex_of: Vec<Option<Hex>> = towns.iter().map(|&e| world.get::<Town>(e).and_then(|x| x.hex)).collect();
+    let arrow = crate::army::good_named(&content, crate::army::ARROW);
+    let persons = world.resource::<crate::persons::Persons>().clone();
+    let mut b = std::mem::take(&mut *world.resource_mut::<Battles>());
+    let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
+    b.supplied = Some(today);
+    // Sent: a wagon for each side of a town's battle short of its rations, loaded at its camp.
+    let mut sends: Vec<(usize, usize, TownId, Hex, Hex)> = Vec::new();
+    for (i, battle) in b.battles.iter().enumerate().filter(|(_, x)| x.won_by.is_none() && x.town.is_some()) {
+        for side in 0..2 {
+            let camp = battle.camps[side];
+            let Some(camp_hex) = hex_of.get(camp).copied().flatten() else { continue };
+            if camp_hex == battle.hex || b.ruins.contains(&camp) {
+                continue;
+            }
+            let soldiers = battle.armies[side].soldiers.len() + b.squads.iter()
+                .filter(|q| q.side == side && q.battle.is_none() && !q.homeward && (q.goal == Some(battle.hex) || q.bound == Some(i)))
+                .map(|q| q.soldiers.len()).sum::<usize>();
+            if soldiers == 0 || b.supplies.iter().any(|w| w.battle == i && w.side == side && w.left == today) {
+                continue;
+            }
+            let need = soldiers as f64 * d.army_ration * d.depot_days.max(0.0);
+            let have = food_points(&content, &battle.depots[side]) + b.supplies.iter()
+                .filter(|w| w.battle == i && w.side == side && !w.homeward).map(|w| food_points(&content, &w.load)).sum::<f64>();
+            if have < need {
+                sends.push((i, side, camp, camp_hex, battle.hex));
+            }
+        }
+    }
+    for (i, side, camp, camp_hex, goal) in sends {
+        let Some(mut stock) = world.get_mut::<Stock>(towns[camp]) else { continue };
+        let mut load = vec![0.0; n_goods];
+        let mut points = 0.0;
+        for g in crate::army::heartiest_first(&content, &stock) {
+            let left = d.wagon_load - points;
+            if left <= 1e-9 {
+                break;
+            }
+            let food = content.goods[g].food;
+            let taken = (left / food - 1e-9).ceil().min(crate::kit::whole(stock.0[g]));
+            stock.0[g] -= taken;
+            load[g] += taken;
+            points += taken * food;
+        }
+        if points <= 0.0 {
+            continue;
+        }
+        if let Some(a) = arrow {
+            let taken = crate::kit::whole(stock.0[a]).min(d.wagon_arrows.max(0.0).floor());
+            stock.0[a] -= taken;
+            load[a] += taken;
+        }
+        // Its escort: the capital's soldiers waiting at the camp, some left there.
+        let escort_n = d.wagon_escort.max(0.0) as usize;
+        let escort = b.squads.iter_mut().filter(|q| q.side == side && q.capital && q.battle.is_none() && q.hex == camp_hex
+                && q.soldiers.len() > escort_n).max_by_key(|q| (q.soldiers.len(), std::cmp::Reverse(q.id)))
+            .map(|q| { let keep = q.soldiers.len() - escort_n; q.soldiers.split_off(keep) }).unwrap_or_default();
+        b.next_supply += 1;
+        let way = supply_way(&map, per_hex, camp_hex, goal);
+        b.supplies.push(crate::battle::Supply { id: b.next_supply, side, battle: i, camp, hex: camp_hex, way, load, escort,
+            homeward: false, left: today });
+        if let Some(c) = b.campaign.as_mut() {
+            c.wagons_sent[side] += 1;
+        }
+    }
+    // On the road: each its day's going, met by the enemy or not.
+    let pace = d.wagon_hexes_per_day.max(1.0);
+    let mut k = 0;
+    while k < b.supplies.len() {
+        let side = b.supplies[k].side;
+        let open = b.battles.get(b.supplies[k].battle).is_some_and(|x| x.won_by.is_none());
+        if !open {
+            b.supplies[k].homeward = true;
+        }
+        let mut left = pace;
+        let mut gone = false;
+        loop {
+            let at = b.supplies[k].hex;
+            // Met: the hostile squads within a hex.
+            let raiders: Vec<usize> = (0..b.squads.len()).filter(|&j| {
+                let q = &b.squads[j];
+                q.side != side && q.battle.is_none() && !q.homeward && !q.soldiers.is_empty() && q.hex.distance(at) <= 1
+            }).collect();
+            if !raiders.is_empty() {
+                let theirs: f64 = raiders.iter().map(|&j| strength(&content, &persons, &b.squads[j].soldiers)).sum();
+                let ours = strength(&content, &persons, &b.supplies[k].escort);
+                if theirs > ours {
+                    // Taken: its food into the raiders' packs, the rest spoilt; its escort fallen.
+                    let mut stock = Stock(std::mem::take(&mut b.supplies[k].load));
+                    for &j in &raiders {
+                        fill_packs(&content, &mut ledger, &mut stock, &mut b.squads[j].soldiers);
+                    }
+                    for (g, n) in stock.0.iter().enumerate() {
+                        ledger.used[g] += n;
+                    }
+                    if let Some(c) = b.campaign.as_mut() {
+                        c.wagons_taken[side] += 1;
+                    }
+                    b.supplies.remove(k);
+                    gone = true;
+                    break;
+                }
+                for &j in &raiders {
+                    let q = &mut b.squads[j];
+                    q.hex = q.hex.neighbors().into_iter().filter(|h| map.ground(*h).water_share <= 0.5)
+                        .max_by_key(|h| (h.distance(at), *h)).unwrap_or(q.hex);
+                }
+            }
+            let w = &b.supplies[k];
+            let goal = if w.homeward {
+                hex_of.get(w.camp).copied().flatten().filter(|_| !b.ruins.contains(&w.camp))
+                    .or_else(|| nearest(&towns_of[side], at).map(|x| x.1))
+            } else {
+                b.battles.get(w.battle).map(|x| x.hex)
+            };
+            let Some(goal) = goal else { break };
+            if at == goal {
+                let w = &mut b.supplies[k];
+                if !w.homeward {
+                    // At its depot: unloaded, and home.
+                    let depot = &mut b.battles[w.battle].depots[side];
+                    depot.resize(n_goods, 0.0);
+                    for (g, n) in std::mem::take(&mut w.load).into_iter().enumerate() {
+                        depot[g] += n;
+                    }
+                    w.load = vec![0.0; n_goods];
+                    w.homeward = true;
+                    w.way.clear();
+                    if let Some(c) = b.campaign.as_mut() {
+                        c.wagons_delivered[side] += 1;
+                    }
+                    continue;
+                }
+                // Home: what it brought back to the town's warehouse, its escort to wait there.
+                let w = b.supplies.remove(k);
+                let town = towns_of[side].iter().find(|x| x.1 == at).map(|x| x.0);
+                if let Some(mut stock) = town.and_then(|t| world.get_mut::<Stock>(towns[t])) {
+                    for (g, n) in w.load.iter().enumerate() {
+                        stock.0[g] += n;
+                    }
+                } else {
+                    for (g, n) in w.load.iter().enumerate() {
+                        ledger.used[g] += n;
+                    }
+                }
+                if !w.escort.is_empty() {
+                    b.next_squad += 1;
+                    let mut q = squad(b.next_squad, side, w.camp, true, w.escort, at, Some(at));
+                    q.waits = true;
+                    b.squads.push(q);
+                }
+                gone = true;
+                break;
+            }
+            let w = &mut b.supplies[k];
+            if w.way.last() != Some(&goal) || w.way.first().is_none_or(|h| h.distance(at) != 1) {
+                w.way = supply_way(&map, per_hex, at, goal);
+            }
+            let next = w.way[0];
+            let going = Some(map.going(at, next, crate::map::Carrier::Wagon)).filter(|g| g.is_finite())
+                .unwrap_or_else(|| map.going(at, next, crate::map::Carrier::Boat));
+            let going = if going.is_finite() { going.max(0.25) } else { pace };
+            if going > left && left < pace {
+                break;
+            }
+            left -= going;
+            w.way.remove(0);
+            w.hex = next;
+        }
+        if !gone {
+            k += 1;
+        }
+    }
+    *world.resource_mut::<Ledger>() = ledger;
+    *world.resource_mut::<Battles>() = b;
+}
+
+/// Theramore's ships' rations (John: the marines' "both" ways): `convoy_rations` of the expedition's bread till its
+/// ships come again into its camp's warehouse, paid of its chest at the bread's worth, as much as it can.
+fn ship_rations(world: &mut World, content: &Content, camp: TownId, today: u64) {
+    let d = &content.dials;
+    let Some(bread) = crate::army::good_named(content, crate::army::BREAD) else { return };
+    let (food, worth) = (content.goods[bread].food.max(1e-9), content.goods[bread].value.max(0.0));
+    let loaves = (d.expedition_size.max(0.0) * d.army_ration * d.convoy_days.max(1.0) * d.convoy_rations.max(0.0) / food).floor();
+    if loaves <= 0.0 {
+        return;
+    }
+    let mut battles = world.resource_mut::<Battles>();
+    let affordable = if worth > 0.0 { (battles.chest_left(d, Faction::Alliance) / worth).floor() } else { loaves };
+    let loaves = loaves.min(affordable);
+    battles.draw(d, Faction::Alliance, crate::fixed::Fixed::ceil(loaves * worth), today);
+    let towns = world.resource::<Towns>().0.clone();
+    if let Some(mut stock) = towns.get(camp).and_then(|&e| world.get_mut::<Stock>(e)) {
+        stock.0[bread] += loaves;
+        world.resource_mut::<Ledger>().made[bread] += loaves;
+    }
 }
 
 /// What a squad would bring to a fight on open ground: its soldiers' fundamentals summed (a council's reckoning).
@@ -832,8 +1149,8 @@ pub fn council(world: &mut World) {
             }
         }
     }
-    // The Alliance's: its idle marines back to the battle going on; and cut off from its camp there, it sallies on a
-    // post that cuts it off, `overrun_odds` the post's size (which falls back before it).
+    // The Alliance's: its idle marines back to the battle going on; and cut off from its camp there, or its supply way
+    // held, it sallies on a post that cuts it off, `overrun_odds` the post's size (which falls back before it).
     if let Some(i) = b.battles.iter().rposition(|x| x.town.is_some() && !x.raid && x.won_by.is_none()) {
         let hex = b.battles[i].hex;
         for q in b.squads.iter_mut().filter(|q| q.capital && q.side == 1 && q.battle.is_none() && !q.waits
@@ -844,9 +1161,20 @@ pub fn council(world: &mut World) {
         let camp_hex = alliance.iter().find(|x| x.0 == camp).map(|x| x.1);
         let posted: Vec<(usize, Hex)> = b.squads.iter().filter(|q| q.battle.is_none() && q.waits && !q.soldiers.is_empty())
             .map(|q| (q.side, q.hex)).collect();
-        if !b.battles[i].armies[1].soldiers.is_empty() && cut_off(d, 1, hex, camp_hex, &posted) {
-            let post = b.squads.iter().filter(|q| q.side == 0 && q.waits && q.battle.is_none() && q.hex.distance(hex) <= 2)
-                .min_by_key(|q| (q.soldiers.len(), q.id)).map(|q| (q.hex, q.soldiers.len()));
+        // (And it clears its supply way: a Horde post within a hex of it, the nearest its camp first.)
+        let road = camp_hex.filter(|&c| c != hex).map(|c| supply_way(&map, crate::settlers::per_hex(&content), c, hex))
+            .unwrap_or_default();
+        let on_road = |h: Hex| road.iter().any(|r| r.distance(h) <= 1);
+        let cut = cut_off(d, 1, hex, camp_hex, &posted);
+        let blocked = b.squads.iter().any(|q| q.side == 0 && q.waits && q.battle.is_none() && !q.soldiers.is_empty() && on_road(q.hex));
+        if !b.battles[i].armies[1].soldiers.is_empty() && (cut || blocked) {
+            let post = if cut {
+                b.squads.iter().filter(|q| q.side == 0 && q.waits && q.battle.is_none() && q.hex.distance(hex) <= 2)
+                    .min_by_key(|q| (q.soldiers.len(), q.id)).map(|q| (q.hex, q.soldiers.len()))
+            } else {
+                b.squads.iter().filter(|q| q.side == 0 && q.waits && q.battle.is_none() && !q.soldiers.is_empty() && on_road(q.hex))
+                    .min_by_key(|q| (camp_hex.map_or(0, |c| c.distance(q.hex)), q.id)).map(|q| (q.hex, q.soldiers.len()))
+            };
             let marines = b.battles[i].armies[1].soldiers.iter().filter(|s| s.from_capital).count();
             let sallying = b.squads.iter().any(|q| q.capital && q.side == 1 && q.battle.is_none() && !q.waits
                 && q.goal != Some(hex));
@@ -891,8 +1219,30 @@ pub fn council(world: &mut World) {
     } else {
         Vec::new()
     };
+    // (Cut supply, John: "attacking the convoys should constitute a core strategy for the horde forces": the
+    // largest `ambush_squads` of its squads wait on the marines' supply way, `ambush_reach` from the town and from
+    // every marine, on the best ground.)
+    let camp_hex = alliance.iter().find(|x| x.0 == b.battles[i].camps[1]).map(|x| x.1).filter(|&h| h != hex);
+    let reach = d.ambush_reach.max(0.0) as i32;
+    let ambush = camp_hex.and_then(|from| {
+        supply_way(&map, crate::settlers::per_hex(&content), from, hex).into_iter()
+            .filter(|h| map.ground(*h).water_share <= 0.5 && h.distance(hex) >= reach && h.distance(from) >= reach
+                && marines.iter().all(|m| m.distance(*h) >= reach))
+            .max_by_key(|h| (ground_worth(map.ground(*h)), *h))
+    });
+    let mut largest: Vec<(usize, u32)> = b.squads.iter().filter(|q| q.side == 0 && !q.capital && !q.homeward
+        && q.battle.is_none() && q.bound == Some(i) && q.home != target).map(|q| (q.soldiers.len(), q.id)).collect();
+    largest.sort_unstable_by(|x, y| y.cmp(x));
+    let mut ambushers: Vec<u32> = largest.into_iter().take(if ambush.is_some() { d.ambush_squads.max(0.0) as usize } else { 0 })
+        .map(|x| x.1).collect();
+    ambushers.sort_unstable();
     for q in b.squads.iter_mut().filter(|q| q.side == 0 && !q.capital && !q.homeward && q.battle.is_none()
             && q.bound == Some(i) && q.home != target) {
+        if let (Some(at), true) = (ambush, ambushers.binary_search(&q.id).is_ok()) {
+            q.goal = Some(at);
+            q.waits = true;
+            continue;
+        }
         if !at_town {
             if let Some(choke) = choke {
                 q.goal = Some(choke);
@@ -1157,7 +1507,8 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     let now = world.resource::<Clock>().now;
     Battle { hex, factions, armies: Default::default(), camps, levies, marching: Vec::new(), holder: None,
         held_since: None, won_by: None, began: now, days: 0, fights: 0, reckoned: None, marches, marched: false,
-        town: Some(target), attacker: Some(side), settled: false, field: false, raid: false, ground_side: None }
+        town: Some(target), attacker: Some(side), settled: false, field: false, raid: false, ground_side: None,
+        depots: Default::default() }
 }
 
 /// Theramore's marines, Journeymen at arms kitted in Fine iron (John: "a larger reinforcement"), or Orgrimmar's
@@ -1325,6 +1676,7 @@ pub fn campaign(world: &mut World) {
             let marines = capital_soldiers(&content, c.marines, camp, true, now);
             let at = town_hex_of(world, camp).unwrap_or(goal);
             land_marines(&mut world.resource_mut::<Battles>(), d, camp, marines, at, Some(goal));
+            ship_rations(world, &content, camp, today);
         }
     }
     // The capitals' heroes, once, when Theramore lands (John: "a heroic unit leading things"; "Both sides get one"):
@@ -1388,6 +1740,7 @@ pub fn campaign(world: &mut World) {
             let at = town_hex_of(world, camp).unwrap_or(goal);
             let marines = capital_soldiers(&content, sent, camp, true, now);
             land_marines(&mut world.resource_mut::<Battles>(), d, camp, marines, at, Some(goal));
+            ship_rations(world, &content, camp, today);
             c.marines = there + sent;
         }
     }
@@ -1492,6 +1845,7 @@ pub fn campaign(world: &mut World) {
                     let at = town_hex_of(world, camp).unwrap_or(goal);
                     let marines = capital_soldiers(&content, sent, camp, true, now);
                     land_marines(&mut world.resource_mut::<Battles>(), d, camp, marines, at, Some(goal));
+                    ship_rations(world, &content, camp, today);
                 }
             }
             let mut battles = world.resource_mut::<Battles>();

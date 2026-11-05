@@ -87,6 +87,21 @@ def main():
     for d, in rows(db, "select min(day) from war where landed = 1"):
         if d is not None:
             events.append([d, "Theramore lands", 1])
+    # The supply wagons (a trace written before `supplies` has none): on the hexes by day, and each one taken.
+    try:
+        supplies = rows(db, "select day, case side when 'the Horde' then 0 else 1 end, q, r, round(food), escort, homeward "
+                            "from supplies")
+        tallies = rows(db, "select day, wagons_sent_alliance, wagons_delivered_alliance, wagons_taken_alliance, "
+                           "wagons_taken_horde from war order by day")
+    except sqlite3.OperationalError:
+        supplies, tallies = [], []
+    wagons = {d: [sent, through, taken, horde_taken] for d, sent, through, taken, horde_taken in tallies}
+    prev = [0, 0]
+    for d, _, _, taken, horde_taken in tallies:
+        for i, (n, who) in enumerate([(taken, "Theramore's supply wagon taken"), (horde_taken, "A Horde supply wagon taken")]):
+            if (n or 0) > prev[i]:
+                events.append([d, who if n - prev[i] == 1 else f"{who} ({n - prev[i]})", 0 if i == 0 else 1])
+            prev[i] = n or 0
     events.sort(key=lambda e: e[0])
     lands = ["Plains", "Woods", "Taiga", "Desert", "Shore", "Hills", "Water"]
     try:
@@ -95,14 +110,14 @@ def main():
     except sqlite3.OperationalError:
         ground = []
     data = {"ground": ground, "last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
-            "squads": squads, "series": series, "trade": trade, "tradedTo": traded_to, "events": events,
+            "squads": squads, "supplies": supplies, "wagons": wagons, "series": series, "trade": trade, "tradedTo": traded_to, "events": events,
             "routes": [{"id": r, "path": paths[r]} for r in used],
             "trips": [[r, d] for r, d, _ in trips if r in paths]}
     page = Path(__file__).with_name("war_map.html").read_text()
     page = page.replace("__TITLE__", title).replace("__NOTE__", note).replace("__DATA__", json.dumps(data, separators=(",", ":")))
     out.write_text(page)
     print(f"{out}: {len(places)} towns, {len(claims)} claims, {len(battles)} battle-days, {len(squads)} squad-days, "
-          f"{len(trips)} trips, {out.stat().st_size // 1024} KB")
+          f"{len(trips)} trips, {len(supplies)} wagon-days, {out.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":

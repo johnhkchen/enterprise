@@ -106,7 +106,8 @@ game shows battles as it does).
    `hero_worth` of its soldiers, lifts its morale `hero_morale`, keeps it from routing, and falls in a fight lost
    `hero_fall_odds` of the time, for good.
 
-8. **Supplies carried** (John: "Are we keeping track of how much supplies troops are carrying and need?"). As it
+8. **Supplies carried** (John: "Are we keeping track of how much supplies troops are carrying and need?"; built
+   2026-11-05 but foraging: `docs/decisions.md`, supplies carried). As it
    stands (2026-11-05): an army at a battle eats `army_ration` (8 points) a soldier a day and draws its kit straight
    out of its camp's warehouse, however far: nothing carries it, against "nothing crosses distance without a carrier".
    A squad on the march eats nothing. Cut off (surrounded, or posts on its camp's road), it draws nothing. On seed 1717

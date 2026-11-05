@@ -3145,3 +3145,43 @@ territory actually is."
 - **The war map** (`dev/experiments/war_map.py`) draws the ground beneath (the trace's `ground`: land, water, height,
   rivers) and each side's zone of control over it: a pull from each town (by its people) and squad (by its soldiers)
   fading with distance, shaded by which side leans and how strongly; each town's land outlined; layers switch off.
+
+## Society: supplies carried, and the Horde's war on the convoys (2026-11-05)
+
+John: "Are we keeping track of how much supplies troops are carrying and need?"; then "I definitely agree that the long
+supply chains in hostile territory should carry a vulnerability and that attacking the convoys should constitute a core
+strategy for the horde forces. Build that and see what changes". Before, an army at a battle ate out of its camp's
+warehouse however far (nothing carried it), and a squad on the march ate nothing: on seed 1717 the marines ate from
+Pyrewood 20 hexes off and were never hungry.
+
+- **Packs**: each soldier carries `pack_days` (4) of its rations (`Soldier::pack`, food points), filled at any town of
+  its side it stands on, or at its side's depot on the hex (a forward base). A squad eats a day's from its packs on
+  the march; the hungry desert at the army's rate (a town's hands home). Filling a pack takes the food out of the
+  world's goods, as eating did.
+- **Depots and supply wagons**: a side fighting for a town away from its camp eats and draws its arrows from its depot
+  on the hex (`Battle::depots`), then its packs; a side at home eats at its town as before. Its camp sends a wagon
+  (`battle::Supply`) when the depot and the wagons on their way hold under `depot_days` (4) of its rations, one a day:
+  `wagon_load` (1,600) food points and `wagon_arrows` (64), with `wagon_escort` (4) of the capital's soldiers waiting
+  there, `wagon_hexes_per_day` (6) of open ground a day on a wagon's way. Depots and loads are counted in the world's
+  goods (`check.rs`).
+- **Raiding the wagons**: a hostile squad within a hex of a wagon fights its escort (their strengths, as the councils
+  reckon them): stronger, it takes the load (the food into its packs, the rest spoilt) and the escort falls; weaker,
+  it falls back a hex. The Horde's council posts its largest `ambush_squads` (1) of a town's defenders on the marines'
+  supply way, `ambush_reach` (3) hexes or more from the town, the port and every marine; posts round a town under
+  attack catch the wagons at its door too.
+- **Clearing the road**: a Horde post within a hex of the marines' supply way draws a sally `overrun_odds` its size,
+  the post nearest the camp first (as a post that cuts them off already did). Without it, posts round the town and on
+  the road took every wagon: on seed 1717 the depot at a town under assault stood empty for 180 days, the assault
+  starved and broke again and again.
+- **The marines' rations come both ways** (John): each convoy brings `convoy_rations` (1) of the expedition's bread
+  till the ships come again, paid of Theramore's chest at the bread's worth (some 384 a convoy of 80 every 15 days);
+  Pyrewood's farms the rest. At 10 days' a convoy Pyrewood ran dry and the marines' packs with it.
+- **Across a bay by boat**: a squad's or wagon's way with no way round on land within the planner's reach
+  (`map::MARGIN`) goes by boat (water at a boat's going), not across the water on foot a hex a day.
+- **Replayed** (war from day 100, 360 days past the journal, one hero a side, 80 marines, ships every 15 days): at
+  50,000 Theramore now razes 15 and runs dry on day 443, the Horde taking 21 of its 52 wagons; the navy recipe is now
+  `war_chest_alliance` 75,000: with a hero each it clears the 22 Horde towns on day 560 with 6,725 left, 21 of its 65
+  wagons taken; with Orgrimmar's second hero 13 stand when it runs dry and withdraws on day 604. The defaults (no
+  heroes, 28,000): 6 razed, out on day 475.
+- **Not yet**: kit travels only as arrows (a soldier's broken sword isn't replaced away from home); no foraging off
+  the land (John's "enemy fields first" is planned, not built).
