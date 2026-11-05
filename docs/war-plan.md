@@ -122,11 +122,11 @@ game shows battles as it does).
    - **Cutting supply becomes raiding the wagons:** a hostile squad that meets a wagon fights its escort; if it wins
      it takes the load (to its own side's nearest depot or town) and the wagon is lost. The Horde's council posts
      squads on the wagons' way rather than only astride the road; surrounded, no wagon gets through, as now.
-   - **Open, John's call:**
-     - Where do the marines' rations come from: Theramore's ships (food carried with each convoy, paid of its chest),
-       Pyrewood's farms, or both?
-     - Does an army forage, eating off the land of the hexes it stands on (enemy fields first, cutting that town's
-       harvest)?
+   - **The marines' rations come from both** (John, 2026-11-05): each convoy brings `convoy_rations` days of the
+     expedition's food, paid of Theramore's chest, into its base's warehouse; Pyrewood's farms make up the rest.
+   - **An army forages** (John: "enemy fields first"): standing on a hex of an enemy town's land it eats from that
+     town's fields (`forage` points a day a soldier, the town's harvest cut by as much), then its depot, then its
+     packs: a deep strike lives off the land a while, and the invaded economy shows it.
    - **The trace and the map:** each battle's depot and each squad's days of food by day; wagons on the hexes with
      their load, delivered or taken; the map draws the wagons and a squad's food as a bar.
    - **Retuned after:** the two hero targets replayed again (3 to 5 minutes each). Longer supply lines should slow
