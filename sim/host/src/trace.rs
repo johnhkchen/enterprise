@@ -127,6 +127,7 @@ create table cash (town integer, name text, day integer, what text, amount real)
 create table paths (route integer, step integer, q integer, r integer);
 create table places (town integer, name text, people text, faction text, q integer, r integer, first_day integer);
 create table claims (day integer, q integer, r integer, town integer);
+create table ground (q integer, r integer, land text, water real, relief real, height real, river integer);
 create table claims_now (q integer, r integer, town integer, primary key (q, r));
 create table trails (q integer, r integer, width integer, wear real);
 create table disputes (id integer, town integer, target text, claimants text, why text, day integer);
@@ -233,6 +234,11 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
     }
     snapshot(&tx, &mut society, day, asking.unwrap())?;
     finals(&tx, &mut society, asking.unwrap())?;
+    // The ground of every hex the host described, as it stood at the end (the war map's terrain).
+    for (h, g) in &society.as_ref().unwrap().world.resource::<enterprise_core::map::Map>().ground {
+        tx.execute("insert into ground values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![h.q, h.r, format!("{:?}", g.land),
+            g.water_share, g.relief, g.height, g.river]).map_err(sql)?;
+    }
     let s = society.as_ref().unwrap();
     traced.days = day;
     traced.towns = s.town_count();

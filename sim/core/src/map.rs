@@ -449,6 +449,13 @@ impl Map {
         if surface == PAVED && carrier != Carrier::Ship { eased * PAVED_COST } else { eased }
     }
 
+    /// How hard a step from `hex` into `next` is going for `carrier`, a share of open ground, away from any road's
+    /// ends (a squad on the march: `rules/battle.rs` `march`); infinite: no way.
+    pub fn going(&self, hex: Hex, next: Hex, carrier: Carrier) -> f64 {
+        let far = Hex::new(i32::MIN / 4, 0);
+        self.step(far, far, hex, next, carrier)
+    }
+
     /// A hex's surface: [`GRADED`], [`PAVED`], or 0 (as the ground lies, or a trail).
     pub fn surface(&self, hex: Hex) -> u8 {
         self.surface.get(&hex).copied().unwrap_or(0)

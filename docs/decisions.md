@@ -3117,3 +3117,31 @@ Alliance invasion's force and warchest budget."
   heroes) raze 3 and lose the port; a navy well supplied (`expedition_size` 80, `war_chest_alliance` 40,000,
   `convoy_days` 15) with a hero each clears the region's 22 Horde towns on day 450 with 945 left; with Orgrimmar's
   second hero, Theramore's chest runs dry on day 453 with one Horde town standing, and it withdraws.
+
+## Society: squads march by the ground, and the heroes retuned (2026-11-05)
+
+John: "It seems like the units don't follow terrain rules when traveling?"; and on the war map: "I will want to see the
+terrain below the unit map this time, and maybe a rough zone of control gradient so we can see where the loss of
+territory actually is."
+
+- **A squad plans its way** (`Squad::way`) as a llama goes (`Map::plan`: round water, over the steeps the harder; a
+  wagon's way if a llama has none, the straight line if neither), anew when its goal changes or it's moved off its way.
+  Its day's going is `squad_hexes_per_day` of open ground, each step costing what `Map::going` says (a road less, a hill
+  more): a step dearer than what's left of its day waits for the next. A squad falling back steps only onto dry ground.
+  The Horde's choke point is on the marines' planned way, not the line.
+- **A stack cornered stands**: one with no drier hex farther from the enemy to fall back to fights, overrun or not. On
+  seed 1717 a Horde squad of 10 on the harbour's water beside the marines' 48 had nowhere to step: the marines waited
+  on it 90 days (and, before a falling back cost the day's going, the day never ended).
+- **Heroes come free** (`hero_cost` 0: a hero added to a side, not bought from its war) **and fight as 25**
+  (`hero_worth`). At 2,000 each, Orgrimmar's second hero drained its 10,000 by day 314 and its mercenaries stopped: the
+  second hero helped Theramore. At 10 a hero barely moved the Horde's led stacks (14 against the marines' 31): with one
+  or two, Theramore cleared the region alike. A hero worth a fixed number of soldiers lifts a small stack more than a
+  large one, so it's the Horde's second that tells.
+- **Replayed** (war from day 100, 360 days past the journal, marching by the ground): the navy recipe is now
+  `war_chest_alliance` 50,000 (`expedition_size` 80, `convoy_days` 15): with a hero each it clears the 22 Horde towns
+  on day 610 with 1,940 left; with Orgrimmar's second hero 15 towns stand when Theramore runs dry and withdraws on day
+  571. The marches are longer round the water and over the hills (Thrallmar's end is 22 hexes from the port, and a strike
+  on the port calls the marines all the way home): at 40,000 with a hero each the chest ran dry on day 502 with 6 standing.
+- **The war map** (`dev/experiments/war_map.py`) draws the ground beneath (the trace's `ground`: land, water, height,
+  rivers) and each side's zone of control over it: a pull from each town (by its people) and squad (by its soldiers)
+  fading with distance, shaded by which side leans and how strongly; each town's land outlined; layers switch off.

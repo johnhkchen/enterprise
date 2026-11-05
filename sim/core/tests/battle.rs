@@ -327,6 +327,22 @@ fn a_squad_marches_its_pace_a_day() {
 }
 
 #[test]
+fn a_squad_marches_round_water_not_through_it() {
+    // John: "the units don't follow terrain rules when traveling": a lake across the line, a squad goes round it.
+    let (mut s, _) = squads_world(Hex::new(0, 0), 5, Hex::new(40, 0), 5);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads.retain(|q| q.id == 1);
+    s.world.resource_mut::<enterprise_core::battle::Battles>().squads[0].goal = Some(Hex::new(12, 0));
+    for r in -3..=3 {
+        s.set_ground(Hex::new(6, r), 1.0, 0.0);
+    }
+    let lake = |h: &Hex| h.q == 6 && (-3..=3).contains(&h.r);
+    s.advance(DAY / 2);
+    let q = s.battles().squads[0].clone();
+    assert!(q.hex.distance(Hex::new(0, 0)) >= 2 && !q.way.is_empty(), "on its way: {q:?}");
+    assert!(!lake(&q.hex) && !q.way.iter().any(lake), "its way round the lake: {q:?}");
+}
+
+#[test]
 fn squads_meeting_on_the_march_fight_and_the_beaten_fall_back() {
     let (mut s, _) = squads_world(Hex::new(4, 0), 10, Hex::new(6, 0), 10);
     s.advance(DAY + DAY / 2);
@@ -345,6 +361,17 @@ fn a_squad_far_the_smaller_steps_aside() {
     let (mut s, _) = squads_world(Hex::new(4, 0), 12, Hex::new(6, 0), 2);
     s.advance(DAY + DAY / 2);
     assert!(s.battles().battles.iter().all(|b| !b.field), "no stand to make at 12 to 2");
+}
+
+#[test]
+fn a_squad_far_the_smaller_with_water_behind_it_stands() {
+    // A stack with nowhere drier to fall back to is cornered: it fights (seed 1717's harbour held the marines 90 days).
+    let (mut s, _) = squads_world(Hex::new(4, 0), 12, Hex::new(6, 0), 2);
+    for h in [Hex::new(7, 0), Hex::new(7, -1), Hex::new(6, 1)] {
+        s.set_ground(h, 1.0, 0.0);
+    }
+    s.advance(DAY + DAY / 2);
+    assert!(s.battles().battles.iter().any(|b| b.field), "cornered at 12 to 2, a stand: {:?}", s.battles().squads);
 }
 
 #[test]

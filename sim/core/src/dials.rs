@@ -408,8 +408,8 @@ dials! {
     /// only by their sum). Each fight of a battle kills `combat_losses` of each side's soldiers by the enemy's share of
     /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
     /// skill (`skill_cap` 5), whatever its trade's level. A capital's heroes (`hero_alliance`, `hero_horde` of them;
-    /// John: "a heroic unit leading things"), sent for `hero_cost` each of its chest when Theramore lands, lead its
-    /// largest force: each fights as `hero_worth` of its soldiers; with any, its morale is `hero_morale` up and it never
+    /// John: "a heroic unit leading things"), sent when Theramore lands (for `hero_cost` each of its chest: none by
+    /// default, a hero added to a side, not bought from its war), lead its largest force: each fights as `hero_worth` of its soldiers; with any, its morale is `hero_morale` up and it never
     /// routs; each falls in a fight lost `hero_fall_odds` of the time.
     war_day: f64 = 0.0,
     expedition_size: f64 = 50.0,
@@ -442,9 +442,9 @@ dials! {
     combat_skill: f64 = 1.0,
     hero_alliance: f64 = 0.0,
     hero_horde: f64 = 0.0,
-    hero_worth: f64 = 10.0,
+    hero_worth: f64 = 25.0,
     hero_morale: f64 = 0.2,
-    hero_cost: f64 = 2000.0,
+    hero_cost: f64 = 0.0,
     hero_fall_odds: f64 = 0.1,
     refugee_reach: f64 = 20.0,
     /// A people's settling party leaves with `garrison_escort` hands of its town beside its settlers, the new town's

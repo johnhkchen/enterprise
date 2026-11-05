@@ -3,7 +3,9 @@
 
     python3 dev/experiments/war_map.py TRACE.db OUT.html [--title "Seed 1717's War"] [--note "..."]
 
-Each town's land shaded by its side (the Horde, the Alliance, no one's people) from its founding; the battles for a
+The ground beneath (its land, water, rivers and heights: the trace's `ground`); each side's zone of control over it,
+a gradient from its towns (by their people) and squads (by their soldiers), fading with distance; each town's land
+outlined by its side (the Horde, the Alliance, no one's people) from its founding; the battles for a
 town as they're fought, held and won; a town razed, its ruin; the squads on the march; and each caravan road as wide
 as the trips it carried in the 30 days before (the trace's `trips` on its `paths`). Under the map, by day: the Horde's
 towns, the wagons on the roads, Theramore's chest. Reads the trace's `places`, `claims`, `towns`, `battles`, `squads`,
@@ -86,7 +88,13 @@ def main():
         if d is not None:
             events.append([d, "Theramore lands", 1])
     events.sort(key=lambda e: e[0])
-    data = {"last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
+    lands = ["Plains", "Woods", "Taiga", "Desert", "Shore", "Hills", "Water"]
+    try:
+        ground = [[q, r, lands.index(l) if l in lands else 0, round(w * 100), None if h is None else round(h), int(rv)]
+                  for q, r, l, w, h, rv in rows(db, "select q, r, land, water, height, river from ground")]
+    except sqlite3.OperationalError:
+        ground = []
+    data = {"ground": ground, "last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
             "squads": squads, "series": series, "trade": trade, "tradedTo": traded_to, "events": events,
             "routes": [{"id": r, "path": paths[r]} for r in used],
             "trips": [[r, d] for r, d, _ in trips if r in paths]}

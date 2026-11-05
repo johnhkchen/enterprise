@@ -474,7 +474,8 @@ fn squad(id: u32, side: usize, home: TownId, capital: bool, mut soldiers: Vec<So
     for s in &mut soldiers {
         s.squad = Some(id);
     }
-    crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None, bound: None, waits: false }
+    crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None, bound: None, waits: false,
+        way: Vec::new() }
 }
 
 /// A town's hex.
@@ -545,7 +546,10 @@ pub fn march(world: &mut World) {
     let towns_of = [faction_towns(world, factions[0]), faction_towns(world, factions[1])];
     let towns = world.resource::<Towns>().0.clone();
     let homes: Vec<Option<Hex>> = towns.iter().map(|&e| world.get::<Town>(e).and_then(|x| x.hex)).collect();
-    let pace = d.squad_hexes_per_day.max(1.0) as usize;
+    let pace = d.squad_hexes_per_day.max(1.0);
+    let map = world.resource::<crate::map::Map>().clone();
+    let per_hex = crate::settlers::per_hex(&content);
+    let dry = |h: &Hex| map.ground(*h).water_share <= 0.5;
     let persons = world.resource::<crate::persons::Persons>().clone();
     let mut home: Vec<(TownId, Vec<crate::roster::Hand>)> = Vec::new();
     {
@@ -558,7 +562,9 @@ pub fn march(world: &mut World) {
             if b.squads[k].battle.is_some() {
                 continue;
             }
-            for step in 0..=pace {
+            // (Its day's going: `pace` hexes of open ground, harder ground costing more of it, a road less.)
+            let mut left = pace;
+            loop {
                 let (side, at, homeward, goal) = { let q = &b.squads[k]; (q.side, q.hex, q.homeward, q.goal) };
                 if b.squads[k].soldiers.is_empty() {
                     break;
@@ -586,14 +592,19 @@ pub fn march(world: &mut World) {
                         let (n_ours, n_theirs) = (count(b, &ours), count(b, &theirs));
                         // (A stack `overrun_odds` the smaller falls back, no stand to make: a town's squads home, a
                         // capital's to wait for the campaign's next; out of the way first.)
-                        if n_ours.max(n_theirs) >= d.overrun_odds * n_ours.min(n_theirs) {
-                            let (small, big) = if n_theirs < n_ours { (theirs, at) } else { (ours, there) };
+                        // (A stack with no drier hex farther off to fall back to is cornered, and stands.)
+                        let cornered = |b: &Battles, of: &[usize], from: Hex| of.iter().any(|&j| {
+                            let h = b.squads[j].hex;
+                            !h.neighbors().into_iter().any(|n| dry(&n) && n.distance(from) > h.distance(from))
+                        });
+                        let (small, big) = if n_theirs < n_ours { (theirs.clone(), at) } else { (ours.clone(), there) };
+                        if n_ours.max(n_theirs) >= d.overrun_odds * n_ours.min(n_theirs) && !cornered(b, &small, big) {
                             let mine = small.contains(&k);
                             for j in small {
                                 let camp = homes.get(b.squads[j].home).copied().flatten();
                                 let q = &mut b.squads[j];
                                 q.waits = q.capital && q.waits;
-                                q.hex = q.hex.neighbors().into_iter().max_by_key(|h| (h.distance(big), *h)).unwrap_or(q.hex);
+                                q.hex = q.hex.neighbors().into_iter().filter(dry).max_by_key(|h| (h.distance(big), *h)).unwrap_or(q.hex);
                                 if q.capital {
                                     q.goal = None;
                                 } else {
@@ -604,6 +615,11 @@ pub fn march(world: &mut World) {
                             if mine {
                                 break;
                             }
+                            // (A step of its day spent, so a stack with nowhere to fall back to doesn't hold it.)
+                            left -= 1.0;
+                            if left <= 0.0 {
+                                break;
+                            }
                             continue;
                         }
                         // (Skirmish and fall back, John: the Horde's stack met at worse than `skirmish_odds` of the
@@ -612,13 +628,17 @@ pub fn march(world: &mut World) {
                         let (s_ours, s_theirs) = (worth(b, &ours), worth(b, &theirs));
                         let (horde, foe, hordes, foe_hex) = if side == 0 { (s_ours, s_theirs, ours.clone(), there) }
                             else { (s_theirs, s_ours, theirs.clone(), at) };
-                        if horde < d.skirmish_odds * foe {
+                        if horde < d.skirmish_odds * foe && !cornered(b, &hordes, foe_hex) {
                             let mine = hordes.contains(&k);
                             for j in hordes {
                                 let q = &mut b.squads[j];
-                                q.hex = q.hex.neighbors().into_iter().max_by_key(|h| (h.distance(foe_hex), *h)).unwrap_or(q.hex);
+                                q.hex = q.hex.neighbors().into_iter().filter(dry).max_by_key(|h| (h.distance(foe_hex), *h)).unwrap_or(q.hex);
                             }
                             if mine {
+                                break;
+                            }
+                            left -= 1.0;
+                            if left <= 0.0 {
                                 break;
                             }
                             continue;
@@ -649,10 +669,15 @@ pub fn march(world: &mut World) {
                     }
                     break;
                 }
-                if step == pace {
+                let next = way_on(&map, per_hex, &mut b.squads[k], goal);
+                let going = map.going(at, next, crate::map::Carrier::Llama);
+                let going = if going.is_finite() { going.max(0.25) } else { pace };
+                // (A step harder than its day's going whole, on a fresh day.)
+                if going > left && left < pace {
+                    b.squads[k].way.insert(0, next);
                     break;
                 }
-                let next = Hex::line(at, goal)[1];
+                left -= going;
                 b.squads[k].hex = next;
             }
         }
@@ -693,6 +718,19 @@ pub fn march(world: &mut World) {
             crate::squad::release(&mut roster, &hands);
         }
     }
+}
+
+/// The next hex of a squad's way to `goal` on foot (`Map::plan` as a llama goes: round water, over the steeps the
+/// harder), planned when its goal changes or it's been moved off its way; no way there, straight.
+fn way_on(map: &crate::map::Map, per_hex: f64, q: &mut crate::battle::Squad, goal: Hex) -> Hex {
+    if q.way.last() != Some(&goal) || q.way.first().is_none_or(|h| h.distance(q.hex) != 1) {
+        let none = Default::default();
+        q.way = [crate::map::Carrier::Llama, crate::map::Carrier::Wagon].into_iter()
+            .find_map(|c| map.plan(q.hex, goal, per_hex, 0.0, &none, &Default::default(), c, &Default::default()))
+            .map(|p| p.hexes[1..].to_vec()).filter(|w| !w.is_empty())
+            .unwrap_or_else(|| Hex::line(q.hex, goal)[1..].to_vec());
+    }
+    q.way.remove(0)
 }
 
 /// What a squad would bring to a fight on open ground: its soldiers' fundamentals summed (a council's reckoning).
@@ -837,9 +875,11 @@ pub fn council(world: &mut World) {
         else { return };
     let (hex, target) = (b.battles[i].hex, b.battles[i].town.expect("a town"));
     let at_town = !b.battles[i].armies[1].soldiers.is_empty();
-    let from = b.squads.iter().filter(|q| q.capital && q.side == 1).max_by_key(|q| (q.soldiers.len(), q.id)).map(|q| q.hex);
-    let choke = from.and_then(|f| {
-        Hex::line(f, hex).into_iter().filter(|h| *h != hex && (1..=d.choke_reach as i32).contains(&h.distance(hex))
+    // (The marines' road: their way there, as they march it; else the line.)
+    let road = b.squads.iter().filter(|q| q.capital && q.side == 1).max_by_key(|q| (q.soldiers.len(), q.id))
+        .map(|q| if q.goal == Some(hex) && !q.way.is_empty() { q.way.clone() } else { Hex::line(q.hex, hex) });
+    let choke = road.and_then(|road| {
+        road.into_iter().filter(|h| *h != hex && (1..=d.choke_reach as i32).contains(&h.distance(hex))
             && map.ground(*h).water_share <= 0.5)
             .max_by_key(|h| (ground_worth(map.ground(*h)), -h.distance(hex), *h))
     });

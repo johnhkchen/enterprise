@@ -10,17 +10,23 @@
   --paper: #faf8f5; --cream: #f2efe9; --ink: #1c1917; --muted: #6b635a; --line: #ddd6cb;
   --alliance: #44679b; --horde: #b5542d; --neutral: #8a8378; --ruin: #3b3430; --ember: #d9784e;
   --road: #1c1917; --shadow: 28 25 23;
+  --plains: #e6dfc6; --woods: #bfc9a4; --taiga: #cdd3c6; --desert: #ecdcb4; --shore: #f0e6c8; --hills: #cbbba2;
+  --water: #bdd0cc; --river: #6f9e97;
   --display: "Lora", Georgia, "Times New Roman", serif;
   --body: "Karla", "Helvetica Neue", Arial, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --paper: #1a1816; --cream: #24211e; --ink: #ece6dc; --muted: #a39a8e; --line: #3a352f;
   --alliance: #7d9fd1; --horde: #d9784e; --neutral: #9b9389; --ruin: #0d0b0a; --ember: #f0a070;
-  --road: #ece6dc; --shadow: 0 0 0; color-scheme: dark } }
+  --road: #ece6dc; --shadow: 0 0 0;
+  --plains: #45412f; --woods: #2c4128; --taiga: #33403a; --desert: #5a4c30; --shore: #544b36; --hills: #5a4636;
+  --water: #1b3436; --river: #4f8780; color-scheme: dark } }
 :root[data-theme="dark"] {
   --paper: #1a1816; --cream: #24211e; --ink: #ece6dc; --muted: #a39a8e; --line: #3a352f;
   --alliance: #7d9fd1; --horde: #d9784e; --neutral: #9b9389; --ruin: #0d0b0a; --ember: #f0a070;
-  --road: #ece6dc; --shadow: 0 0 0; color-scheme: dark }
+  --road: #ece6dc; --shadow: 0 0 0;
+  --plains: #45412f; --woods: #2c4128; --taiga: #33403a; --desert: #5a4c30; --shore: #544b36; --hills: #5a4636;
+  --water: #1b3436; --river: #4f8780; color-scheme: dark }
 * { box-sizing: border-box }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -56,6 +62,11 @@ button, select { font: 600 14px var(--body); color: var(--ink); background: var(
 button:active { box-shadow: inset 3px 3px 6px rgb(var(--shadow) / .2) }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--alliance); outline-offset: 2px }
 #day { flex: 1 1 240px; min-width: 0; accent-color: var(--alliance) }
+.layers { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px }
+.layers label { display: flex; align-items: center; gap: 6px; cursor: pointer }
+.layers input { accent-color: var(--alliance) }
+.zoc { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--horde), var(--paper), var(--alliance)) }
+.zocl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted) }
 .strips { display: grid; gap: 2px; padding: 10px 16px 14px }
 .strip { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px }
 .strip label { font-size: 13px; color: var(--muted) }
@@ -84,11 +95,14 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <dt>Wagons, last 30 days</dt><dd id="sTrade">0</dd>
       </dl>
       <div class="key">
-        <span><i class="sw" style="background:var(--horde)"></i>Horde land and towns</span>
-        <span><i class="sw" style="background:var(--alliance)"></i>Alliance land and towns</span>
+        <div class="zoc" aria-hidden="true"></div>
+        <div class="zocl"><span>Horde holds</span><span>contested</span><span>Alliance holds</span></div>
+        <span><i class="sw" style="border:2px solid var(--horde)"></i>A Horde town's land</span>
+        <span><i class="sw" style="border:2px solid var(--alliance)"></i>An Alliance town's land</span>
         <span><i class="sw" style="background:var(--neutral)"></i>Hamlets of no side</span>
         <span><i class="sw" style="background:var(--ruin);outline:2px solid var(--ember)"></i>A razed town's ruin</span>
         <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
+        <span><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water</span>
       </div>
       <h2>What happened</h2>
       <ol id="log"></ol>
@@ -97,6 +111,12 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   <div class="surface controls">
     <button id="play" type="button">Play</button>
     <input id="day" type="range" min="0" max="1" value="0" aria-label="Day">
+    <span class="layers">
+      <label><input type="checkbox" id="lTerrain" checked> Terrain</label>
+      <label><input type="checkbox" id="lZoc" checked> Zone of control</label>
+      <label><input type="checkbox" id="lRoads" checked> Roads</label>
+      <label><input type="checkbox" id="lBorders" checked> Borders</label>
+    </span>
     <select id="speed" aria-label="Speed">
       <option value="4">4 days a second</option>
       <option value="10" selected>10 days a second</option>
@@ -135,6 +155,7 @@ const touch = (q, r) => { qs.push(SQ3 * (q + r / 2)); rs.push(1.5 * r); };
 for (const c of D.claims) touch(c[1], c[2]);
 for (const p of D.places) touch(p.q, p.r);
 for (const r of D.routes) for (const [q, rr] of r.path) touch(q, rr);
+for (const s of D.squads) touch(s[4], s[5]);
 const bx = [Math.min(...qs) - 1.2, Math.max(...qs) + 1.2], by = [Math.min(...rs) - 1.2, Math.max(...rs) + 1.2];
 qs = rs = null;
 
@@ -171,16 +192,78 @@ function readPalette() {
   palette.fill = palette.side.map(c => alpha(c, 0.30));
   palette.edge = palette.side.map(c => alpha(c, 0.85));
   palette.roadA = alpha(palette.road, 0.5);
+  palette.land = ["--plains", "--woods", "--taiga", "--desert", "--shore", "--hills", "--water"].map(css);
+  palette.river = css("--river");
+  terrain = null;
+}
+
+// The ground, drawn once a size and theme: each hex by its land, lighter the higher, rivers joined to their water.
+let terrain = null;
+const groundAt = new Map(D.ground.map(g => [key(g[0], g[1]), g]));
+const heights = D.ground.map(g => g[4]).filter(h => h != null);
+const hLo = heights.length ? Math.min(...heights) : 0, hHi = heights.length ? Math.max(...heights) : 1;
+function drawTerrain() {
+  const dpr = window.devicePixelRatio || 1;
+  terrain = document.createElement("canvas"); terrain.width = map.width; terrain.height = map.height;
+  const g = terrain.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const draw1 = (x, y, k) => { g.beginPath(); for (let i = 0; i < 6; i++) { const [cx, cy] = corner(x, y, i, k); i ? g.lineTo(cx, cy) : g.moveTo(cx, cy); } g.closePath(); };
+  for (const [q, r, land, water, h] of D.ground) {
+    const [x, y] = px(q, r); draw1(x, y, 1.02);
+    g.fillStyle = water >= 50 ? palette.land[6] : palette.land[land]; g.fill();
+    if (h != null && water < 50 && hHi > hLo) {
+      const t = (h - hLo) / (hHi - hLo);
+      g.fillStyle = t > 0.5 ? `rgba(255,255,255,${(t - 0.5) * 0.35})` : `rgba(0,0,0,${(0.5 - t) * 0.18})`; g.fill();
+    }
+  }
+  g.strokeStyle = palette.river; g.lineCap = "round"; g.lineWidth = Math.max(1.5, S * 0.22);
+  for (const [q, r, , , , river] of D.ground) {
+    if (!river) continue;
+    const [x, y] = px(q, r); let joined = false;
+    for (const [dq, dr] of DIRS) {
+      const n = groundAt.get(key(q + dq, r + dr));
+      if (n && (n[5] || n[3] >= 50) && (n[5] ? key(q + dq, r + dr) > key(q, r) : true)) {
+        const [nx, ny] = px(q + dq, r + dr); g.beginPath(); g.moveTo(x, y); g.lineTo((x + nx) / 2 + (n[5] ? (nx - x) / 2 : 0), (y + ny) / 2 + (n[5] ? (ny - y) / 2 : 0)); g.stroke(); joined = true;
+      }
+    }
+    if (!joined) { g.beginPath(); g.arc(x, y, S * 0.2, 0, 2 * Math.PI); g.fillStyle = palette.river; g.fill(); }
+  }
+}
+
+// Each side's pull on a hex: its towns by their people, its squads by their soldiers, fading with distance; the
+// land a town holds a little more. The colour leans to whoever pulls harder, faint where neither does.
+const zocHexes = D.ground.filter(g => g[3] < 50).map(g => [g[0], g[1]]);
+function drawZoc(d, own) {
+  const src = [];
+  for (const p of D.places) if (alive(p, d) && p.side < 2) src.push([p.q, p.r, p.side, 6 + (p.pop[Math.min(d, p.pop.length - 1)] || 0), 3]);
+  for (const s of squadsOn.get(d) || []) src.push([s[4], s[5], s[1], s[3] * 0.8, 2.2]);
+  for (const b of battlesOn.get(d) || []) { src.push([b[2], b[3], 0, b[8] * 0.8, 2.2]); src.push([b[2], b[3], 1, b[9] * 0.8, 2.2]); }
+  for (const [q, r] of zocHexes) {
+    let pull = [0, 0];
+    const o = own.get(key(q, r)), op = o != null ? byTown.get(o) : null;
+    if (op && op.side < 2) pull[op.side] += 1;
+    for (const [sq, sr, side, w, fall] of src) {
+      const dist = (Math.abs(q - sq) + Math.abs(r - sr) + Math.abs(q + r - sq - sr)) / 2;
+      if (dist > fall * 4) continue;
+      pull[side] += w * Math.exp(-dist / fall);
+    }
+    const sum = pull[0] + pull[1]; if (sum < 0.5) continue;
+    const lean = (pull[1] - pull[0]) / sum, strength = sum / (sum + 6);
+    const a = Math.abs(lean) * strength * 0.38; if (a < 0.03) continue;
+    const [x, y] = px(q, r); hexPath(x, y, 1.02);
+    ctx.fillStyle = lean > 0 ? alpha(palette.side[1], a) : alpha(palette.side[0], a); ctx.fill();
+  }
 }
 
 function draw(d) {
   ctx.clearRect(0, 0, W, H);
-  const own = owners(d);
-  // The land, each town's shaded by its side, its edge where another's begins.
+  const own = owners(d), on = id => $(id).checked;
+  if (on("lTerrain") && D.ground.length) { if (!terrain) drawTerrain(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(terrain, 0, 0); ctx.restore(); }
+  if (on("lZoc")) drawZoc(d, own);
+  // Each town's land outlined by its side where another's begins (filled faintly with no terrain under it).
   ctx.lineWidth = 1;
-  for (const [k, t] of own) {
+  for (const [k, t] of on("lBorders") ? own : []) {
     const [q, r] = k.split(",").map(Number), p = byTown.get(t), s = p ? p.side : 2, [x, y] = px(q, r);
-    hexPath(x, y, 0.97); ctx.fillStyle = palette.fill[s]; ctx.fill();
+    if (!on("lTerrain") && !on("lZoc")) { hexPath(x, y, 0.97); ctx.fillStyle = palette.fill[s]; ctx.fill(); }
     ctx.strokeStyle = palette.edge[s]; ctx.lineWidth = Math.max(1, S * 0.12);
     for (let i = 0; i < 6; i++) {
       const n = own.get(key(q + DIRS[i][0], r + DIRS[i][1]));
@@ -190,7 +273,7 @@ function draw(d) {
     }
   }
   // The caravan roads, as wide as their last 30 days' wagons.
-  if (d <= D.tradedTo) {
+  if (d <= D.tradedTo && on("lRoads")) {
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = palette.roadA;
     for (const r of D.routes) {
       const days = tripDays.get(r.id); if (!days) continue;
@@ -301,7 +384,8 @@ document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") r
   if (e.key === "ArrowRight") show(day + 1); else if (e.key === "ArrowLeft") show(day - 1); });
 $("tradedTo").textContent = D.tradedTo;
 const redraw = () => { readPalette(); size(); show(day); };
-new ResizeObserver(() => { size(); show(day); }).observe(map.parentElement);
+for (const id of ["lTerrain", "lZoc", "lRoads", "lBorders"]) $(id).addEventListener("change", () => show(day));
+new ResizeObserver(() => { size(); terrain = null; show(day); }).observe(map.parentElement);
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 readPalette(); size(); show(day);

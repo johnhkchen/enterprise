@@ -182,6 +182,9 @@ pub struct Squad {
     pub bound: Option<usize>,
     #[serde(default)]
     pub waits: bool,
+    /// Its way to its goal on foot, the hexes still to cross (planned anew when its goal changes: `rules/battle.rs`).
+    #[serde(default)]
+    pub way: Vec<Hex>,
 }
 
 impl Squad {
