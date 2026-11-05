@@ -65,6 +65,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .layers { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px }
 .layers label { display: flex; align-items: center; gap: 6px; cursor: pointer }
 .layers input { accent-color: var(--alliance) }
+.runs { display: flex; gap: 6px; flex-wrap: wrap }
+.runs button[aria-pressed="true"] { background: var(--alliance); color: var(--paper); box-shadow: inset 2px 2px 5px rgb(var(--shadow) / .25) }
 .zoc { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--horde), var(--paper), var(--alliance)) }
 .zocl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted) }
 .strips { display: grid; gap: 2px; padding: 10px 16px 14px }
@@ -77,7 +79,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 <div class="wrap">
   <header>
     <h1>__TITLE__</h1>
-    <p>__NOTE__</p>
+    <p id="note"></p>
   </header>
   <div class="table">
     <div class="surface map">
@@ -95,6 +97,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <dt>Wagons, last 30 days</dt><dd id="sTrade">0</dd>
         <dt>Theramore's supply wagons through</dt><dd id="sSupply">0</dd>
         <dt>Theramore's supply wagons taken</dt><dd id="sTaken">0</dd>
+        <dt>Fallen, the Horde</dt><dd id="sFallenH">0</dd>
+        <dt>Fallen, the Alliance</dt><dd id="sFallenA">0</dd>
       </dl>
       <div class="key">
         <div class="zoc" aria-hidden="true"></div>
@@ -105,6 +109,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <span><i class="sw" style="background:var(--ruin);outline:2px solid var(--ember)"></i>A razed town's ruin</span>
         <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
         <span><i class="sw" style="background:var(--alliance);border-radius:1px"></i>A supply wagon (hollow going home empty)</span>
+        <span><i class="sw" style="background:var(--ember);border-radius:50%"></i>A fight, as big as its dead, fading over 12 days</span>
         <span><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water</span>
       </div>
       <h2>What happened</h2>
@@ -112,6 +117,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
     </aside>
   </div>
   <div class="surface controls">
+    <span class="runs" id="runs" role="group" aria-label="Which war"></span>
     <button id="play" type="button">Play</button>
     <input id="day" type="range" min="0" max="1" value="0" aria-label="Day">
     <span class="layers">
@@ -119,6 +125,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
       <label><input type="checkbox" id="lZoc" checked> Zone of control</label>
       <label><input type="checkbox" id="lRoads" checked> Roads</label>
       <label><input type="checkbox" id="lBorders" checked> Borders</label>
+      <label><input type="checkbox" id="lFights" checked> Fights</label>
     </span>
     <select id="speed" aria-label="Speed">
       <option value="4">4 days a second</option>
@@ -130,40 +137,51 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
     <div class="strip"><label for="stHorde">Horde towns standing</label><canvas id="stHorde"></canvas></div>
     <div class="strip"><label for="stTrade">Wagons on the roads</label><canvas id="stTrade"></canvas></div>
     <div class="strip"><label for="stChest">Theramore's chest</label><canvas id="stChest"></canvas></div>
+    <div class="strip"><label for="stFallen">Fallen in fights, by day</label><canvas id="stFallen"></canvas></div>
   </div>
 </div>
 
 <script>
-const D = __DATA__;
+const RUNS = __DATA__;
+let D, run = 0;
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const SQ3 = Math.sqrt(3);
 const DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 const key = (q, r) => q + "," + r;
-const byTown = new Map(D.places.map(p => [p.t, p]));
-const battlesOn = new Map(), squadsOn = new Map();
-for (const b of D.battles) (battlesOn.get(b[0]) || battlesOn.set(b[0], []).get(b[0])).push(b);
-for (const s of D.squads) (squadsOn.get(s[0]) || squadsOn.set(s[0], []).get(s[0])).push(s);
-const suppliesOn = new Map();
-for (const w of D.supplies) (suppliesOn.get(w[0]) || suppliesOn.set(w[0], []).get(w[0])).push(w);
-const wagonsBy = d => { for (let x = d; x >= 0; x--) if (D.wagons[x]) return D.wagons[x]; return [0, 0, 0, 0]; };
-const tripDays = new Map();
-for (const [r, d] of D.trips) (tripDays.get(r) || tripDays.set(r, []).get(r)).push(d);
-for (const v of tripDays.values()) v.sort((a, b) => a - b);
+let byTown, battlesOn, squadsOn, suppliesOn, fightsOn, tripDays, bx, by, groundAt, hLo, hHi, zocHexes, fallenSum;
 const lower = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; } return lo; };
 const alive = (p, d) => p.first <= d && !(p.razed != null && p.razed <= d);
 const sideCount = d => { const c = [0, 0, 0]; for (const p of D.places) if (alive(p, d)) c[p.side]++; return c; };
 const ruinCount = d => D.places.filter(p => p.razed != null && p.razed <= d).length;
-
-// The map's bounds, from every hex the run touched.
-let qs = [], rs = [];
-const touch = (q, r) => { qs.push(SQ3 * (q + r / 2)); rs.push(1.5 * r); };
-for (const c of D.claims) touch(c[1], c[2]);
-for (const p of D.places) touch(p.q, p.r);
-for (const r of D.routes) for (const [q, rr] of r.path) touch(q, rr);
-for (const s of D.squads) touch(s[4], s[5]);
-const bx = [Math.min(...qs) - 1.2, Math.max(...qs) + 1.2], by = [Math.min(...rs) - 1.2, Math.max(...rs) + 1.2];
-qs = rs = null;
+const wagonsBy = d => { for (let x = d; x >= 0; x--) if (D.wagons[x]) return D.wagons[x]; return [0, 0, 0, 0]; };
+const byDay = (rows, at = 0) => { const m = new Map(); for (const x of rows) (m.get(x[at]) || m.set(x[at], []).get(x[at])).push(x); return m; };
+// A run's indexes: by day, by town, the map's bounds from every hex it touched.
+function index() {
+  byTown = new Map(D.places.map(p => [p.t, p]));
+  battlesOn = byDay(D.battles); squadsOn = byDay(D.squads); suppliesOn = byDay(D.supplies); fightsOn = byDay(D.fights || []);
+  tripDays = new Map();
+  for (const [r, d] of D.trips) (tripDays.get(r) || tripDays.set(r, []).get(r)).push(d);
+  for (const v of tripDays.values()) v.sort((a, b) => a - b);
+  // (The fallen so far, by side, by day.)
+  fallenSum = [[0], [0]];
+  const perDay = [new Array(D.last + 2).fill(0), new Array(D.last + 2).fill(0)];
+  for (const f of D.fights || []) if (f[0] <= D.last) { perDay[0][f[0]] += f[3]; perDay[1][f[0]] += f[4]; }
+  for (const s of [0, 1]) { let t = 0; fallenSum[s] = perDay[s].map(x => (t += x)); }
+  fallenSum.perDay = perDay;
+  let qs = [], rs = [];
+  const touch = (q, r) => { qs.push(SQ3 * (q + r / 2)); rs.push(1.5 * r); };
+  for (const c of D.claims) touch(c[1], c[2]);
+  for (const p of D.places) touch(p.q, p.r);
+  for (const r of D.routes) for (const [q, rr] of r.path) touch(q, rr);
+  for (const s of D.squads) touch(s[4], s[5]);
+  bx = [Math.min(...qs) - 1.2, Math.max(...qs) + 1.2]; by = [Math.min(...rs) - 1.2, Math.max(...rs) + 1.2];
+  groundAt = new Map(D.ground.map(g => [key(g[0], g[1]), g]));
+  const heights = D.ground.map(g => g[4]).filter(h => h != null);
+  hLo = heights.length ? Math.min(...heights) : 0; hHi = heights.length ? Math.max(...heights) : 1;
+  zocHexes = D.ground.filter(g => g[3] < 50).map(g => [g[0], g[1]]);
+  terrain = null;
+}
 
 const map = $("map"), ctx = map.getContext("2d");
 let W = 900, H = 640, S = 10, ox = 0, oy = 0;
@@ -205,9 +223,6 @@ function readPalette() {
 
 // The ground, drawn once a size and theme: each hex by its land, lighter the higher, rivers joined to their water.
 let terrain = null;
-const groundAt = new Map(D.ground.map(g => [key(g[0], g[1]), g]));
-const heights = D.ground.map(g => g[4]).filter(h => h != null);
-const hLo = heights.length ? Math.min(...heights) : 0, hHi = heights.length ? Math.max(...heights) : 1;
 function drawTerrain() {
   const dpr = window.devicePixelRatio || 1;
   terrain = document.createElement("canvas"); terrain.width = map.width; terrain.height = map.height;
@@ -237,7 +252,6 @@ function drawTerrain() {
 
 // Each side's pull on a hex: its towns by their people, its squads by their soldiers, fading with distance; the
 // land a town holds a little more. The colour leans to whoever pulls harder, faint where neither does.
-const zocHexes = D.ground.filter(g => g[3] < 50).map(g => [g[0], g[1]]);
 function drawZoc(d, own) {
   const src = [];
   for (const p of D.places) if (alive(p, d) && p.side < 2) src.push([p.q, p.r, p.side, 6 + (p.pop[Math.min(d, p.pop.length - 1)] || 0), 3]);
@@ -339,12 +353,37 @@ function draw(d) {
     ctx.font = `600 ${Math.max(10, S * 0.85)}px Karla, sans-serif`; ctx.fillStyle = palette.ink;
     ctx.fillText(p.name, x, y + rad + S * 1.0);
   }
+  // The fights of the last `FADE` days where they were: a burst as big as its dead, fading; a wagon taken, a cross.
+  if (on("lFights")) {
+    for (let back = FADE - 1; back >= 0; back--) {
+      const k = 1 - back / FADE;
+      for (const [, q, r, h, a, kind] of fightsOn.get(d - back) || []) {
+        const [x, y] = px(q, r), dead = h + a;
+        const rad = S * (kind ? 1.3 : 1.2 + Math.sqrt(dead) * 0.55);
+        ctx.globalAlpha = 0.9 * k;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+        g.addColorStop(0, alpha(palette.ember, 0.75)); g.addColorStop(1, alpha(palette.ember, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = palette.ink; ctx.lineWidth = Math.max(2, S * 0.22);
+        ctx.beginPath(); ctx.arc(x, y, rad * 0.8, 0, 2 * Math.PI); ctx.stroke();
+        ctx.strokeStyle = kind ? palette.side[0] : palette.ink; ctx.lineWidth = Math.max(1.8, S * 0.2);
+        const t = S * 0.55; ctx.beginPath(); ctx.moveTo(x - t, y - t); ctx.lineTo(x + t, y + t); ctx.moveTo(x + t, y - t); ctx.lineTo(x - t, y + t); ctx.stroke();
+        if (back < 3 && dead) {
+          ctx.font = `700 ${Math.max(10, S * 0.75)}px Karla, sans-serif`; ctx.textAlign = "left";
+          let tx = x + rad * 0.7;
+          for (const [n, side] of [[h, 0], [a, 1]]) if (n) { ctx.fillStyle = palette.side[side]; const label = "−" + n; ctx.fillText(label, tx, y - rad * 0.5); tx += ctx.measureText(label).width + 4; }
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
 }
 
+const FADE = 12;
 // The strips under the map: each series by day, the chosen day marked.
 const strips = [["stHorde", d => sideCount(d)[0], "--horde"], ["stTrade", d => D.trade[d], "--road"],
-  ["stChest", d => D.series.chest[d], "--alliance"]];
-const stripVals = strips.map(([, f]) => Array.from({ length: D.last + 1 }, (_, d) => f(d)));
+  ["stChest", d => D.series.chest[d], "--alliance"], ["stFallen", d => fallenSum.perDay[0][d] + fallenSum.perDay[1][d], "--ember"]];
+let stripVals = [];
 function drawStrips(d) {
   strips.forEach(([id, , color], i) => {
     const c = $(id), w = c.clientWidth, h = c.clientHeight, dpr = window.devicePixelRatio || 1;
@@ -374,6 +413,7 @@ function ledger(d) {
   const wg = wagonsBy(d);
   $("sSupply").textContent = wg[1].toLocaleString();
   $("sTaken").textContent = wg[2].toLocaleString();
+  $("sFallenH").textContent = fallenSum[0][d].toLocaleString(); $("sFallenA").textContent = fallenSum[1][d].toLocaleString();
   $("untraced").hidden = d <= D.tradedTo;
   const won = D.events.find(e => e[1].startsWith("Won") && e[0] <= d);
   $("phase").textContent = won ? "After the war" : d >= D.firstWar ? "At war" : "Growth";
@@ -385,8 +425,24 @@ function ledger(d) {
   }
 }
 
-const slider = $("day"); slider.max = D.last;
-let day = Math.min(D.last, Math.max(0, D.firstWar + 180)), playing = false, acc = 0, lastT = 0;
+const slider = $("day");
+let day = 0, playing = false, acc = 0, lastT = 0;
+// Which war: the runs side by side, the same day kept on a switch.
+function choose(i, keepDay) {
+  run = i; D = RUNS[i].data; index();
+  stripVals = strips.map(([, f]) => Array.from({ length: D.last + 1 }, (_, d) => f(d)));
+  $("note").textContent = RUNS[i].note;
+  for (const b of $("runs").children) b.setAttribute("aria-pressed", String(+b.dataset.run === i));
+  slider.max = D.last; $("tradedTo").textContent = D.tradedTo;
+  if (!keepDay) day = Math.min(D.last, Math.max(0, D.firstWar + 180));
+  if (typeof size === "function" && map.clientWidth) { size(); }
+}
+RUNS.forEach((r, i) => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = r.label || "Run " + (i + 1); b.dataset.run = i;
+  b.addEventListener("click", () => { choose(i, true); show(day); }); $("runs").append(b);
+});
+$("runs").hidden = RUNS.length < 2;
+choose(0, false);
 function show(d) { day = Math.max(0, Math.min(D.last, Math.round(d))); slider.value = day; draw(day); drawStrips(day); ledger(day); }
 slider.addEventListener("input", () => show(+slider.value));
 $("play").addEventListener("click", () => { playing = !playing; if (playing && day >= D.last) day = 0; $("play").textContent = playing ? "Pause" : "Play"; lastT = 0; if (playing) requestAnimationFrame(tick); });
@@ -401,7 +457,7 @@ document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") r
   if (e.key === "ArrowRight") show(day + 1); else if (e.key === "ArrowLeft") show(day - 1); });
 $("tradedTo").textContent = D.tradedTo;
 const redraw = () => { readPalette(); size(); show(day); };
-for (const id of ["lTerrain", "lZoc", "lRoads", "lBorders"]) $(id).addEventListener("change", () => show(day));
+for (const id of ["lTerrain", "lZoc", "lRoads", "lBorders", "lFights"]) $(id).addEventListener("change", () => show(day));
 new ResizeObserver(() => { size(); terrain = null; show(day); }).observe(map.parentElement);
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });

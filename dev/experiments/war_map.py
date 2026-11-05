@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """The war for the region on its hexes, day by day, from a replay's trace (`enterprise-sim --trace`).
 
-    python3 dev/experiments/war_map.py TRACE.db OUT.html [--title "Seed 1717's War"] [--note "..."]
+    python3 dev/experiments/war_map.py TRACE.db OUT.html [--title "Seed 1717's War"] [--note "..."] [--label "One hero"]
+        [--also LABEL TRACE2.db NOTE ...]
+
+Each `--also` adds another run of the same seed (another dial's war), switched between on the page.
 
 The ground beneath (its land, water, rivers and heights: the trace's `ground`); each side's zone of control over it,
 a gradient from its towns (by their people) and squads (by their soldiers), fading with distance; each town's land
@@ -9,7 +12,9 @@ outlined by its side (the Horde, the Alliance, no one's people) from its foundin
 town as they're fought, held and won; a town razed, its ruin; the squads on the march; and each caravan road as wide
 as the trips it carried in the 30 days before (the trace's `trips` on its `paths`). Under the map, by day: the Horde's
 towns, the wagons on the roads, Theramore's chest. Reads the trace's `places`, `claims`, `towns`, `battles`, `squads`,
-`razed`, `war`, `chests`, `trips` and `paths` (a trace written before `places` and `claims` has no map to draw).
+`razed`, `war`, `chests`, `trips` and `paths` (a trace written before `places` and `claims` has no map to draw). Each
+fight's place as it comes, by its dead (`battles`' fallen, `battle_fights`) and each supply wagon taken (`raids`),
+fading after a while.
 Publish OUT.html as an Artifact.
 """
 import json
@@ -28,7 +33,19 @@ def main():
         sys.exit(__doc__)
     trace, out = args[0], Path(args[1])
     opt = lambda name, default: args[args.index(name) + 1] if name in args else default
-    title, note = opt("--title", "Seed 1717's War"), opt("--note", "")
+    title = opt("--title", "Seed 1717's War")
+    runs = [{"label": opt("--label", ""), "note": opt("--note", ""), "data": build(trace)}]
+    for i, a in enumerate(args):
+        if a == "--also":
+            runs.append({"label": args[i + 1], "note": args[i + 3], "data": build(args[i + 2])})
+    page = Path(__file__).with_name("war_map.html").read_text()
+    page = page.replace("__TITLE__", title).replace("__DATA__", json.dumps(runs, separators=(",", ":")))
+    out.write_text(page)
+    print(f"{out}: {len(runs)} runs, {out.stat().st_size // 1024} KB")
+
+
+def build(trace):
+    """A run's war, from its trace, as the page reads it."""
     db = sqlite3.connect(trace)
     last = rows(db, "select max(day) from towns")[0][0]
     side = {"the Horde": 0, "the Alliance": 1}
@@ -103,21 +120,38 @@ def main():
                 events.append([d, who if n - prev[i] == 1 else f"{who} ({n - prev[i]})", 0 if i == 0 else 1])
             prev[i] = n or 0
     events.sort(key=lambda e: e[0])
+    # The fights as they come: each battle's day of fighting at its hex, its dead by side that day (the trace's
+    # fallen, summed); and each supply wagon taken, where it was last seen on its way out.
+    fights = {}
+    try:
+        seen = {}
+        for d, battle, q, r, fh, fa in rows(db, "select day, battle, q, r, fallen_horde, fallen_alliance from battles "
+                                               "order by battle, day"):
+            was = seen.get(battle, (0, 0))
+            if fh > was[0] or fa > was[1]:
+                fights[(d, battle)] = [d, q, r, fh - was[0], fa - was[1], 0]
+            seen[battle] = (fh, fa)
+    except sqlite3.OperationalError:
+        pass
+    hexes = {(d, b): (q, r) for d, b, q, r in rows(db, "select day, battle, q, r from battles")}
+    for d, b in rows(db, "select distinct day, battle from battle_fights"):
+        if (d, b) not in fights and (d, b) in hexes:
+            fights[(d, b)] = [d, *hexes[(d, b)], 0, 0, 0]
+    try:
+        taken = [[d, q, r, 0, 0, 1] for d, q, r in rows(db, "select day, q, r from raids")]
+    except sqlite3.OperationalError:
+        taken = []
+    fights = sorted(list(fights.values()) + taken)
     lands = ["Plains", "Woods", "Taiga", "Desert", "Shore", "Hills", "Water"]
     try:
         ground = [[q, r, lands.index(l) if l in lands else 0, round(w * 100), None if h is None else round(h), int(rv)]
                   for q, r, l, w, h, rv in rows(db, "select q, r, land, water, height, river from ground")]
     except sqlite3.OperationalError:
         ground = []
-    data = {"ground": ground, "last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
+    return {"fights": fights, "ground": ground, "last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
             "squads": squads, "supplies": supplies, "wagons": wagons, "series": series, "trade": trade, "tradedTo": traded_to, "events": events,
             "routes": [{"id": r, "path": paths[r]} for r in used],
             "trips": [[r, d] for r, d, _ in trips if r in paths]}
-    page = Path(__file__).with_name("war_map.html").read_text()
-    page = page.replace("__TITLE__", title).replace("__NOTE__", note).replace("__DATA__", json.dumps(data, separators=(",", ":")))
-    out.write_text(page)
-    print(f"{out}: {len(places)} towns, {len(claims)} claims, {len(battles)} battle-days, {len(squads)} squad-days, "
-          f"{len(trips)} trips, {len(supplies)} wagon-days, {out.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":

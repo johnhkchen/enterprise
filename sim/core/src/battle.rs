@@ -275,6 +275,9 @@ pub struct Battles {
     pub next_supply: u32,
     #[serde(default)]
     pub supplied: Option<u64>,
+    /// Each supply wagon taken: the day, the hex, and the side whose it was.
+    #[serde(default)]
+    pub raids: Vec<(u64, Hex, usize)>,
 }
 
 impl Battles {

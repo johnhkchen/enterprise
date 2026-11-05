@@ -950,6 +950,7 @@ pub fn supply(world: &mut World) {
                     if let Some(c) = b.campaign.as_mut() {
                         c.wagons_taken[side] += 1;
                     }
+                    b.raids.push((today, at, side));
                     b.supplies.remove(k);
                     gone = true;
                     break;

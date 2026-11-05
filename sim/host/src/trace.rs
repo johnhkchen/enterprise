@@ -101,7 +101,7 @@ create table skirmishes (day integer, soldiers integer, twist text, target real,
     hero integer, routed integer);
 create table battles (day integer, battle integer, q integer, r integer, holder text, held_days integer, won_by text,
     horde integer, alliance integer, marching integer, fights integer, town integer, attacker text, depot_horde real,
-    depot_alliance real);
+    depot_alliance real, fallen_horde integer, fallen_alliance integer);
 create table war (day integer, base integer, landed integer, marines integer, mercenaries integer, razed integer,
     refugees integer, lost integer, withdrew integer, won_by text, horde_towns integer, alliance_towns integer,
     heroes_horde integer, heroes_alliance integer, hero_horde_fell integer, hero_alliance_fell integer,
@@ -110,6 +110,7 @@ create table war (day integer, base integer, landed integer, marines integer, me
 create table razed (day integer, town integer, by_faction text);
 create table squads (day integer, squad integer, side text, home integer, capital integer, soldiers integer, q integer,
     r integer, goal_q integer, goal_r integer, homeward integer, battle integer, food_days real);
+create table raids (day integer, q integer, r integer, side text);
 create table supplies (day integer, wagon integer, side text, battle integer, camp integer, q integer, r integer,
     food real, arrows real, escort integer, homeward integer);
 create table battle_fights (day integer, battle integer, side text, soldiers integer, twist text, score real, enemy real,
@@ -406,6 +407,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             q.home, q.capital, q.size(&all.battles), q.hex.q, q.hex.r, q.goal.map(|g| g.q), q.goal.map(|g| g.r), q.homeward,
             q.battle, food_days]).map_err(sql)?;
     }
+    // The supply wagons taken today, where.
+    for (_, hex, side) in all.raids.iter().filter(|r| r.0 == day) {
+        tx.execute("insert into raids values (?1, ?2, ?3, ?4)", params![day, hex.q, hex.r,
+            if *side == 0 { "the Horde" } else { "the Alliance" }]).map_err(sql)?;
+    }
     // Its supply wagons on the hexes (`battle::Supply`): their food points and arrows, their escort.
     let arrow = s.content().good(enterprise_core::army::ARROW);
     for w in &all.supplies {
@@ -420,10 +426,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         if b.won_by.is_some() && b.reckoned.is_some_and(|r| r + 1 < day) {
             continue; // (a battle long over: once)
         }
-        tx.execute("insert into battles values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)", params![day, i, b.hex.q,
+        let fallen = |side: usize| b.armies[side].records.values().map(|r| r.fallen).sum::<u32>();
+        tx.execute("insert into battles values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)", params![day, i, b.hex.q,
             b.hex.r, b.holder.map(|h| b.factions[h].name()), b.held_days(s.now(), dt), b.won_by.map(|f| f.name()),
             b.armies[0].soldiers.len(), b.armies[1].soldiers.len(), b.marching.len(), b.fights, b.town,
-            b.attacker.map(|a| b.factions[a].name()), food(&b.depots[0]), food(&b.depots[1])]).map_err(sql)?;
+            b.attacker.map(|a| b.factions[a].name()), food(&b.depots[0]), food(&b.depots[1]), fallen(0), fallen(1)]).map_err(sql)?;
         for (side, army) in b.armies.iter().enumerate() {
             for k in army.skirmishes.iter().filter(|k| k.day == day) {
                 tx.execute("insert into battle_fights values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![day, i,
