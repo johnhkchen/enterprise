@@ -1,0 +1,309 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&family=Lora:ital,wght@0,600;1,400&display=swap">
+<style>
+/* Layout: a surveyor's table, the map on the left and its ledger on the right, the year's strips under both,
+   all following one day. Sides: the Alliance steel blue, the Horde burnt ochre, no one's people stone. */
+:root {
+  --paper: #faf8f5; --cream: #f2efe9; --ink: #1c1917; --muted: #6b635a; --line: #ddd6cb;
+  --alliance: #44679b; --horde: #b5542d; --neutral: #8a8378; --ruin: #3b3430; --ember: #d9784e;
+  --road: #1c1917; --shadow: 28 25 23;
+  --display: "Lora", Georgia, "Times New Roman", serif;
+  --body: "Karla", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #1a1816; --cream: #24211e; --ink: #ece6dc; --muted: #a39a8e; --line: #3a352f;
+  --alliance: #7d9fd1; --horde: #d9784e; --neutral: #9b9389; --ruin: #0d0b0a; --ember: #f0a070;
+  --road: #ece6dc; --shadow: 0 0 0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #1a1816; --cream: #24211e; --ink: #ece6dc; --muted: #a39a8e; --line: #3a352f;
+  --alliance: #7d9fd1; --horde: #d9784e; --neutral: #9b9389; --ruin: #0d0b0a; --ember: #f0a070;
+  --road: #ece6dc; --shadow: 0 0 0; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px }
+h1 { font: 600 clamp(24px, 3.4vw, 34px)/1.15 var(--display); margin: 0; text-wrap: balance }
+header p { margin: 0; color: var(--muted); max-width: 70ch }
+.table { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start }
+@media (max-width: 860px) { .table { grid-template-columns: minmax(0, 1fr) } }
+.surface { background: var(--cream); border-radius: 18px;
+  box-shadow: 6px 8px 18px rgb(var(--shadow) / .10), -4px -4px 10px rgb(255 255 255 / .35) inset }
+.map { position: relative; padding: 8px; min-width: 0 }
+#map { display: block; width: 100%; height: auto; border-radius: 12px; background: var(--paper); touch-action: none }
+.untraced { position: absolute; left: 20px; bottom: 18px; font-size: 12px; color: var(--muted);
+  background: var(--paper); padding: 2px 8px; border-radius: 8px }
+.ledger { padding: 16px 18px; display: grid; gap: 14px; min-width: 0 }
+.day { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.day b { font: 600 30px/1 var(--display); font-variant-numeric: tabular-nums }
+.phase { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted) }
+dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-variant-numeric: tabular-nums }
+dt { color: var(--muted) } dd { margin: 0; text-align: right; font-weight: 600 }
+.key { display: grid; gap: 6px; font-size: 13px }
+.key span { display: flex; align-items: center; gap: 8px }
+.sw { width: 14px; height: 14px; border-radius: 4px; flex: none }
+h2 { font: 600 13px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 }
+ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px }
+ol li { display: grid; grid-template-columns: 3.4em 1fr; gap: 8px }
+ol li i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px }
+button, select { font: 600 14px var(--body); color: var(--ink); background: var(--paper); border: 0; border-radius: 12px;
+  padding: 8px 16px; cursor: pointer; box-shadow: 3px 4px 8px rgb(var(--shadow) / .14), -2px -2px 5px rgb(255 255 255 / .4) inset }
+button:active { box-shadow: inset 3px 3px 6px rgb(var(--shadow) / .2) }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--alliance); outline-offset: 2px }
+#day { flex: 1 1 240px; min-width: 0; accent-color: var(--alliance) }
+.strips { display: grid; gap: 2px; padding: 10px 16px 14px }
+.strip { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 12px }
+.strip label { font-size: 13px; color: var(--muted) }
+.strip canvas { width: 100%; height: 44px; display: block; cursor: pointer }
+@media (max-width: 520px) { .strip { grid-template-columns: minmax(0, 1fr) } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>__TITLE__</h1>
+    <p>__NOTE__</p>
+  </header>
+  <div class="table">
+    <div class="surface map">
+      <canvas id="map" width="900" height="640" aria-label="The region's hexes on the chosen day"></canvas>
+      <div class="untraced" id="untraced" hidden>No caravans traced past the journal's day <span id="tradedTo"></span></div>
+    </div>
+    <aside class="surface ledger">
+      <div class="day"><span class="phase" id="phase">Growth</span><b id="dayN">Day 0</b></div>
+      <dl>
+        <dt>Horde towns</dt><dd id="sHorde">0</dd>
+        <dt>Alliance towns</dt><dd id="sAlliance">0</dd>
+        <dt>Ruins</dt><dd id="sRuins">0</dd>
+        <dt>Marines in the field</dt><dd id="sMarines">0</dd>
+        <dt>Theramore's chest left</dt><dd id="sChest">0</dd>
+        <dt>Wagons, last 30 days</dt><dd id="sTrade">0</dd>
+      </dl>
+      <div class="key">
+        <span><i class="sw" style="background:var(--horde)"></i>Horde land and towns</span>
+        <span><i class="sw" style="background:var(--alliance)"></i>Alliance land and towns</span>
+        <span><i class="sw" style="background:var(--neutral)"></i>Hamlets of no side</span>
+        <span><i class="sw" style="background:var(--ruin);outline:2px solid var(--ember)"></i>A razed town's ruin</span>
+        <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
+      </div>
+      <h2>What happened</h2>
+      <ol id="log"></ol>
+    </aside>
+  </div>
+  <div class="surface controls">
+    <button id="play" type="button">Play</button>
+    <input id="day" type="range" min="0" max="1" value="0" aria-label="Day">
+    <select id="speed" aria-label="Speed">
+      <option value="4">4 days a second</option>
+      <option value="10" selected>10 days a second</option>
+      <option value="25">25 days a second</option>
+    </select>
+  </div>
+  <div class="surface strips">
+    <div class="strip"><label for="stHorde">Horde towns standing</label><canvas id="stHorde"></canvas></div>
+    <div class="strip"><label for="stTrade">Wagons on the roads</label><canvas id="stTrade"></canvas></div>
+    <div class="strip"><label for="stChest">Theramore's chest</label><canvas id="stChest"></canvas></div>
+  </div>
+</div>
+
+<script>
+const D = __DATA__;
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const SQ3 = Math.sqrt(3);
+const DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+const key = (q, r) => q + "," + r;
+const byTown = new Map(D.places.map(p => [p.t, p]));
+const battlesOn = new Map(), squadsOn = new Map();
+for (const b of D.battles) (battlesOn.get(b[0]) || battlesOn.set(b[0], []).get(b[0])).push(b);
+for (const s of D.squads) (squadsOn.get(s[0]) || squadsOn.set(s[0], []).get(s[0])).push(s);
+const tripDays = new Map();
+for (const [r, d] of D.trips) (tripDays.get(r) || tripDays.set(r, []).get(r)).push(d);
+for (const v of tripDays.values()) v.sort((a, b) => a - b);
+const lower = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; } return lo; };
+const alive = (p, d) => p.first <= d && !(p.razed != null && p.razed <= d);
+const sideCount = d => { const c = [0, 0, 0]; for (const p of D.places) if (alive(p, d)) c[p.side]++; return c; };
+const ruinCount = d => D.places.filter(p => p.razed != null && p.razed <= d).length;
+
+// The map's bounds, from every hex the run touched.
+let qs = [], rs = [];
+const touch = (q, r) => { qs.push(SQ3 * (q + r / 2)); rs.push(1.5 * r); };
+for (const c of D.claims) touch(c[1], c[2]);
+for (const p of D.places) touch(p.q, p.r);
+for (const r of D.routes) for (const [q, rr] of r.path) touch(q, rr);
+const bx = [Math.min(...qs) - 1.2, Math.max(...qs) + 1.2], by = [Math.min(...rs) - 1.2, Math.max(...rs) + 1.2];
+qs = rs = null;
+
+const map = $("map"), ctx = map.getContext("2d");
+let W = 900, H = 640, S = 10, ox = 0, oy = 0;
+function size() {
+  const w = map.clientWidth, aspect = (by[1] - by[0]) / (bx[1] - bx[0]);
+  const h = Math.min(Math.round(w * aspect), Math.round(window.innerHeight * 0.78));
+  const dpr = window.devicePixelRatio || 1;
+  map.width = Math.round(w * dpr); map.height = Math.round(h * dpr); map.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = w; H = h; S = Math.min(W / (bx[1] - bx[0]), H / (by[1] - by[0]));
+  ox = (W - S * (bx[1] - bx[0])) / 2 - S * bx[0]; oy = (H - S * (by[1] - by[0])) / 2 - S * by[0];
+}
+const px = (q, r) => [ox + S * SQ3 * (q + r / 2), oy + S * 1.5 * r];
+const corner = (x, y, i, k = 1) => { const a = Math.PI / 180 * (60 * i - 30); return [x + S * k * Math.cos(a), y + S * k * Math.sin(a)]; };
+function hexPath(x, y, k = 1) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const [cx, cy] = corner(x, y, i, k); i ? ctx.lineTo(cx, cy) : ctx.moveTo(cx, cy); } ctx.closePath(); }
+function alpha(color, a) {
+  const c = document.createElement("canvas").getContext("2d"); c.fillStyle = color; const h = c.fillStyle;
+  if (h.startsWith("#")) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+  return h;
+}
+
+function owners(d) {
+  const o = new Map();
+  for (const c of D.claims) { if (c[0] > d) break; if (c[3] < 0) o.delete(key(c[1], c[2])); else o.set(key(c[1], c[2]), c[3]); }
+  return o;
+}
+
+let palette = {};
+function readPalette() {
+  palette = { paper: css("--paper"), ink: css("--ink"), muted: css("--muted"), line: css("--line"), road: css("--road"),
+    ruin: css("--ruin"), ember: css("--ember"), side: [css("--horde"), css("--alliance"), css("--neutral")] };
+  palette.fill = palette.side.map(c => alpha(c, 0.30));
+  palette.edge = palette.side.map(c => alpha(c, 0.85));
+  palette.roadA = alpha(palette.road, 0.5);
+}
+
+function draw(d) {
+  ctx.clearRect(0, 0, W, H);
+  const own = owners(d);
+  // The land, each town's shaded by its side, its edge where another's begins.
+  ctx.lineWidth = 1;
+  for (const [k, t] of own) {
+    const [q, r] = k.split(",").map(Number), p = byTown.get(t), s = p ? p.side : 2, [x, y] = px(q, r);
+    hexPath(x, y, 0.97); ctx.fillStyle = palette.fill[s]; ctx.fill();
+    ctx.strokeStyle = palette.edge[s]; ctx.lineWidth = Math.max(1, S * 0.12);
+    for (let i = 0; i < 6; i++) {
+      const n = own.get(key(q + DIRS[i][0], r + DIRS[i][1]));
+      if (n === t) continue;
+      const [ax, ay] = corner(x, y, i, 0.97), [cx, cy] = corner(x, y, (i + 1) % 6, 0.97);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(cx, cy); ctx.stroke();
+    }
+  }
+  // The caravan roads, as wide as their last 30 days' wagons.
+  if (d <= D.tradedTo) {
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = palette.roadA;
+    for (const r of D.routes) {
+      const days = tripDays.get(r.id); if (!days) continue;
+      const n = lower(days, d + 1) - lower(days, d - 29); if (!n) continue;
+      ctx.lineWidth = Math.min(S * 0.5, 0.8 + Math.sqrt(n) * S * 0.07);
+      ctx.beginPath(); r.path.forEach(([q, rr], i) => { const [x, y] = px(q, rr); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    }
+  }
+  // The battles for a hex today: the attacker's ring, and while it holds a town, the days held toward its razing.
+  for (const b of battlesOn.get(d) || []) {
+    const [, , q, r, town, att, holder, held, h, a] = b, [x, y] = px(q, r);
+    const color = att >= 0 ? palette.side[att] : palette.ember;
+    ctx.lineWidth = Math.max(1.5, S * 0.16); ctx.strokeStyle = color;
+    ctx.setLineDash([S * 0.25, S * 0.18]); hexPath(x, y, 1.25); ctx.stroke(); ctx.setLineDash([]);
+    if (town >= 0 && holder >= 0 && holder === att) {
+      ctx.beginPath(); ctx.arc(x, y, S * 1.45, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, held / 5));
+      ctx.lineWidth = Math.max(2, S * 0.2); ctx.stroke();
+    }
+    ctx.font = `600 ${Math.max(10, S * 0.75)}px Karla, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = palette.ink;
+    if (h + a) ctx.fillText(`${a} v ${h}`, x, y - S * 1.55);
+  }
+  // The squads on the march (a capital's a diamond).
+  const stacked = new Map();
+  for (const s of squadsOn.get(d) || []) {
+    const [, side, capital, n, q, r] = s, k = key(q, r), j = stacked.get(k) || 0; stacked.set(k, j + 1);
+    let [x, y] = px(q, r); x += (j % 3 - 1) * S * 0.55; y += S * 0.55 + Math.floor(j / 3) * S * 0.5;
+    const rad = Math.max(2, Math.sqrt(n) * S * 0.12);
+    ctx.fillStyle = palette.side[side]; ctx.strokeStyle = palette.paper; ctx.lineWidth = 1.2; ctx.beginPath();
+    if (capital) { ctx.moveTo(x, y - rad * 1.3); ctx.lineTo(x + rad * 1.3, y); ctx.lineTo(x, y + rad * 1.3); ctx.lineTo(x - rad * 1.3, y); ctx.closePath(); }
+    else ctx.arc(x, y, rad, 0, 2 * Math.PI);
+    ctx.fill(); ctx.stroke();
+  }
+  // The towns, as big as their people; a ruin charred.
+  ctx.textAlign = "center";
+  for (const p of D.places) {
+    if (p.first > d) continue;
+    const [x, y] = px(p.q, p.r), ruined = p.razed != null && p.razed <= d;
+    if (ruined) {
+      hexPath(x, y, 0.8); ctx.fillStyle = palette.ruin; ctx.fill(); ctx.strokeStyle = palette.ember; ctx.lineWidth = Math.max(1, S * 0.12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - S * 0.35, y - S * 0.35); ctx.lineTo(x + S * 0.35, y + S * 0.35);
+      ctx.moveTo(x + S * 0.35, y - S * 0.35); ctx.lineTo(x - S * 0.35, y + S * 0.35); ctx.stroke();
+      ctx.font = `italic 400 ${Math.max(10, S * 0.8)}px Lora, serif`; ctx.fillStyle = palette.muted;
+      ctx.fillText(p.name, x, y + S * 1.6);
+      continue;
+    }
+    const n = p.pop[Math.min(d, p.pop.length - 1)] || 0, rad = Math.max(S * 0.3, Math.sqrt(n) * S * 0.16);
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fillStyle = palette.side[p.side]; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = palette.paper; ctx.stroke();
+    ctx.font = `600 ${Math.max(10, S * 0.85)}px Karla, sans-serif`; ctx.fillStyle = palette.ink;
+    ctx.fillText(p.name, x, y + rad + S * 1.0);
+  }
+}
+
+// The strips under the map: each series by day, the chosen day marked.
+const strips = [["stHorde", d => sideCount(d)[0], "--horde"], ["stTrade", d => D.trade[d], "--road"],
+  ["stChest", d => D.series.chest[d], "--alliance"]];
+const stripVals = strips.map(([, f]) => Array.from({ length: D.last + 1 }, (_, d) => f(d)));
+function drawStrips(d) {
+  strips.forEach(([id, , color], i) => {
+    const c = $(id), w = c.clientWidth, h = c.clientHeight, dpr = window.devicePixelRatio || 1;
+    if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const v = stripVals[i], max = Math.max(1, ...v.filter(x => x != null)), xs = k => (k / D.last) * (w - 2) + 1, ys = x => h - 4 - (x / max) * (h - 10);
+    const col = css(color);
+    if (D.firstWar < D.last) { g.fillStyle = alpha(css("--line"), 0.6); g.fillRect(xs(D.firstWar), 0, w - xs(D.firstWar), h); }
+    g.beginPath(); let on = false;
+    v.forEach((x, k) => { if (x == null) { on = false; return; } const X = xs(k), Y = ys(x); on ? g.lineTo(X, Y) : g.moveTo(X, Y); on = true; });
+    g.strokeStyle = col; g.lineWidth = 1.8; g.stroke();
+    g.strokeStyle = palette.ink; g.lineWidth = 1; g.beginPath(); g.moveTo(xs(d), 0); g.lineTo(xs(d), h); g.stroke();
+    const now = v[d];
+    if (now != null) { g.fillStyle = col; g.beginPath(); g.arc(xs(d), ys(now), 3.5, 0, 2 * Math.PI); g.fill(); }
+    g.font = "600 12px Karla, sans-serif"; g.fillStyle = palette.muted; g.textAlign = "right";
+    g.fillText(Math.round(max).toLocaleString(), w - 4, 12);
+  });
+}
+
+function ledger(d) {
+  $("dayN").textContent = "Day " + d;
+  const c = sideCount(d);
+  $("sHorde").textContent = c[0]; $("sAlliance").textContent = c[1]; $("sRuins").textContent = ruinCount(d);
+  const m = D.series.marines[d], ch = D.series.chest[d];
+  $("sMarines").textContent = m == null ? "–" : m; $("sChest").textContent = ch == null ? "–" : ch.toLocaleString();
+  $("sTrade").textContent = d <= D.tradedTo ? D.trade[d] : "not traced";
+  $("untraced").hidden = d <= D.tradedTo;
+  const won = D.events.find(e => e[1].startsWith("Won") && e[0] <= d);
+  $("phase").textContent = won ? "After the war" : d >= D.firstWar ? "At war" : "Growth";
+  const log = $("log"); log.textContent = "";
+  for (const [day, text, side] of D.events.filter(e => e[0] <= d).slice(-9).reverse()) {
+    const li = document.createElement("li"), i = document.createElement("i"), t = document.createElement("span");
+    i.textContent = day; t.textContent = text; t.style.color = side < 2 ? palette.side[side] : palette.ink;
+    li.append(i, t); log.append(li);
+  }
+}
+
+const slider = $("day"); slider.max = D.last;
+let day = Math.min(D.last, Math.max(0, D.firstWar + 180)), playing = false, acc = 0, lastT = 0;
+function show(d) { day = Math.max(0, Math.min(D.last, Math.round(d))); slider.value = day; draw(day); drawStrips(day); ledger(day); }
+slider.addEventListener("input", () => show(+slider.value));
+$("play").addEventListener("click", () => { playing = !playing; if (playing && day >= D.last) day = 0; $("play").textContent = playing ? "Pause" : "Play"; lastT = 0; if (playing) requestAnimationFrame(tick); });
+function tick(t) {
+  if (!playing) return;
+  if (lastT) acc += (t - lastT) / 1000 * +$("speed").value; lastT = t;
+  if (acc >= 1) { const step = Math.floor(acc); acc -= step; show(day + step); if (day >= D.last) { playing = false; $("play").textContent = "Play"; return; } }
+  requestAnimationFrame(tick);
+}
+for (const [id] of strips) $(id).addEventListener("click", e => { const r = e.currentTarget.getBoundingClientRect(); show((e.clientX - r.left) / r.width * D.last); });
+document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") return;
+  if (e.key === "ArrowRight") show(day + 1); else if (e.key === "ArrowLeft") show(day - 1); });
+$("tradedTo").textContent = D.tradedTo;
+const redraw = () => { readPalette(); size(); show(day); };
+new ResizeObserver(() => { size(); show(day); }).observe(map.parentElement);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+readPalette(); size(); show(day);
+document.fonts && document.fonts.ready.then(() => show(day));
+</script>

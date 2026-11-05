@@ -125,6 +125,9 @@ create table lockers (day integer, town integer, hand integer, managed integer, 
 create table whys (day integer, town integer, name text, line text, times integer, items real, last integer);
 create table cash (town integer, name text, day integer, what text, amount real);
 create table paths (route integer, step integer, q integer, r integer);
+create table places (town integer, name text, people text, faction text, q integer, r integer, first_day integer);
+create table claims (day integer, q integer, r integer, town integer);
+create table claims_now (q integer, r integer, town integer, primary key (q, r));
 create table trails (q integer, r integer, width integer, wear real);
 create table disputes (id integer, town integer, target text, claimants text, why text, day integer);
 ";
@@ -272,6 +275,41 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
     if listed == 0 {
         for (i, g) in s.content().goods.iter().enumerate() {
             tx.execute("insert into goods values (?1, ?2, ?3, ?4)", params![i, bare(&g.name), g.crop, g.value]).map_err(sql)?;
+        }
+    }
+    // Each town's place and people, the day it's first seen; the land's owners as they change (-1: no one's now).
+    let peoples = s.world.resource::<enterprise_core::taxes::Taxes>().peoples.clone();
+    for t in 0..s.town_count() {
+        let placed: i64 = tx.query_row("select count(*) from places where town = ?1", params![t], |r| r.get(0)).map_err(sql)?;
+        let people = peoples.get(&t).cloned().unwrap_or_default();
+        let faction = enterprise_core::battle::Faction::of(&people).map(|f| f.name());
+        if let (0, Some(h)) = (placed, s.town_hex(t)) {
+            tx.execute("insert into places values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![t, s.town(t).name, people, faction,
+                h.q, h.r, day]).map_err(sql)?;
+        } else if placed > 0 && !people.is_empty() {
+            // (Its people, and the name they give it, once it has them.)
+            tx.execute("update places set people = ?2, faction = ?3, name = ?4 where town = ?1 and people = ''",
+                params![t, people, faction, s.town(t).name]).map_err(sql)?;
+        }
+    }
+    {
+        let owners = s.world.resource::<enterprise_core::territory::Territory>().owners.clone();
+        let mut was: BTreeMap<(i32, i32), i64> = BTreeMap::new();
+        let mut q = tx.prepare("select q, r, town from claims_now").map_err(sql)?;
+        for row in q.query_map([], |r| Ok(((r.get(0)?, r.get(1)?), r.get(2)?))).map_err(sql)? {
+            let (k, v) = row.map_err(sql)?;
+            was.insert(k, v);
+        }
+        drop(q);
+        for (h, &t) in &owners {
+            if was.remove(&(h.q, h.r)) != Some(t as i64) {
+                tx.execute("insert into claims values (?1, ?2, ?3, ?4)", params![day, h.q, h.r, t]).map_err(sql)?;
+                tx.execute("insert or replace into claims_now values (?1, ?2, ?3)", params![h.q, h.r, t]).map_err(sql)?;
+            }
+        }
+        for ((hq, hr), _) in was {
+            tx.execute("insert into claims values (?1, ?2, ?3, -1)", params![day, hq, hr]).map_err(sql)?;
+            tx.execute("delete from claims_now where q = ?1 and r = ?2", params![hq, hr]).map_err(sql)?;
         }
     }
     for t in 0..s.town_count() {
