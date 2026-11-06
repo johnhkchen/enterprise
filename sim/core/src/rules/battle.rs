@@ -172,7 +172,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     camps: [h.0, a.0], levies: Default::default(), marching: Vec::new(), holder: None, held_since: None,
                     won_by: None, began: now, days: 0, fights: 0, reckoned: None,
                     marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false, town: None,
-                    attacker: None, settled: false, field: false, raid: false, ground_side: None, depots: Default::default() };
+                    attacker: None, settled: false, field: false, raid: false, ground_side: None, depots: Default::default(), mustered: false };
                 // Each side's towns near it are levied; their levies march once its towns have had time to arm.
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, _, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
@@ -290,18 +290,36 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                             Some(crate::army::outfit(&content, ledger, stock, kits, Some(&mut people.graded)))
                         };
                         let raised = raise(&content, &mut roster, t, town_hex(t), hex, side, n - serving, now, &mut kit);
-                        // A town's levy for the war for the region marches as a squad, hex by hex (`march`).
+                        // A town's levy for the war for the region marches as a squad, hex by hex (`march`): an
+                        // attacker's to its side's camp first, to gather with the rest, till they've set off together.
                         if b.town.is_some() {
                             let soldiers = raised.into_iter().map(|m| crate::army::soldier_of(m.recruit, now)).collect();
                             *next_squad += 1;
                             let id = *next_squad;
-                            let mut q = squad(id, side, t, false, soldiers, town_hex(t).unwrap_or(hex), Some(hex));
+                            let camp = town_hex(b.camps[side]).filter(|_| b.attacker == Some(side) && !b.mustered);
+                            let mut q = squad(id, side, t, false, soldiers, town_hex(t).unwrap_or(hex), Some(camp.unwrap_or(hex)));
                             q.bound = Some(bi);
+                            q.musters = camp.is_some();
                             squads.push(q);
                         } else {
                             b.marching.extend(raised);
                         }
                     }
+                }
+            }
+        }
+        // Its attackers gathered at their camp (every town's levy there, or `muster_days` since they were raised): they
+        // set off together.
+        if let (Some(a), false) = (b.attacker, b.mustered) {
+            let camp = town_hex(b.camps[a]);
+            let gathering: Vec<usize> = (0..squads.len()).filter(|&k| squads[k].musters && squads[k].bound == Some(bi)).collect();
+            let all_there = gathering.iter().all(|&k| Some(squads[k].hex) == camp);
+            let waited = now >= b.marches + (d.muster_days.max(0.0) * day as f64) as u64;
+            if all_there || waited {
+                b.mustered = true;
+                for k in gathering {
+                    squads[k].musters = false;
+                    squads[k].goal = Some(hex);
                 }
             }
         }
@@ -491,7 +509,7 @@ fn squad(id: u32, side: usize, home: TownId, capital: bool, mut soldiers: Vec<So
         s.squad = Some(id);
     }
     crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None, bound: None, waits: false,
-        way: Vec::new(), deserting: 0.0 }
+        way: Vec::new(), deserting: 0.0, musters: false }
 }
 
 /// A town's hex.
@@ -741,7 +759,7 @@ pub fn march(world: &mut World) {
                         b.battles.push(Battle { hex, factions, armies: Default::default(), camps, levies: Default::default(),
                             marching: Vec::new(), holder: None, held_since: None, won_by: None, began: now, days: 0,
                             fights: 0, reckoned: None, marches: now, marched: false, town: None, attacker: None,
-                            settled: false, field: true, raid: false, ground_side, depots: Default::default() });
+                            settled: false, field: true, raid: false, ground_side, depots: Default::default(), mustered: false });
                         let i = b.battles.len() - 1;
                         for j in ours.into_iter().chain(theirs) {
                             b.squads[j].hex = hex;
@@ -752,8 +770,9 @@ pub fn march(world: &mut World) {
                 }
                 let Some(goal) = goal else { break };
                 if at == goal {
-                    // (A town's squad bound for a battle that's over goes home; one at its post waits.)
-                    if !homeward && !b.squads[k].capital && !b.squads[k].waits {
+                    // (A town's squad bound for a battle that's over goes home; one at its post, or gathering at its
+                    // camp, waits.)
+                    if !homeward && !b.squads[k].capital && !b.squads[k].waits && !b.squads[k].musters {
                         b.squads[k].homeward = true;
                         b.squads[k].goal = homes.get(b.squads[k].home).copied().flatten();
                     }
@@ -1624,7 +1643,7 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     Battle { hex, factions, armies: Default::default(), camps, levies, marching: Vec::new(), holder: None,
         held_since: None, won_by: None, began: now, days: 0, fights: 0, reckoned: None, marches, marched: false,
         town: Some(target), attacker: Some(side), settled: false, field: false, raid: false, ground_side: None,
-        depots: Default::default() }
+        depots: Default::default(), mustered: false }
 }
 
 /// Theramore's marines, Journeymen at arms kitted in Fine iron (John: "a larger reinforcement"), or Orgrimmar's

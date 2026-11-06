@@ -262,6 +262,37 @@ fn theramore_spent_the_alliance_marches_on_alone_where_its_levy_is_the_larger() 
 }
 
 #[test]
+fn an_attacks_levies_gather_at_its_camp_and_march_on_it_together() {
+    // (Theramore spent at once, the Alliance's towns the larger: its own attack on the Horde's, far off.)
+    let mut s = Society::new(content());
+    let d = &mut s.content_mut().dials;
+    d.war_day = 1.0;
+    d.battle_mobilise_days = 4.0;
+    d.battle_levy = 0.25;
+    d.expedition_size = 30.0;
+    d.raze_hold_days = 5.0;
+    d.war_chest_alliance = 200.0;
+    d.raid_hexes = 0.0;
+    town(&mut s, "Razor Hill", "orc", -16, 0, 12, 0.0, None);
+    town(&mut s, "Sen'jin", "orc", -16, 6, 12, 0.0, None);
+    let port = town(&mut s, "Southshore", "lordaeron", 10, 0, 30, 0.0, None);
+    let far = town(&mut s, "Goldshire", "stormwind", 20, 0, 30, 0.0, None);
+    let hex = Hex::new(10, 0);
+    s.set_port(port, hex.center_x() + 8.0, hex.center_z());
+    s.advance(60 * DAY);
+    // (John: "muster, then march"): Goldshire's levy waits at the camp, Southshore, for the rest; then they set off
+    // together, from one hex.
+    let camp = hex;
+    let at = |s: &Society, home: usize| s.battles().squads.iter().find(|q| q.home == home && q.side == 1 && !q.homeward
+        && q.bound.is_some_and(|b| s.battles().battles[b].attacker == Some(1))).map(|q| (q.hex, q.musters));
+    assert!(any_day(&mut s, 200, |s| at(s, far) == Some((camp, true))), "Goldshire's levy waits at the camp: {:?}",
+        s.battles().squads);
+    let waited = s.now() / DAY;
+    assert!(any_day(&mut s, waited + 30, |s| matches!((at(s, far), at(s, port)), (Some((a, false)), Some((b, false))) if a == b)),
+        "the two set off together: {:?}", s.battles().squads);
+}
+
+#[test]
 fn a_towns_defenders_fight_better_at_home_behind_walls_and_a_watchtower() {
     use enterprise_core::rules::battle::defence_lift;
     use enterprise_core::works::{Kind, What};

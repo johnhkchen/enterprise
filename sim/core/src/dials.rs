@@ -482,6 +482,9 @@ dials! {
     battle_reach: f64 = 20.0,
     battle_levy: f64 = 0.1,
     battle_reinforce_days: f64 = 10.0,
+    /// A town battle's attackers gather at their camp before they march on it (John: "muster, then march"): each
+    /// town's levy waits there till all have come, or `muster_days` after they set off.
+    muster_days: f64 = 10.0,
     battle_hold_days: f64 = 30.0,
     assault_breaks: f64 = 3.0,
     /// A firm offers a hand this much more than the hand earns of the town's wages a day, to take it on.

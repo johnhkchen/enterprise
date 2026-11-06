@@ -3272,3 +3272,15 @@ towns of 43 to 71 people it couldn't take an Alliance town of 7, so the war stoo
   Horde's does, however far. The first run of the rule struck at Splintertree Post with no one: an attacker's towns
   are levied only within `battle_reach` (20 hexes) of its target, and the last Horde towns lay 25 and more from any
   Alliance town; beaten off, the Horde struck back at Durnholde.
+
+## Society: muster, then march (2026-11-06)
+
+John (2026-11-06), choosing how the Alliance's levies should take a far town: "Muster, then march". With Theramore
+gone the Alliance struck Splintertree Post from all its towns (seed 1717's fork from day 930), but each town's levy
+set off on its own across 25 hexes and more: the squads came in one by one over two weeks, their packs empty, and
+the Horde's 20 beat each in turn (on day 965 one of 7 reached the battle, the rest 3 to 15 hexes off).
+- **An attack's levies gather at its camp first**: each town's squad for a town battle its side attacks marches to
+  the side's camp (Theramore's base, or its town nearest the target), waits there (`Squad::musters`), its packs
+  filled from the town's warehouse, till every one has come or `muster_days` (10) have passed since they set off;
+  then they march on it together (`Battle::mustered`). Levies raised after go straight to it. The Horde's attacks
+  muster too; a town's defenders don't.
