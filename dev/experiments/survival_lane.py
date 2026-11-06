@@ -2,7 +2,7 @@
 """One survival study on a lane of its own: a world of SEED in core/run/lanes/N, its server, the study, the server
 stopped. The ground comes from a fixture when one was kept for these flags (fixtures.py), else it's made and kept.
 
-    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY] [--fork DAY] [--audit | --no-audit] [--bid B ...] [--dial NAME=VALUE ...] [--capital TOWN[:SPURS]]
+    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY [--as-is]] [--fork DAY] [--audit | --no-audit] [--bid B ...] [--dial NAME=VALUE ...] [--capital TOWN[:SPURS]]
         [-- study flags]
 
 `--fork DAY`: the `--dial`s set on the day after DAY, not the first, the run carried on from the kept run without them
@@ -11,7 +11,9 @@ own flags (the dials and the day), its parent's journals with them. `--parent RU
 named, as `run-KEY` of the seed's (a change since that only plays in war leaves its peace's points sound; its core is
 still checked against its journals, `fixtures.resume_point`).
 
-`--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds). `--bid
+`--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds); with
+`--as-is` its core as the game saved it, loaded on this build, not checked against its journals (a rule changed that
+plays from early on, carried on from where the war stood). `--bid
 TOWN:GOOD:PRICE:COUNT[@DAY]`: a player's buying order at that network town's shop, added to the study's flags (which
 `--` replaces, the default's included).
 
@@ -102,7 +104,7 @@ def main():
     terrain = fixtures.terrain_dir(seed, flags)
     started = time.time()
     run = fixtures.run_dir(seed, flags)
-    found = fixtures.resume_point(run, int(days), print, latest)
+    found = fixtures.resume_point(run, int(days), print, latest, as_is="--as-is" in mine and latest is not None)
     if fork is not None and (not found or int(found[0].name[3:]) <= fork):
         # A fork: from its parent's point of DAY, the parent's journals beside its own (a point's chain names them).
         parent = (fixtures.run_dir(seed, parent_flags) if "--parent" not in mine
@@ -116,7 +118,7 @@ def main():
             sys.exit(f"--fork {fork}: no point of the parent run {parent.relative_to(REPO)} at day {fork} holds")
         print(f"fork: from {found[0].relative_to(REPO)}, the dials set on day {fork + 1}")
     audit = None
-    if found and int(found[0].name[3:]) > 0 and "--no-audit" not in mine:
+    if found and int(found[0].name[3:]) > 0 and "--no-audit" not in mine and "--as-is" not in mine:
         changed = fixtures.unlisted_changes(found[0])
         if changed or "--audit" in mine:
             reused = found[0]

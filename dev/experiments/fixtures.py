@@ -213,14 +213,20 @@ def answers(run, chain):
     return out
 
 
-def resume_point(run, days, say, latest=None):
+def resume_point(run, days, say, latest=None, as_is=False):
     """The latest point of the run before `days` this build would have made the same, its core rebased onto this build
-    (`world/enterprise_core.dat` replaced by the build's own save at that point): (point, seconds it saves), or None."""
+    (`world/enterprise_core.dat` replaced by the build's own save at that point): (point, seconds it saves), or None.
+    `as_is`: the latest point at all, its core as the game saved it, loaded on this build (a rule changed from then
+    on: the war as it stood, carried on under the new rules; not checked against its journals)."""
     points = sorted((p.parent for p in run.glob("day*/fixture.json")), key=lambda p: -int(p.name[3:]))
     for point in points:
         day = int(point.name[3:])
         if day >= days or (latest is not None and day > latest):
             continue
+        if as_is:
+            shutil.copy2(point / "world" / "enterprise_core.dat", point / "rebased.dat")
+            say(f"points: day {day} as it is: its core as the game saved it, on this build (not checked against its journals)")
+            return point, json.loads((point / "fixture.json").read_text())["seconds"]
         chain = json.loads((point / "world" / "study.json").read_text())["chain"]
         n = sum(b - a for _, a, b in chain)
         rebased = (point / "rebased.dat").resolve()

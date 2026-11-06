@@ -172,7 +172,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                     camps: [h.0, a.0], levies: Default::default(), marching: Vec::new(), holder: None, held_since: None,
                     won_by: None, began: now, days: 0, fights: 0, reckoned: None,
                     marches: now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64, marched: false, town: None,
-                    attacker: None, settled: false, field: false, raid: false, ground_side: None, depots: Default::default(), mustered: false };
+                    attacker: None, settled: false, field: false, raid: false, ground_side: None, depots: Default::default() };
                 // Each side's towns near it are levied; their levies march once its towns have had time to arm.
                 for (side, &faction) in battle.factions.clone().iter().enumerate() {
                     for &(t, _, _) in towns.iter().filter(|x| x.2 == faction && x.1.distance(hex) as f64 <= d.battle_reach) {
@@ -296,10 +296,10 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                             let soldiers = raised.into_iter().map(|m| crate::army::soldier_of(m.recruit, now)).collect();
                             *next_squad += 1;
                             let id = *next_squad;
-                            let camp = town_hex(b.camps[side]).filter(|_| b.attacker == Some(side) && !b.mustered);
+                            let camp = town_hex(b.camps[side]).filter(|&c| c != hex && b.attacker == Some(side)
+                                && now < b.marches + MUSTER_DAYS * day);
                             let mut q = squad(id, side, t, false, soldiers, town_hex(t).unwrap_or(hex), Some(camp.unwrap_or(hex)));
                             q.bound = Some(bi);
-                            q.musters = camp.is_some();
                             squads.push(q);
                         } else {
                             b.marching.extend(raised);
@@ -308,17 +308,15 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 }
             }
         }
-        // Its attackers gathered at their camp (every town's levy there, or `muster_days` since they were raised): they
-        // set off together.
-        if let (Some(a), false) = (b.attacker, b.mustered) {
-            let camp = town_hex(b.camps[a]);
-            let gathering: Vec<usize> = (0..squads.len()).filter(|&k| squads[k].musters && squads[k].bound == Some(bi)).collect();
-            let all_there = gathering.iter().all(|&k| Some(squads[k].hex) == camp);
-            let waited = now >= b.marches + (d.muster_days.max(0.0) * day as f64) as u64;
-            if all_there || waited {
-                b.mustered = true;
+        // Its attackers gathered at their camp (every town's levy bound there come, or `MUSTER_DAYS` since they were
+        // raised): they set off together. (A squad gathering is one bound for it, its side attacking, its goal the camp.)
+        if let Some(camp) = b.attacker.and_then(|a| town_hex(b.camps[a]).map(|c| (a, c))).filter(|&(_, c)| c != hex) {
+            let (a, camp) = camp;
+            let gathering: Vec<usize> = (0..squads.len()).filter(|&k| squads[k].bound == Some(bi) && squads[k].side == a
+                && !squads[k].homeward && squads[k].goal == Some(camp)).collect();
+            let all_there = gathering.iter().all(|&k| squads[k].hex == camp);
+            if !gathering.is_empty() && (all_there || now >= b.marches + MUSTER_DAYS * day) {
                 for k in gathering {
-                    squads[k].musters = false;
                     squads[k].goal = Some(hex);
                 }
             }
@@ -509,7 +507,7 @@ fn squad(id: u32, side: usize, home: TownId, capital: bool, mut soldiers: Vec<So
         s.squad = Some(id);
     }
     crate::battle::Squad { id, side, home, capital, soldiers, hex, goal, homeward: false, battle: None, bound: None, waits: false,
-        way: Vec::new(), deserting: 0.0, musters: false }
+        way: Vec::new(), deserting: 0.0 }
 }
 
 /// A town's hex.
@@ -759,7 +757,7 @@ pub fn march(world: &mut World) {
                         b.battles.push(Battle { hex, factions, armies: Default::default(), camps, levies: Default::default(),
                             marching: Vec::new(), holder: None, held_since: None, won_by: None, began: now, days: 0,
                             fights: 0, reckoned: None, marches: now, marched: false, town: None, attacker: None,
-                            settled: false, field: true, raid: false, ground_side, depots: Default::default(), mustered: false });
+                            settled: false, field: true, raid: false, ground_side, depots: Default::default() });
                         let i = b.battles.len() - 1;
                         for j in ours.into_iter().chain(theirs) {
                             b.squads[j].hex = hex;
@@ -771,8 +769,10 @@ pub fn march(world: &mut World) {
                 let Some(goal) = goal else { break };
                 if at == goal {
                     // (A town's squad bound for a battle that's over goes home; one at its post, or gathering at its
-                    // camp, waits.)
-                    if !homeward && !b.squads[k].capital && !b.squads[k].waits && !b.squads[k].musters {
+                    // camp for the battle its side attacks, waits.)
+                    let gathering = b.squads[k].bound.and_then(|i| b.battles.get(i)).is_some_and(|x| x.won_by.is_none()
+                        && x.attacker == Some(side) && x.hex != goal && homes.get(x.camps[side]).copied().flatten() == Some(goal));
+                    if !homeward && !b.squads[k].capital && !b.squads[k].waits && !gathering {
                         b.squads[k].homeward = true;
                         b.squads[k].goal = homes.get(b.squads[k].home).copied().flatten();
                     }
@@ -1593,6 +1593,11 @@ pub fn procure(world: &mut World) {
 /// Days a side regroups between one battle of the war and its next.
 const REGROUP_DAYS: u64 = 3;
 
+/// A town battle's attackers gather at their camp before they march on it (John: "muster, then march"): each town's
+/// levy waits there till all have come, or this many days after they set off. (Not a dial: a dial is saved with the
+/// world, and a new one is a new shape of save.)
+const MUSTER_DAYS: u64 = 10;
+
 /// A town's faction, if it's a faction's and not ruins.
 fn faction_of(world: &World, t: TownId) -> Option<Faction> {
     if world.resource::<Battles>().ruins.contains(&t) {
@@ -1643,7 +1648,7 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     Battle { hex, factions, armies: Default::default(), camps, levies, marching: Vec::new(), holder: None,
         held_since: None, won_by: None, began: now, days: 0, fights: 0, reckoned: None, marches, marched: false,
         town: Some(target), attacker: Some(side), settled: false, field: false, raid: false, ground_side: None,
-        depots: Default::default(), mustered: false }
+        depots: Default::default() }
 }
 
 /// Theramore's marines, Journeymen at arms kitted in Fine iron (John: "a larger reinforcement"), or Orgrimmar's

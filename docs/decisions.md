@@ -3280,7 +3280,11 @@ gone the Alliance struck Splintertree Post from all its towns (seed 1717's fork 
 set off on its own across 25 hexes and more: the squads came in one by one over two weeks, their packs empty, and
 the Horde's 20 beat each in turn (on day 965 one of 7 reached the battle, the rest 3 to 15 hexes off).
 - **An attack's levies gather at its camp first**: each town's squad for a town battle its side attacks marches to
-  the side's camp (Theramore's base, or its town nearest the target), waits there (`Squad::musters`), its packs
-  filled from the town's warehouse, till every one has come or `muster_days` (10) have passed since they set off;
-  then they march on it together (`Battle::mustered`). Levies raised after go straight to it. The Horde's attacks
-  muster too; a town's defenders don't.
+  the side's camp (Theramore's base, or its town nearest the target) and waits there, its packs filled from the
+  town's warehouse, till every one has come or `MUSTER_DAYS` (10) have passed since they set off; then they march on
+  it together. Levies raised after that go straight to it. The Horde's attacks muster too; a town's defenders don't.
+- **No new state**: a squad gathering is one bound for a battle its side attacks whose goal is still the camp, and
+  the wait is a constant, not a dial (dials are saved with the world). The save keeps its shape, so a kept world from
+  before loads on this core and the war carries on under the rule (seed 1717's Alliance fork from its day-930 point:
+  `survival_lane.py --from 930 --as-is`); flags on `Battle` and `Squad` and a `muster_days` dial made day 930's save
+  unreadable ("a bool that wasn't 0 or 1": postcard has no field names, `save.rs`).

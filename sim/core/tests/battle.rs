@@ -283,8 +283,9 @@ fn an_attacks_levies_gather_at_its_camp_and_march_on_it_together() {
     // (John: "muster, then march"): Goldshire's levy waits at the camp, Southshore, for the rest; then they set off
     // together, from one hex.
     let camp = hex;
+    // (A squad's hex, and whether it's still gathering: its goal the camp.)
     let at = |s: &Society, home: usize| s.battles().squads.iter().find(|q| q.home == home && q.side == 1 && !q.homeward
-        && q.bound.is_some_and(|b| s.battles().battles[b].attacker == Some(1))).map(|q| (q.hex, q.musters));
+        && q.bound.is_some_and(|b| s.battles().battles[b].attacker == Some(1))).map(|q| (q.hex, q.goal == Some(camp)));
     assert!(any_day(&mut s, 200, |s| at(s, far) == Some((camp, true))), "Goldshire's levy waits at the camp: {:?}",
         s.battles().squads);
     let waited = s.now() / DAY;

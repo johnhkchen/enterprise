@@ -123,10 +123,6 @@ pub struct Battle {
     /// supply wagons from its camp (`Supply`); a side at home eats from its town's warehouse.
     #[serde(default)]
     pub depots: [Vec<f64>; 2],
-    /// Its attackers' levies gathered at their camp and set off together (John: "muster, then march"): till then each
-    /// town's waits there (`Squad::musters`).
-    #[serde(default)]
-    pub mustered: bool,
 }
 
 impl Battle {
@@ -207,9 +203,6 @@ pub struct Squad {
     /// Its hungry's summed chance of deserting, carried (as `Army::deserting`).
     #[serde(default)]
     pub deserting: f64,
-    /// Gathering at its side's camp for the battle it's bound for, to march on it with the rest (`Battle::mustered`).
-    #[serde(default)]
-    pub musters: bool,
 }
 
 impl Squad {
