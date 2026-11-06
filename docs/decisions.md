@@ -3257,3 +3257,14 @@ march down to 73 in 16 days), and some 9 reached each battle against 40.
   on day 525 and the Horde razes 4 of the 7 Alliance towns after (none before foraging). Clear wins: with 250,000,
   150 marines, ships every 10 days and two Alliance heroes the Alliance razes all 16 Horde towns by day 788; with
   40,000 and three Horde heroes Theramore withdraws on day 299 and the Horde razes all 7 Alliance towns by day 510.
+
+## Society: the Alliance marches on alone (2026-11-06)
+
+John (2026-11-06), choosing how the Alliance's war should end: "Alliance marches on alone". On seed 1717's game run
+(250,000, 150 marines, ships every 10 days, two Alliance heroes) Theramore razed 13 of the 16 Horde towns, then its
+chest ran dry on day 874 and it withdrew; from then only the Horde struck (the rule for a withdrawal), and with 3
+towns of 43 to 71 people it couldn't take an Alliance town of 7, so the war stood still to day 1000.
+- **Theramore gone, the region's own towns fight it out**: a side's attack beaten off, the other strikes; else the
+  side whose towns' levy (`battle_levy` of their people) is the larger strikes the other's town nearest, the Horde
+  on a tie. Before, the Horde always struck after a withdrawal: it still does where its towns are the larger, as on
+  the Horde's win (16 towns to 7).

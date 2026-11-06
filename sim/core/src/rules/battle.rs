@@ -1952,8 +1952,16 @@ pub fn campaign(world: &mut World) {
             + alliance.iter().filter_map(|&(t, _)| world.get::<Roster>(towns[t])).map(|r| levy_of(&content, r)).sum::<usize>();
         let outnumbers = pin as f64 >= d.pin_odds * theirs.max(1) as f64;
         let horde_beaten = beaten_off.is_some_and(|(att, ..)| att == Faction::Horde);
-        let horde_strikes = c.withdrew.is_some() || beaten_off.is_some_and(|(att, ..)| att == Faction::Alliance)
-            || !horde_beaten && outnumbers;
+        let alliance_beaten = beaten_off.is_some_and(|(att, ..)| att == Faction::Alliance);
+        // Theramore gone, the region's own towns fight it out (John: the Alliance "marches on alone"): a side's attack
+        // beaten off, the other strikes; else the side whose towns' levy is the larger (the Horde's, even).
+        let levy = |side: &[(TownId, Hex)]| -> usize { side.iter().filter_map(|&(t, _)| world.get::<Roster>(towns[t]))
+            .map(|r| levy_of(&content, r)).sum() };
+        let horde_strikes = if c.withdrew.is_some() {
+            alliance_beaten || !horde_beaten && levy(&horde) >= levy(&alliance)
+        } else {
+            alliance_beaten || !horde_beaten && outnumbers
+        };
         let (attacker, target) = if horde_strikes {
             // At the Alliance's camp, its base while it stands; else its town nearest.
             let from = beaten_off.map(|b| b.2).or(last.as_ref().map(|b| b.hex)).unwrap_or(horde[0].1);
