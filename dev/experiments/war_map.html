@@ -40,6 +40,7 @@ header p { margin: 0; color: var(--muted); max-width: 70ch }
 .surface { background: var(--cream); border-radius: 18px;
   box-shadow: 6px 8px 18px rgb(var(--shadow) / .10), -4px -4px 10px rgb(255 255 255 / .35) inset }
 .map { position: relative; padding: 8px; min-width: 0 }
+#wagons { position: absolute; pointer-events: none }
 #map { display: block; width: 100%; height: auto; border-radius: 12px; background: var(--paper); touch-action: none }
 .untraced { position: absolute; left: 20px; bottom: 18px; font-size: 12px; color: var(--muted);
   background: var(--paper); padding: 2px 8px; border-radius: 8px }
@@ -84,6 +85,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   <div class="table">
     <div class="surface map">
       <canvas id="map" width="900" height="640" aria-label="The region's hexes on the chosen day"></canvas>
+      <canvas id="wagons" aria-hidden="true"></canvas>
       <div class="untraced" id="untraced" hidden>No caravans traced past the journal's day <span id="tradedTo"></span></div>
     </div>
     <aside class="surface ledger">
@@ -94,6 +96,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <dt>Ruins</dt><dd id="sRuins">0</dd>
         <dt>Marines in the field</dt><dd id="sMarines">0</dd>
         <dt>Theramore's chest left</dt><dd id="sChest">0</dd>
+        <dt>Caravans on the road today</dt><dd id="sAway">0</dd>
         <dt>Wagons, last 30 days</dt><dd id="sTrade">0</dd>
         <dt>Theramore's supply wagons through</dt><dd id="sSupply">0</dd>
         <dt>Theramore's supply wagons taken</dt><dd id="sTaken">0</dd>
@@ -108,6 +111,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
         <span><i class="sw" style="background:var(--neutral)"></i>Hamlets of no side</span>
         <span><i class="sw" style="background:var(--ruin);outline:2px solid var(--ember)"></i>A razed town's ruin</span>
         <span><i class="sw" style="border:2px solid var(--road)"></i>Caravan road, wider for more wagons</span>
+        <span><i class="sw" style="background:var(--road);clip-path:polygon(0 0,100% 50%,0 100%);border-radius:0"></i>A caravan, pointing where it's heading (hollow coming home)</span>
         <span><i class="sw" style="background:var(--alliance);border-radius:1px"></i>A supply wagon (hollow going home empty)</span>
         <span><i class="sw" style="background:var(--ember);border-radius:50%"></i>A fight, as big as its dead, fading over 12 days</span>
         <span id="keyGround"><i class="sw" style="background:var(--woods)"></i>Woods <i class="sw" style="background:var(--hills)"></i>Hills <i class="sw" style="background:var(--water)"></i>Water <i class="sw" style="background:none;border-bottom:3px solid var(--river);border-radius:0"></i>River</span>
@@ -143,17 +147,40 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 
 <script>
 const RUNS = __DATA__;
-// The world's own ground, from its region files (`world_render.overview`), if the map was made with one.
-const WORLD = __WORLD__;
-const worldImg = WORLD ? new Image() : null;
-if (WORLD) document.getElementById("keyGround").textContent = "The ground as the world has it: rivers, woods, fields by crop, towns" + (WORLD.note ? ", " + WORLD.note : "");
-if (worldImg) { worldImg.onload = () => { terrain = null; show(day); }; worldImg.src = "data:image/png;base64," + WORLD.img; }
-let D, run = 0;
+// Each run's own ground, from its world's region files (`world_render.overview`), if the map was made with them.
+const WORLDS = __WORLD__;
+const worldImgs = WORLDS.map(w => { const im = new Image(); im.onload = () => { terrain = null; show(day); }; im.src = "data:image/png;base64," + w.img; return im; });
+let D, run = 0, WORLD = null, worldImg = null;
+const keyGroundText = document.getElementById("keyGround").innerHTML;
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const SQ3 = Math.sqrt(3);
 const DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 const key = (q, r) => q + "," + r;
+let pathOf, lineOf, tripsByLeft, away = 0;
+// Blocks to the map: a hex is 80/√3 blocks centre to corner, its centre at (√3(q + r/2), 1.5r) of those.
+const BLOCKS = 80 / SQ3, hexBlocks = (q, r) => [BLOCKS * SQ3 * (q + r / 2), BLOCKS * 1.5 * r];
+const pxB = (x, z) => [ox + S * x / BLOCKS, oy + S * z / BLOCKS];
+// A route's way in blocks: the world's own road between two of its towns where it built one (D.roads), else from hex
+// centre to hex centre; with the distance along it at each point.
+function routeLine(path) {
+  const roads = new Map();
+  for (const r of D.roads || []) { roads.set(key(...r.a) + ">" + key(...r.b), r.line); roads.set(key(...r.b) + ">" + key(...r.a), [...r.line].reverse()); }
+  const ends = new Set((D.roads || []).flatMap(r => [key(...r.a), key(...r.b)]));
+  const pts = [];
+  for (let i = 0; i < path.length;) {
+    let j = -1;
+    if (ends.has(key(...path[i]))) for (let k = path.length - 1; k > i; k--) if (roads.has(key(...path[i]) + ">" + key(...path[k]))) { j = k; break; }
+    if (j > 0) { pts.push(...roads.get(key(...path[i]) + ">" + key(...path[j]))); i = j; if (i === path.length - 1) break; continue; }
+    pts.push(hexBlocks(...path[i])); i++;
+  }
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  return { pts, cum };
+}
+// The caravans on the road on day d: left by then and not yet home.
+const onRoad = d => { const out = []; for (let i = lowerBy(tripsByLeft, d - away); i < tripsByLeft.length && tripsByLeft[i][1] <= d; i++) if (tripsByLeft[i][2] >= d) out.push(tripsByLeft[i]); return out; };
+const lowerBy = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m][1] < x) lo = m + 1; else hi = m; } return lo; };
 let byTown, battlesOn, squadsOn, suppliesOn, fightsOn, tripDays, bx, by, groundAt, hLo, hHi, zocHexes, fallenSum;
 const lower = (a, x) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < x) lo = m + 1; else hi = m; } return lo; };
 const alive = (p, d) => p.first <= d && !(p.razed != null && p.razed <= d);
@@ -168,6 +195,11 @@ function index() {
   tripDays = new Map();
   for (const [r, d] of D.trips) (tripDays.get(r) || tripDays.set(r, []).get(r)).push(d);
   for (const v of tripDays.values()) v.sort((a, b) => a - b);
+  // The caravans away by day (none longer than `AWAY` on the road), and each road's hexes.
+  pathOf = new Map(D.routes.map(r => [r.id, r.path]));
+  lineOf = new Map(D.routes.map(r => [r.id, routeLine(r.path)]));
+  tripsByLeft = D.trips.filter(t => t[2] != null && t[2] >= t[1]).sort((a, b) => a[1] - b[1]);
+  away = tripsByLeft.reduce((m, t) => Math.max(m, t[2] - t[1]), 0);
   // (The fallen so far, by side, by day.)
   fallenSum = [[0], [0]];
   const perDay = [new Array(D.last + 2).fill(0), new Array(D.last + 2).fill(0)];
@@ -188,7 +220,7 @@ function index() {
   terrain = null;
 }
 
-const map = $("map"), ctx = map.getContext("2d");
+const map = $("map"), ctx = map.getContext("2d"), wl = $("wagons"), wctx = wl.getContext("2d");
 let W = 900, H = 640, S = 10, ox = 0, oy = 0;
 function size() {
   const w = map.clientWidth, aspect = (by[1] - by[0]) / (bx[1] - bx[0]);
@@ -196,16 +228,22 @@ function size() {
   const dpr = window.devicePixelRatio || 1;
   map.width = Math.round(w * dpr); map.height = Math.round(h * dpr); map.style.height = h + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  wl.width = map.width; wl.height = map.height; wl.style.width = w + "px"; wl.style.height = h + "px";
+  wl.style.left = map.offsetLeft + "px"; wl.style.top = map.offsetTop + "px"; wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   W = w; H = h; S = Math.min(W / (bx[1] - bx[0]), H / (by[1] - by[0]));
   ox = (W - S * (bx[1] - bx[0])) / 2 - S * bx[0]; oy = (H - S * (by[1] - by[0])) / 2 - S * by[0];
 }
 const px = (q, r) => [ox + S * SQ3 * (q + r / 2), oy + S * 1.5 * r];
 const corner = (x, y, i, k = 1) => { const a = Math.PI / 180 * (60 * i - 30); return [x + S * k * Math.cos(a), y + S * k * Math.sin(a)]; };
 function hexPath(x, y, k = 1) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const [cx, cy] = corner(x, y, i, k); i ? ctx.lineTo(cx, cy) : ctx.moveTo(cx, cy); } ctx.closePath(); }
+// A color at an opacity, kept: a canvas parsed a color a call, and the zone of control asks one a hex a day.
+const alphas = new Map(), parser = document.createElement("canvas").getContext("2d");
 function alpha(color, a) {
-  const c = document.createElement("canvas").getContext("2d"); c.fillStyle = color; const h = c.fillStyle;
-  if (h.startsWith("#")) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
-  return h;
+  const k = color + "|" + a; let v = alphas.get(k); if (v) return v;
+  parser.fillStyle = color; const h = parser.fillStyle;
+  if (h.startsWith("#")) { const n = parseInt(h.slice(1), 16); v = `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+  else v = h;
+  alphas.set(k, v); return v;
 }
 
 function owners(d) {
@@ -220,7 +258,7 @@ function readPalette() {
     ruin: css("--ruin"), ember: css("--ember"), side: [css("--horde"), css("--alliance"), css("--neutral")] };
   palette.fill = palette.side.map(c => alpha(c, 0.30));
   palette.edge = palette.side.map(c => alpha(c, 0.85));
-  palette.roadA = alpha(palette.road, 0.5);
+  palette.roadA = alpha(palette.road, 0.28);
   palette.land = ["--plains", "--woods", "--taiga", "--desert", "--shore", "--hills", "--water"].map(css);
   palette.river = css("--river");
   terrain = null;
@@ -265,8 +303,9 @@ function drawTerrain() {
 
 // Each side's pull on a hex: its towns by their people, its squads by their soldiers, fading with distance; the
 // land a town holds a little more. The colour leans to whoever pulls harder, faint where neither does.
+// Hexes of one shade filled together, a path a shade (opacity to a hundredth).
 function drawZoc(d, own) {
-  const src = [];
+  const src = [], fills = new Map();
   for (const p of D.places) if (alive(p, d) && p.side < 2) src.push([p.q, p.r, p.side, 6 + (p.pop[Math.min(d, p.pop.length - 1)] || 0), 3]);
   for (const s of squadsOn.get(d) || []) src.push([s[4], s[5], s[1], s[3] * 0.8, 2.2]);
   for (const b of battlesOn.get(d) || []) { src.push([b[2], b[3], 0, b[8] * 0.8, 2.2]); src.push([b[2], b[3], 1, b[9] * 0.8, 2.2]); }
@@ -281,10 +320,13 @@ function drawZoc(d, own) {
     }
     const sum = pull[0] + pull[1]; if (sum < 0.5) continue;
     const lean = (pull[1] - pull[0]) / sum, strength = sum / (sum + 6);
-    const a = Math.abs(lean) * strength * 0.38; if (a < 0.03) continue;
-    const [x, y] = px(q, r); hexPath(x, y, 1.02);
-    ctx.fillStyle = lean > 0 ? alpha(palette.side[1], a) : alpha(palette.side[0], a); ctx.fill();
+    const a = Math.round(Math.abs(lean) * strength * 38) / 100; if (a < 0.03) continue;
+    const style = alpha(palette.side[lean > 0 ? 1 : 0], a), [x, y] = px(q, r);
+    let path = fills.get(style); if (!path) fills.set(style, path = new Path2D());
+    for (let i = 0; i < 6; i++) { const [cx, cy] = corner(x, y, i, 1.02); i ? path.lineTo(cx, cy) : path.moveTo(cx, cy); }
+    path.closePath();
   }
+  for (const [style, path] of fills) { ctx.fillStyle = style; ctx.fill(path); }
 }
 
 function draw(d) {
@@ -292,19 +334,20 @@ function draw(d) {
   const own = owners(d), on = id => $(id).checked;
   if (on("lTerrain") && D.ground.length) { if (!terrain) drawTerrain(); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(terrain, 0, 0); ctx.restore(); }
   if (on("lZoc")) drawZoc(d, own);
-  // Each town's land outlined by its side where another's begins (filled faintly with no terrain under it).
-  ctx.lineWidth = 1;
+  // Each town's land outlined by its side where another's begins (filled faintly with no terrain under it), a path a side.
+  const edges = [new Path2D(), new Path2D(), new Path2D()];
   for (const [k, t] of on("lBorders") ? own : []) {
     const [q, r] = k.split(",").map(Number), p = byTown.get(t), s = p ? p.side : 2, [x, y] = px(q, r);
     if (!on("lTerrain") && !on("lZoc")) { hexPath(x, y, 0.97); ctx.fillStyle = palette.fill[s]; ctx.fill(); }
-    ctx.strokeStyle = palette.edge[s]; ctx.lineWidth = Math.max(1, S * 0.12);
     for (let i = 0; i < 6; i++) {
       const n = own.get(key(q + DIRS[i][0], r + DIRS[i][1]));
       if (n === t) continue;
       const [ax, ay] = corner(x, y, i, 0.97), [cx, cy] = corner(x, y, (i + 1) % 6, 0.97);
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(cx, cy); ctx.stroke();
+      edges[s].moveTo(ax, ay); edges[s].lineTo(cx, cy);
     }
   }
+  ctx.lineWidth = Math.max(1, S * 0.12);
+  edges.forEach((path, s) => { ctx.strokeStyle = palette.edge[s]; ctx.stroke(path); });
   // The caravan roads, as wide as their last 30 days' wagons.
   if (d <= D.tradedTo && on("lRoads")) {
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = palette.roadA;
@@ -312,7 +355,7 @@ function draw(d) {
       const days = tripDays.get(r.id); if (!days) continue;
       const n = lower(days, d + 1) - lower(days, d - 29); if (!n) continue;
       ctx.lineWidth = Math.min(S * 0.5, 0.8 + Math.sqrt(n) * S * 0.07);
-      ctx.beginPath(); r.path.forEach(([q, rr], i) => { const [x, y] = px(q, rr); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+      ctx.beginPath(); lineOf.get(r.id).pts.forEach(([x, z], i) => { const [X, Y] = pxB(x, z); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke();
     }
   }
   // The battles for a hex today: the attacker's ring, and while it holds a town, the days held toward its razing.
@@ -328,27 +371,10 @@ function draw(d) {
     ctx.font = `600 ${Math.max(10, S * 0.75)}px Karla, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = palette.ink;
     if (h + a) ctx.fillText(`${a} v ${h}`, x, y - S * 1.55);
   }
-  // The squads on the march (a capital's a diamond).
-  const stacked = new Map();
-  for (const s of squadsOn.get(d) || []) {
-    const [, side, capital, n, q, r] = s, k = key(q, r), j = stacked.get(k) || 0; stacked.set(k, j + 1);
-    let [x, y] = px(q, r); x += (j % 3 - 1) * S * 0.55; y += S * 0.55 + Math.floor(j / 3) * S * 0.5;
-    const rad = Math.max(2, Math.sqrt(n) * S * 0.12);
-    ctx.fillStyle = palette.side[side]; ctx.strokeStyle = palette.paper; ctx.lineWidth = 1.2; ctx.beginPath();
-    if (capital) { ctx.moveTo(x, y - rad * 1.3); ctx.lineTo(x + rad * 1.3, y); ctx.lineTo(x, y + rad * 1.3); ctx.lineTo(x - rad * 1.3, y); ctx.closePath(); }
-    else ctx.arc(x, y, rad, 0, 2 * Math.PI);
-    ctx.fill(); ctx.stroke();
-  }
-  // The supply wagons on their way: a square, hollow when it's going home empty.
-  for (const [, side, q, r, food, , homeward] of suppliesOn.get(d) || []) {
-    const [x, y] = px(q, r), h = Math.max(3, S * 0.42);
-    ctx.lineWidth = 1.4; ctx.strokeStyle = homeward ? palette.side[side] : palette.paper;
-    ctx.fillStyle = palette.side[side];
-    if (homeward && !food) ctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h);
-    else { ctx.fillRect(x - h / 2, y - h / 2 - S * 0.5, h, h); ctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h); }
-  }
-  // The towns, as big as their people; a ruin charred.
+  // The towns, as big as their people; a ruin charred. A town's name is faint unless there's a battle within NEAR hexes.
   ctx.textAlign = "center";
+  const fought = (battlesOn.get(d) || []).map(b => [b[2], b[3]]);
+  const named = p => ctx.globalAlpha = fought.some(([q, r]) => hexDist(q, r, p.q, p.r) <= NEAR) ? 1 : 0.4;
   for (const p of D.places) {
     if (p.first > d) continue;
     const [x, y] = px(p.q, p.r), ruined = p.razed != null && p.razed <= d;
@@ -357,14 +383,14 @@ function draw(d) {
       ctx.beginPath(); ctx.moveTo(x - S * 0.35, y - S * 0.35); ctx.lineTo(x + S * 0.35, y + S * 0.35);
       ctx.moveTo(x + S * 0.35, y - S * 0.35); ctx.lineTo(x - S * 0.35, y + S * 0.35); ctx.stroke();
       ctx.font = `italic 400 ${Math.max(10, S * 0.8)}px Lora, serif`; ctx.fillStyle = palette.muted;
-      ctx.fillText(p.name, x, y + S * 1.6);
+      named(p); ctx.fillText(p.name, x, y + S * 1.6); ctx.globalAlpha = 1;
       continue;
     }
     const n = p.pop[Math.min(d, p.pop.length - 1)] || 0, rad = Math.max(S * 0.3, Math.sqrt(n) * S * 0.16);
     ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fillStyle = palette.side[p.side]; ctx.fill();
     ctx.lineWidth = 1.5; ctx.strokeStyle = palette.paper; ctx.stroke();
     ctx.font = `600 ${Math.max(10, S * 0.85)}px Karla, sans-serif`; ctx.fillStyle = palette.ink;
-    ctx.fillText(p.name, x, y + rad + S * 1.0);
+    named(p); ctx.fillText(p.name, x, y + rad + S * 1.0); ctx.globalAlpha = 1;
   }
   // The fights of the last `FADE` days where they were: a burst as big as its dead, fading; a wagon taken, a cross.
   if (on("lFights")) {
@@ -392,7 +418,92 @@ function draw(d) {
   }
 }
 
-const FADE = 12;
+// The caravans on their own layer over the map, moving through the day: at time t (in days, a day 24,000 ticks) each
+// is out along its road the first half of its time away and home along it the second, a fading streak behind it of
+// where it was the last TRAIL of a day. Playing, t runs on between the days; paused, the chosen day plays over and over.
+const TRAIL = 0.15, DAY_MS = 4000, still = window.matchMedia("(prefers-reduced-motion: reduce)");
+// Where along its line at share g (0 to 1) of the way: the point and the way's heading there.
+function at(line, g) {
+  const { pts, cum } = line, len = cum[cum.length - 1] * g;
+  let lo = 0, hi = cum.length - 1;
+  while (lo < hi - 1) { const m = (lo + hi) >> 1; if (cum[m] <= len) lo = m; else hi = m; }
+  const a = pts[lo], b = pts[Math.min(lo + 1, pts.length - 1)], seg = cum[hi] - cum[lo] || 1, k = Math.min(1, (len - cum[lo]) / seg);
+  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, Math.atan2(b[1] - a[1], b[0] - a[0])];
+}
+// Where each of a day's squads stands (by its id), side by side with others on its hex.
+function squadSpots(d) {
+  const spots = new Map(), stacked = new Map();
+  for (const s of squadsOn.get(d) || []) {
+    const [, , , , q, r, id] = s, k = key(q, r), j = stacked.get(k) || 0; stacked.set(k, j + 1);
+    const [x, y] = px(q, r); spots.set(id, [x + (j % 3 - 1) * S * 0.55, y + S * 0.55 + Math.floor(j / 3) * S * 0.5]);
+  }
+  return spots;
+}
+const ease = k => k * k * (3 - 2 * k);
+// The squads on the march (a capital's a diamond) and the supply wagons, each from its hex of the day to its hex of the
+// next (eased), where it stays if it's gone by then.
+function drawArmies(t) {
+  const d = Math.floor(t), k = ease(t - d), here = squadSpots(d), there = squadSpots(d + 1);
+  for (const s of squadsOn.get(d) || []) {
+    const [, side, capital, n, , , id] = s, a = here.get(id), b = there.get(id) || a;
+    const x = a[0] + (b[0] - a[0]) * k, y = a[1] + (b[1] - a[1]) * k, rad = Math.max(2, Math.sqrt(n) * S * 0.12);
+    wctx.fillStyle = palette.side[side]; wctx.strokeStyle = palette.paper; wctx.lineWidth = 1.2; wctx.beginPath();
+    if (capital) { wctx.moveTo(x, y - rad * 1.3); wctx.lineTo(x + rad * 1.3, y); wctx.lineTo(x, y + rad * 1.3); wctx.lineTo(x - rad * 1.3, y); wctx.closePath(); }
+    else wctx.arc(x, y, rad, 0, 2 * Math.PI);
+    wctx.fill(); wctx.stroke();
+  }
+  // The supply wagons on their way: a square, hollow when it's going home empty.
+  const next = new Map((suppliesOn.get(d + 1) || []).map(w => [w[7], w])), h = Math.max(3, S * 0.42);
+  for (const [, side, q, r, food, , homeward, id] of suppliesOn.get(d) || []) {
+    const to = next.get(id) || [, , q, r], [ax, ay] = px(q, r), [cx, cy] = px(to[2], to[3]);
+    const x = ax + (cx - ax) * k, y = ay + (cy - ay) * k;
+    wctx.lineWidth = 1.4; wctx.strokeStyle = homeward ? palette.side[side] : palette.paper;
+    wctx.fillStyle = palette.side[side];
+    if (homeward && !food) wctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h);
+    else { wctx.fillRect(x - h / 2, y - h / 2 - S * 0.5, h, h); wctx.strokeRect(x - h / 2, y - h / 2 - S * 0.5, h, h); }
+  }
+}
+function drawWagons(t) {
+  wctx.clearRect(0, 0, W, H);
+  const d = Math.floor(t);
+  drawArmies(t);
+  if (d > D.tradedTo || !$("lRoads").checked) return;
+  // As big as an army's supply wagon: a triangle its length, its point where it's heading.
+  const L = Math.max(4, S * 0.5), B = L * 0.34, N = 4, trail = [alpha(palette.road, 0.12), alpha(palette.road, 0.22), alpha(palette.road, 0.34), alpha(palette.road, 0.48)];
+  wctx.lineCap = "round"; wctx.lineJoin = "round";
+  for (const [route, , , lt, ht] of onRoad(d)) {
+    const line = lineOf.get(route), span = Math.max(1, ht - lt), f = (t * 24000 - lt) / span;
+    if (f < 0 || f > 1 || line.pts.length < 2) continue;
+    // Out the first half of its time away, home the second; g the share of the way from its home town.
+    const out = f < 0.5, g = out ? f * 2 : 2 - f * 2, back = Math.min(out ? g : 1 - g, TRAIL * 48000 / span);
+    // The streak: where it was the last few hours, brighter toward it.
+    let prev = at(line, out ? g - back : g + back);
+    wctx.lineWidth = B;
+    for (let j = 1; j <= N; j++) {
+      const p = at(line, out ? g - back + back * j / N : g + back - back * j / N);
+      const [x0, y0] = pxB(prev[0], prev[1]), [x1, y1] = pxB(p[0], p[1]);
+      wctx.strokeStyle = trail[j - 1]; wctx.beginPath(); wctx.moveTo(x0, y0); wctx.lineTo(x1, y1); wctx.stroke();
+      prev = p;
+    }
+    const [bx, bz, h] = at(line, g), [x, y] = pxB(bx, bz), dir = out ? h : h + Math.PI, c = Math.cos(dir), sn = Math.sin(dir);
+    wctx.beginPath();
+    wctx.moveTo(x + c * L * 0.6, y + sn * L * 0.6);
+    wctx.lineTo(x - c * L * 0.4 - sn * B, y - sn * L * 0.4 + c * B);
+    wctx.lineTo(x - c * L * 0.4 + sn * B, y - sn * L * 0.4 - c * B);
+    wctx.closePath();
+    wctx.lineWidth = 1.2;
+    if (out) { wctx.fillStyle = palette.road; wctx.strokeStyle = palette.paper; wctx.fill(); wctx.stroke(); }
+    else { wctx.fillStyle = palette.paper; wctx.strokeStyle = palette.road; wctx.fill(); wctx.stroke(); }
+  }
+}
+let idle0 = 0;
+function wagonFrame(now) {
+  if (!playing) drawWagons(day + (still.matches ? 0.5 : ((now - idle0) % DAY_MS) / DAY_MS));
+  requestAnimationFrame(wagonFrame);
+}
+
+const FADE = 12, NEAR = 3;
+const hexDist = (q, r, q2, r2) => (Math.abs(q - q2) + Math.abs(r - r2) + Math.abs(q + r - q2 - r2)) / 2;
 // The strips under the map: each series by day, the chosen day marked.
 const strips = [["stHorde", d => sideCount(d)[0], "--horde"], ["stTrade", d => D.trade[d], "--road"],
   ["stChest", d => D.series.chest[d], "--alliance"], ["stFallen", d => fallenSum.perDay[0][d] + fallenSum.perDay[1][d], "--ember"]];
@@ -423,6 +534,7 @@ function ledger(d) {
   const m = D.series.marines[d], ch = D.series.chest[d];
   $("sMarines").textContent = m == null ? "–" : m; $("sChest").textContent = ch == null ? "–" : ch.toLocaleString();
   $("sTrade").textContent = d <= D.tradedTo ? D.trade[d] : "not traced";
+  $("sAway").textContent = d <= D.tradedTo ? onRoad(d).length : "not traced";
   const wg = wagonsBy(d);
   $("sSupply").textContent = wg[1].toLocaleString();
   $("sTaken").textContent = wg[2].toLocaleString();
@@ -443,11 +555,14 @@ let day = 0, playing = false, acc = 0, lastT = 0;
 // Which war: the runs side by side, the same day kept on a switch.
 function choose(i, keepDay) {
   run = i; D = RUNS[i].data; index();
+  WORLD = RUNS[i].world == null ? null : WORLDS[RUNS[i].world]; worldImg = WORLD ? worldImgs[RUNS[i].world] : null; terrain = null;
+  if (WORLD) $("keyGround").textContent = "The ground as the world has it: rivers, woods, fields by crop, towns" + (WORLD.note ? ", " + WORLD.note : "");
+  else $("keyGround").innerHTML = keyGroundText;
   stripVals = strips.map(([, f]) => Array.from({ length: D.last + 1 }, (_, d) => f(d)));
   $("note").textContent = RUNS[i].note;
   for (const b of $("runs").children) b.setAttribute("aria-pressed", String(+b.dataset.run === i));
   slider.max = D.last; $("tradedTo").textContent = D.tradedTo;
-  if (!keepDay) day = Math.min(D.last, Math.max(0, D.firstWar + 180));
+  if (!keepDay) day = Math.min(D.last, D.tradedTo || D.last, Math.max(0, D.firstWar + 180));
   if (typeof size === "function" && map.clientWidth) { size(); }
 }
 RUNS.forEach((r, i) => {
@@ -456,13 +571,14 @@ RUNS.forEach((r, i) => {
 });
 $("runs").hidden = RUNS.length < 2;
 choose(0, false);
-function show(d) { day = Math.max(0, Math.min(D.last, Math.round(d))); slider.value = day; draw(day); drawStrips(day); ledger(day); }
+function show(d) { if (!playing) idle0 = performance.now(); day = Math.max(0, Math.min(D.last, Math.round(d))); slider.value = day; draw(day); drawStrips(day); ledger(day); }
 slider.addEventListener("input", () => show(+slider.value));
 $("play").addEventListener("click", () => { playing = !playing; if (playing && day >= D.last) day = 0; $("play").textContent = playing ? "Pause" : "Play"; lastT = 0; if (playing) requestAnimationFrame(tick); });
 function tick(t) {
   if (!playing) return;
   if (lastT) acc += (t - lastT) / 1000 * +$("speed").value; lastT = t;
   if (acc >= 1) { const step = Math.floor(acc); acc -= step; show(day + step); if (day >= D.last) { playing = false; $("play").textContent = "Play"; return; } }
+  drawWagons(day + acc);
   requestAnimationFrame(tick);
 }
 for (const [id] of strips) $(id).addEventListener("click", e => { const r = e.currentTarget.getBoundingClientRect(); show((e.clientX - r.left) / r.width * D.last); });
@@ -474,6 +590,6 @@ for (const id of ["lTerrain", "lZoc", "lRoads", "lBorders", "lFights"]) $(id).ad
 new ResizeObserver(() => { size(); terrain = null; show(day); }).observe(map.parentElement);
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-readPalette(); size(); show(day);
+readPalette(); size(); show(day); requestAnimationFrame(wagonFrame);
 document.fonts && document.fonts.ready.then(() => show(day));
 </script>

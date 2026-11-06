@@ -238,9 +238,14 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
     }
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
     let day = s.now() / s.content().day_ticks.max(1);
-    // The last day as the run ended, in place of its first look's.
-    for table in ["towns", "comforts", "book", "herds", "hands", "farms", "farm_towns", "works", "stock", "routes", "lockers", "whys"] {
-        tx.execute(&format!("delete from {table} where day = ?1"), params![day]).map_err(|e| e.to_string())?;
+    // The last day as the run ended, in place of its first look's: every table a day's look writes, by the schema (a
+    // list of them fell behind: the households' and the war's were written twice on a cut journal's last day). Not
+    // the claims, written as the land changes against `claims_now`: the look again doesn't write them again.
+    let days: Vec<String> = tx.prepare("select name from sqlite_master m where type = 'table' and name != 'claims' \
+            and (select name from pragma_table_info(m.name) where cid = 0) = 'day'").map_err(sql)?
+        .query_map([], |r| r.get(0)).map_err(sql)?.collect::<Result<_, _>>().map_err(sql)?;
+    for table in days {
+        tx.execute(&format!("delete from {table} where day = ?1"), params![day]).map_err(sql)?;
     }
     snapshot(&tx, &mut society, day, asking.unwrap())?;
     finals(&tx, &mut society, asking.unwrap())?;
@@ -732,6 +737,9 @@ mod tests {
         assert!(count("select count(distinct day) from towns") >= 10, "a snapshot a day");
         assert_eq!(count("select count(*) from towns") as usize,
             count("select count(distinct day) from towns") as usize * ran.town_count(), "a town once a day");
+        assert!(count("select count(*) from households") > 0, "no households");
+        assert_eq!(count("select count(*) from households"),
+            count("select count(*) from (select distinct day, town, household from households)"), "a household once a day");
         assert!(count("select count(*) from stock") > 0 && count("select count(*) from cash") > 0);
         assert!(count("select count(*) from whys") > 0, "whys {}", count("select count(*) from whys"));
         assert!(count("select count(*) from plans where went = 1") > 0 && count("select count(*) from plans where went = 0") > 0,

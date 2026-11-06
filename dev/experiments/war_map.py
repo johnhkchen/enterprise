@@ -3,11 +3,14 @@
 
     python3 dev/experiments/war_map.py TRACE.db OUT.html [--title "Seed 1717's War"] [--note "..."] [--label "One hero"]
         [--also LABEL TRACE2.db NOTE ...] [--world WORLD [--step 4] [--world-note "as it stood on day 360"]]
+        [--run-world N WORLD NOTE ...]
 
 Each `--also` adds another run of the same seed (another dial's war), switched between on the page. `--world`: the
 world's own ground beneath the hexes, from its region files (a run's last kept point, `RUN/dayN/world`): its rivers'
 courses, fields by crop, woods and towns as they stood, a pixel for each `--step` blocks (about 15s); the hexes'
-terrain where it never generated.
+terrain where it never generated. `--run-world N WORLD NOTE`: run N's own ground instead (0 the first, each `--also`
+after it), its ruins as that run left them. With a world, its caravans and roads follow the roads it built
+(`enterprise-roads.json`) where it has them.
 
 The ground beneath (its land, water, rivers and heights: the trace's `ground`); each side's zone of control over it,
 a gradient from its towns (by their people) and squads (by their soldiers), fading with distance; each town's land
@@ -42,22 +45,48 @@ def main():
     for i, a in enumerate(args):
         if a == "--also":
             runs.append({"label": args[i + 1], "note": args[i + 3], "data": build(args[i + 2])})
-    world = None
+    step = int(opt("--step", "4"))
+    worlds = {}
     if "--world" in args:
-        # The world's own ground beneath, from its region files (`world_render.overview`): the hexes' bounds.
-        from world_render import overview, SIZE
-        step = int(opt("--step", "4"))
-        xs = [SIZE * math.sqrt(3) * (g[0] + g[1] / 2) for g in runs[0]["data"]["ground"]]
-        zs = [SIZE * 1.5 * g[1] for g in runs[0]["data"]["ground"]]
-        x0, z0 = int(min(xs) - SIZE) // step * step, int(min(zs) - SIZE) // step * step
-        x1, z1 = int(max(xs) + SIZE), int(max(zs) + SIZE)
-        img, w, h = overview(Path(opt("--world", "")), x0, z0, x1, z1, step)
-        world = {"img": img, "x0": x0, "z0": z0, "step": step, "w": w, "h": h, "note": opt("--world-note", "")}
+        worlds = {i: (opt("--world", ""), opt("--world-note", "")) for i in range(len(runs))}
+    for i, a in enumerate(args):
+        if a == "--run-world":
+            worlds[int(args[i + 1])] = (args[i + 2], args[i + 3])
+    made = {}
+    for i, run in enumerate(runs):
+        if i in worlds:
+            if worlds[i] not in made:
+                made[worlds[i]] = ground_of(runs[0]["data"]["ground"], Path(worlds[i][0]), step, worlds[i][1])
+            run["world"] = list(made).index(worlds[i])
+            run["data"]["roads"] = roads_of(Path(worlds[i][0]))
+    world = list(made.values())
     page = Path(__file__).with_name("war_map.html").read_text()
     page = (page.replace("__TITLE__", title).replace("__DATA__", json.dumps(runs, separators=(",", ":")))
             .replace("__WORLD__", json.dumps(world, separators=(",", ":"))))
     out.write_text(page)
     print(f"{out}: {len(runs)} runs, {out.stat().st_size // 1024} KB")
+
+
+def ground_of(ground, world, step, note):
+    """The world's own ground beneath, from its region files (`world_render.overview`): the hexes' bounds."""
+    from world_render import overview, SIZE
+    xs = [SIZE * math.sqrt(3) * (g[0] + g[1] / 2) for g in ground]
+    zs = [SIZE * 1.5 * g[1] for g in ground]
+    x0, z0 = int(min(xs) - SIZE) // step * step, int(min(zs) - SIZE) // step * step
+    x1, z1 = int(max(xs) + SIZE), int(max(zs) + SIZE)
+    img, w, h = overview(world, x0, z0, x1, z1, step)
+    return {"img": img, "x0": x0, "z0": z0, "step": step, "w": w, "h": h, "note": note}
+
+
+def roads_of(world):
+    """The roads the world has built (`enterprise-roads.json`): each between two towns' hexes, its line in blocks
+    (every other point, to a block), for the caravans to follow."""
+    try:
+        roads = json.loads((world / "enterprise-roads.json").read_text())
+    except FileNotFoundError:
+        return []
+    return [{"a": r["path"][0], "b": r["path"][-1],
+             "line": [[round(x), round(z)] for x, z in r["line"][::2] + r["line"][-1:]]} for r in roads]
 
 
 def build(trace):
@@ -83,10 +112,11 @@ def build(trace):
     battles = rows(db, "select day, battle, q, r, coalesce(town, -1), case attacker when 'the Horde' then 0 when 'the Alliance' then 1 "
                        "else -1 end, case holder when 'the Horde' then 0 when 'the Alliance' then 1 else -1 end, held_days, horde, "
                        "alliance from battles where won_by is null")
-    squads = rows(db, "select day, case side when 'the Horde' then 0 else 1 end, capital, soldiers, q, r from squads where soldiers > 0")
+    squads = rows(db, "select day, case side when 'the Horde' then 0 else 1 end, capital, soldiers, q, r, squad from squads "
+                       "where soldiers > 0")
     war = {d: (h, m, mc) for d, h, m, mc in rows(db, "select day, horde_towns, marines, mercenaries from war")}
     chest = {d: round(left) for d, left in rows(db, "select day, left_over from chests where capital = 'Theramore'")}
-    first_war = min(war) if war else last
+    first_war = min(war) if war else last + 1
     series = {"horde": [], "marines": [], "chest": []}
     for d in range(last + 1):
         h, m, _ = war.get(d, (None, None, None))
@@ -96,11 +126,11 @@ def build(trace):
     paths = {}
     for route, step, q, r in rows(db, "select route, step, q, r from paths order by route, step"):
         paths.setdefault(route, []).append([q, r])
-    trips = rows(db, "select route, left_day, takings from trips")
+    trips = rows(db, "select route, left_day, takings, home_day, left_tick, home_tick from trips")
     used = sorted({t[0] for t in trips if t[0] in paths})
     # The wagons on the roads in each day's last 30, all roads together.
     per_day = [0] * (last + 1)
-    for _, d, _ in trips:
+    for _, d, *_ in trips:
         if 0 <= d <= last:
             per_day[d] += 1
     trade = [sum(per_day[max(0, d - 29):d + 1]) for d in range(last + 1)]
@@ -122,8 +152,8 @@ def build(trace):
             events.append([d, "Theramore lands", 1])
     # The supply wagons (a trace written before `supplies` has none): on the hexes by day, and each one taken.
     try:
-        supplies = rows(db, "select day, case side when 'the Horde' then 0 else 1 end, q, r, round(food), escort, homeward "
-                            "from supplies")
+        supplies = rows(db, "select day, case side when 'the Horde' then 0 else 1 end, q, r, round(food), escort, homeward, "
+                            "wagon from supplies")
         tallies = rows(db, "select day, wagons_sent_alliance, wagons_delivered_alliance, wagons_taken_alliance, "
                            "wagons_taken_horde from war order by day")
     except sqlite3.OperationalError:
@@ -167,7 +197,7 @@ def build(trace):
     return {"fights": fights, "ground": ground, "last": last, "firstWar": first_war, "places": places, "claims": claims, "battles": battles,
             "squads": squads, "supplies": supplies, "wagons": wagons, "series": series, "trade": trade, "tradedTo": traded_to, "events": events,
             "routes": [{"id": r, "path": paths[r]} for r in used],
-            "trips": [[r, d] for r, d, _ in trips if r in paths]}
+            "trips": [[r, d, h, lt, ht] for r, d, _, h, lt, ht in trips if r in paths]}
 
 
 if __name__ == "__main__":
