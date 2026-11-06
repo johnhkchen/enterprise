@@ -3283,6 +3283,10 @@ the Horde's 20 beat each in turn (on day 965 one of 7 reached the battle, the re
   the side's camp (Theramore's base, or its town nearest the target) and waits there, its packs filled from the
   town's warehouse, till every one has come or `MUSTER_DAYS` (10) have passed since they set off; then they march on
   it together. Levies raised after that go straight to it. The Horde's attacks muster too; a town's defenders don't.
+- **The camp near the target**: the Alliance camps at Theramore's base while Theramore is in the war; after, as the
+  Horde does, at its town nearest the target. Mustered at Durnholde, Theramore's old base, the Alliance's 65 set off
+  for Splintertree Post 32 hexes off with four days' rations and starved on the way (49 left, none there); Darkshire
+  is 15.
 - **No new state**: a squad gathering is one bound for a battle its side attacks whose goal is still the camp, and
   the wait is a constant, not a dial (dials are saved with the world). The save keeps its shape, so a kept world from
   before loads on this core and the war carries on under the rule (seed 1717's Alliance fork from its day-930 point:

@@ -1998,8 +1998,10 @@ pub fn campaign(world: &mut World) {
         };
         let own = if attacker == Faction::Alliance { &alliance } else { &horde };
         if let (Some((target, hex)), true) = (target, !own.is_empty()) {
+            // (The Alliance's camp Theramore's base while it's in the war; then, as the Horde's, its town nearest.)
             let camp = if attacker == Faction::Alliance {
-                c.base.filter(|b| !world.resource::<Battles>().ruins.contains(b)).unwrap_or(nearest(own, hex).expect("towns").0)
+                c.base.filter(|b| c.withdrew.is_none() && !world.resource::<Battles>().ruins.contains(b))
+                    .unwrap_or(nearest(own, hex).expect("towns").0)
             } else {
                 nearest(own, hex).expect("towns").0
             };

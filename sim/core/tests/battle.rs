@@ -255,10 +255,13 @@ fn theramore_spent_the_alliance_marches_on_alone_where_its_levy_is_the_larger() 
     let withdrew = s.battles().campaign.as_ref().and_then(|c| c.withdrew).expect("Theramore's chest dry");
     // (John: the Alliance "marches on alone"): with Theramore gone the Alliance's own levies strike the Horde's towns,
     // from all its towns as the Horde's do, however far (Goldshire's 29 hexes or more from any of them, settlers'
-    // towns and all).
+    // towns and all), camped at its town nearest the target (not Theramore's old base: `rules/battle.rs`).
+    let nearest = |s: &Society, b: &enterprise_core::battle::Battle| b.levies[1].iter().map(|l| l.0)
+        .filter(|t| !s.battles().ruins.contains(t)).min_by_key(|&t| (s.town_hex(t).map_or(i32::MAX, |h| h.distance(b.hex)), t));
     assert!(any_day(&mut s, 200, |s| s.battles().battles.iter().any(|b| b.began > withdrew && b.attacker == Some(1)
-        && b.town.is_some() && [port, far].iter().all(|t| b.levies[1].iter().any(|l| l.0 == *t)))),
-        "the Alliance marches on the Horde's towns from all its own: {:?}", s.battles().campaign);
+        && b.town.is_some() && [port, far].iter().all(|t| b.levies[1].iter().any(|l| l.0 == *t))
+        && Some(b.camps[1]) == nearest(s, b))),
+        "the Alliance marches on the Horde's towns from all its own, from its nearest: {:?}", s.battles().campaign);
 }
 
 #[test]
