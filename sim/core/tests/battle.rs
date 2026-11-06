@@ -235,7 +235,7 @@ fn theramore_spent_withdraws_and_the_horde_has_held() {
 
 #[test]
 fn theramore_spent_the_alliance_marches_on_alone_where_its_levy_is_the_larger() {
-    // (The Alliance's towns the larger: 30 people each to the Horde's 12.)
+    // (The Alliance's towns the larger: 30 people each to the Horde's 12; the Horde's beyond `battle_reach` of them.)
     let mut s = Society::new(content());
     let d = &mut s.content_mut().dials;
     d.war_day = 1.0;
@@ -245,16 +245,20 @@ fn theramore_spent_the_alliance_marches_on_alone_where_its_levy_is_the_larger() 
     d.raze_hold_days = 5.0;
     d.war_chest_alliance = 200.0;
     d.raid_hexes = 0.0;
-    let horde = [town(&mut s, "Razor Hill", "orc", 0, 0, 12, 0.0, None), town(&mut s, "Sen'jin", "orc", 0, 6, 12, 0.0, None)];
+    town(&mut s, "Razor Hill", "orc", -16, 0, 12, 0.0, None);
+    town(&mut s, "Sen'jin", "orc", -16, 6, 12, 0.0, None);
     let port = town(&mut s, "Southshore", "lordaeron", 10, 0, 30, 0.0, None);
-    town(&mut s, "Goldshire", "stormwind", 20, 0, 30, 0.0, None);
+    let far = town(&mut s, "Goldshire", "stormwind", 20, 0, 30, 0.0, None);
     let hex = Hex::new(10, 0);
     s.set_port(port, hex.center_x() + 8.0, hex.center_z());
     s.advance(60 * DAY);
     let withdrew = s.battles().campaign.as_ref().and_then(|c| c.withdrew).expect("Theramore's chest dry");
-    // (John: the Alliance "marches on alone"): with Theramore gone the Alliance's own levies strike the Horde's towns.
+    // (John: the Alliance "marches on alone"): with Theramore gone the Alliance's own levies strike the Horde's towns,
+    // from all its towns as the Horde's do, however far (Goldshire's 29 hexes or more from any of them, settlers'
+    // towns and all).
     assert!(any_day(&mut s, 200, |s| s.battles().battles.iter().any(|b| b.began > withdrew && b.attacker == Some(1)
-        && b.town.is_some_and(|t| horde.contains(&t)))), "the Alliance marches on the Horde's towns: {:?}", s.battles().campaign);
+        && b.town.is_some() && [port, far].iter().all(|t| b.levies[1].iter().any(|l| l.0 == *t)))),
+        "the Alliance marches on the Horde's towns from all its own: {:?}", s.battles().campaign);
 }
 
 #[test]

@@ -3268,3 +3268,7 @@ towns of 43 to 71 people it couldn't take an Alliance town of 7, so the war stoo
   side whose towns' levy (`battle_levy` of their people) is the larger strikes the other's town nearest, the Horde
   on a tie. Before, the Horde always struck after a withdrawal: it still does where its towns are the larger, as on
   the Horde's win (16 towns to 7).
+- **From all its towns**: the Alliance's attack, Theramore gone, levies `pin_levy` of every Alliance town as the
+  Horde's does, however far. The first run of the rule struck at Splintertree Post with no one: an attacker's towns
+  are levied only within `battle_reach` (20 hexes) of its target, and the last Horde towns lay 25 and more from any
+  Alliance town; beaten off, the Horde struck back at Durnholde.

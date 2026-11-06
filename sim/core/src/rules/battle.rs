@@ -1218,7 +1218,7 @@ pub fn council(world: &mut World) {
             .max_by_key(|&(t, h)| (far(h), std::cmp::Reverse(t)));
         if let Some((t, hex)) = target {
             let camp = nearest(&horde, hex).expect("towns").0;
-            let mut battle = town_battle(world, &content, t, hex, Faction::Horde, camp, now);
+            let mut battle = town_battle(world, &content, t, hex, Faction::Horde, camp, now, false);
             // (A raid's Horde levy: its towns in reach only, `battle_levy` of each.)
             let towns = world.resource::<Towns>().0.clone();
             battle.levies[0] = horde.iter().filter(|x| x.1.distance(hex) as f64 <= d.battle_reach)
@@ -1596,10 +1596,12 @@ fn nearest(of: &[(TownId, Hex)], to: Hex) -> Option<(TownId, Hex)> {
 
 /// A battle of the war for a town: `attacker`'s towns near it against the town's own and theirs, the attackers' towns
 /// within `battle_reach` of it levied `battle_levy` of their residents, every town of the defenders' `defence_levy`
-/// (John: "using its local numerical advantage"), and the Horde's every town `pin_levy` when it attacks; its attackers
-/// camped at `camp`, its defenders in the town itself; they march at `marches`.
+/// (John: "using its local numerical advantage"), and the Horde's every town `pin_levy` when it attacks (the
+/// Alliance's too when `whole`: Theramore gone, its towns march on alone); its attackers camped at `camp`, its
+/// defenders in the town itself; they march at `marches`.
+#[allow(clippy::too_many_arguments)]
 fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attacker: Faction, camp: TownId,
-        marches: u64) -> Battle {
+        marches: u64, whole: bool) -> Battle {
     let factions = [Faction::Horde, Faction::Alliance];
     let side = factions.iter().position(|&f| f == attacker).expect("a side");
     let mut camps = [target, target];
@@ -1607,7 +1609,7 @@ fn town_battle(world: &World, content: &Content, target: TownId, hex: Hex, attac
     let towns = world.resource::<Towns>().0.clone();
     let mut levies: [Vec<(TownId, usize)>; 2] = Default::default();
     for (s, &f) in factions.iter().enumerate() {
-        let (defends, pins) = (s != side, s == side && f == Faction::Horde);
+        let (defends, pins) = (s != side, s == side && (f == Faction::Horde || whole));
         for (t, h) in faction_towns(world, f) {
             if defends || pins || h.distance(hex) as f64 <= content.dials.battle_reach {
                 if let Some(roster) = world.get::<Roster>(towns[t]) {
@@ -1791,7 +1793,7 @@ pub fn campaign(world: &mut World) {
         let Some(&(base, base_hex)) = pool.iter().min_by_key(|&&(t, h)| (reach(h), t)) else { return };
         let Some((target, hex)) = nearest(&horde, base_hex) else { return };
         let lands = now + (d.battle_mobilise_days.max(0.0) * day as f64) as u64;
-        let battle = town_battle(world, &content, target, hex, Faction::Alliance, base, lands);
+        let battle = town_battle(world, &content, target, hex, Faction::Alliance, base, lands, false);
         let mut battles = world.resource_mut::<Battles>();
         battles.seeded = true;
         battles.battles.push(battle);
@@ -1977,7 +1979,8 @@ pub fn campaign(world: &mut World) {
             } else {
                 nearest(own, hex).expect("towns").0
             };
-            let battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day);
+            let battle = town_battle(world, &content, target, hex, attacker, camp, now + REGROUP_DAYS * day,
+                c.withdrew.is_some());
             // The capitals' soldiers go with their side: Theramore's made up to its expedition again when its ships
             // come, while it can pay them.
             let goal = battle.hex;
