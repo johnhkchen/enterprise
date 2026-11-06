@@ -297,6 +297,43 @@ fn an_attacks_levies_gather_at_its_camp_and_march_on_it_together() {
 }
 
 #[test]
+fn an_attacks_levy_takes_its_towns_wagon_which_keeps_with_it_and_feeds_it() {
+    // (Theramore spent at once, the Alliance's towns the larger: its own attack on the Horde's, far off.)
+    let mut s = Society::new(content());
+    let d = &mut s.content_mut().dials;
+    d.war_day = 1.0;
+    d.battle_mobilise_days = 4.0;
+    d.battle_levy = 0.25;
+    d.expedition_size = 30.0;
+    d.raze_hold_days = 5.0;
+    d.war_chest_alliance = 200.0;
+    d.raid_hexes = 0.0;
+    d.battle_hold_days = 2.0; // (a town's defenders win it soon with no one there: unless an army's on its way)
+    town(&mut s, "Razor Hill", "orc", -16, 0, 12, 0.0, None);
+    town(&mut s, "Sen'jin", "orc", -16, 6, 12, 0.0, None);
+    let port = town(&mut s, "Southshore", "lordaeron", 10, 0, 30, 0.0, None);
+    let far = town(&mut s, "Goldshire", "stormwind", 20, 0, 30, 0.0, None);
+    let hex = Hex::new(10, 0);
+    s.set_port(port, hex.center_x() + 8.0, hex.center_z());
+    s.advance(60 * DAY);
+    // (John: "wagons follow the army"): Goldshire's levy, out on the march, has its town's wagon on its hex, loaded,
+    // and its packs are filled from it.
+    let homes = [s.town_hex(port).unwrap(), s.town_hex(far).unwrap()];
+    let with_wagon = |s: &Society| s.battles().squads.iter().any(|q| q.home == far && q.side == 1 && !q.homeward
+        && q.battle.is_none() && !homes.contains(&q.hex) && q.soldiers.iter().all(|x| x.pack > 0.0)
+        && s.battles().supplies.iter().any(|w| w.camp == far && w.hex == q.hex && Some(w.battle) == q.bound
+            && w.load.iter().any(|&n| n > 0.0)));
+    assert!(any_day(&mut s, 260, with_wagon), "Goldshire's levy with its wagon: {:?} {:?}", s.battles().squads,
+        s.battles().supplies);
+    // And it gets there: the town's defenders don't hold it won while the army's still on its way.
+    let withdrew = s.battles().campaign.as_ref().and_then(|c| c.withdrew).expect("Theramore's chest dry");
+    let day = s.now() / DAY;
+    assert!(any_day(&mut s, day + 200, |s| s.battles().battles.iter().any(|b| b.began > withdrew && b.attacker == Some(1)
+        && b.town.is_some() && b.armies[1].soldiers.iter().any(|x| x.home == far))),
+        "Goldshire's levy fights at the Horde's town: {:?}", s.battles().campaign);
+}
+
+#[test]
 fn a_towns_defenders_fight_better_at_home_behind_walls_and_a_watchtower() {
     use enterprise_core::rules::battle::defence_lift;
     use enterprise_core::works::{Kind, What};

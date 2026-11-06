@@ -3292,3 +3292,23 @@ the Horde's 20 beat each in turn (on day 965 one of 7 reached the battle, the re
   before loads on this core and the war carries on under the rule (seed 1717's Alliance fork from its day-930 point:
   `survival_lane.py --from 930 --as-is`); flags on `Battle` and `Squad` and a `muster_days` dial made day 930's save
   unreadable ("a bool that wasn't 0 or 1": postcard has no field names, `save.rs`).
+
+## Society: wagons follow the army (2026-11-06)
+
+John (2026-11-06), choosing how the Alliance's army should get across 15 hexes and more: "Wagons follow the army".
+Mustered at Darkshire, the Alliance's 45 set off on seed 1717's day 960 for Splintertree Post with four days in their
+packs; over that ground a squad makes about a hex a day, Darkshire's warehouse had little to fill them, and the land
+feeds `forage_wild` (10) a hex: by day 975 ten were left, two hexes off, and fell back. The camp's supply wagons
+weren't sent (its warehouse had no food to load) and feed only the battle's depot.
+- **A levy's own wagon**: an attacker's levy takes a wagon of its town's food (a `Supply` of its town, as much of
+  its warehouse as its soldiers' rations for `MUSTER_DAYS`, a day a hex to the battle and `depot_days` there come
+  to): it keeps with its squad (to its hex each day, a wagon's six hexes to a squad's four), and the squad, away
+  from its towns, fills its packs from it; the squad waits for it if it's behind (`WAGON_WAIT_DAYS`, 30, a stuck
+  one left). Its squad in the battle, it unloads into the depot; its squad gone home, home too. A raider on its hex
+  fights its escort and the squads there with it.
+- **An army on its way holds the battle open**: a town's defenders don't hold it won while its attackers' levies are
+  still marching to it, up to three `battle_hold_days`: the Alliance's army from Darkshire to Ratchet took 30 days,
+  and the Horde's 30 held won the battle first.
+- Headless from seed 1717's day-930 save (`ENT_REPLAY_PAST`, the core alone), the Alliance razes Splintertree Post on
+  day 985, the next on 1032 and the last on 1079, and wins the war. Still no new state: the levy's wagon is a
+  `Supply` whose camp is its town.

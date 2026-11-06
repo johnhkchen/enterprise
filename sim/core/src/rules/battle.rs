@@ -197,6 +197,7 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
     let mut heroes_fell: Vec<usize> = Vec::new();
     let mut foraged = [0.0f64; 2];
     let (list, squads, next_squad) = (&mut battles.battles, &mut battles.squads, &mut battles.next_squad);
+    let (supplies, next_supply) = (&mut battles.supplies, &mut battles.next_supply);
     for (bi, b) in list.iter_mut().enumerate().filter(|(_, b)| b.won_by.is_none() && b.reckoned != Some(today)) {
         b.reckoned = Some(today);
         let hex = b.hex;
@@ -293,14 +294,28 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                         // A town's levy for the war for the region marches as a squad, hex by hex (`march`): an
                         // attacker's to its side's camp first, to gather with the rest, till they've set off together.
                         if b.town.is_some() {
-                            let soldiers = raised.into_iter().map(|m| crate::army::soldier_of(m.recruit, now)).collect();
+                            let soldiers: Vec<_> = raised.into_iter().map(|m| crate::army::soldier_of(m.recruit, now)).collect();
+                            let raised_n = soldiers.len();
                             *next_squad += 1;
                             let id = *next_squad;
-                            let camp = town_hex(b.camps[side]).filter(|&c| c != hex && b.attacker == Some(side)
+                            let muster = town_hex(b.camps[side]).filter(|&c| c != hex && b.attacker == Some(side)
                                 && now < b.marches + MUSTER_DAYS * day);
-                            let mut q = squad(id, side, t, false, soldiers, town_hex(t).unwrap_or(hex), Some(camp.unwrap_or(hex)));
+                            let at = town_hex(t).unwrap_or(hex);
+                            let mut q = squad(id, side, t, false, soldiers, at, Some(muster.unwrap_or(hex)));
                             q.bound = Some(bi);
                             squads.push(q);
+                            // (John: "wagons follow the army"): an attacker's levy takes a wagon of its town's food,
+                            // which keeps with it (`supply`) and feeds it: its rations for the muster, a day a hex to
+                            // the battle (hard going, the way round) and `depot_days` there, as its warehouse has.
+                            if let (Some(a), Some((stock, _))) = (b.attacker.filter(|&a| a == side), camp.as_mut()) {
+                                let mut load = vec![0.0; content.goods.len()];
+                                let days = MUSTER_DAYS as f64 + at.distance(hex) as f64 + d.depot_days.max(0.0);
+                                if load_food(&content, &mut stock.0, &mut load, raised_n as f64 * d.army_ration * days) > 0.0 {
+                                    *next_supply += 1;
+                                    supplies.push(crate::battle::Supply { id: *next_supply, side: a, battle: bi, camp: t, hex: at,
+                                        way: Vec::new(), load, escort: Vec::new(), homeward: false, left: today });
+                                }
+                            }
                         } else {
                             b.marching.extend(raised);
                         }
@@ -427,7 +442,12 @@ pub fn fight(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut batt
                 b.armies[a].skirmishes.iter().rev().take_while(|k| !k.won).count() as f64 >= d.assault_breaks,
             _ => false,
         };
-        if b.holder.is_some() && (field_over || broken || b.held_days(now, day) as f64 >= hold) {
+        // (A town's defenders don't hold it won while its attackers' levies are still on their way, up to three holds:
+        // the army mustered and marching from far off.)
+        let held = b.held_days(now, day) as f64;
+        let coming = b.town.is_some() && held < 3.0 * hold && b.attacker.is_some_and(|a| b.holder == Some(1 - a)
+            && squads.iter().any(|q| q.side == a && q.bound == Some(bi) && !q.homeward && q.battle.is_none() && !q.soldiers.is_empty()));
+        if b.holder.is_some() && (field_over || broken || held >= hold && !coming) {
             b.won_by = b.holder.map(|s| b.factions[s]);
             for side in 0..2 {
                 let soldiers = std::mem::take(&mut b.armies[side].soldiers);
@@ -617,6 +637,16 @@ pub fn march(world: &mut World) {
             if bt.squads[k].battle.is_some() || bt.squads[k].soldiers.is_empty() || towns_of[side].iter().any(|x| x.1 == hex) {
                 continue;
             }
+            // (Or from its side's wagon on the hex bound for its battle: the army's own, John: "wagons follow the army".)
+            let bound = bt.squads[k].bound;
+            if let Some(w) = bt.supplies.iter().position(|w| w.side == side && !w.homeward && w.hex == hex
+                    && Some(w.battle) == bound && food_points(&content, &w.load) > 0.0) {
+                let mut load = Stock(std::mem::take(&mut bt.supplies[w].load));
+                load.0.resize(content.goods.len(), 0.0);
+                fill_packs(&content, &mut ledger, &mut load, &mut bt.squads[k].soldiers);
+                bt.supplies[w].load = load.0;
+                continue;
+            }
             let Some(i) = bt.battles.iter().position(|x| x.hex == hex && food_points(&content, &x.depots[side]) > 0.0) else { continue };
             let mut depot = Stock(std::mem::take(&mut bt.battles[i].depots[side]));
             depot.0.resize(content.goods.len(), 0.0);
@@ -666,6 +696,18 @@ pub fn march(world: &mut World) {
                     gone.sort_unstable_by(|a, c| c.cmp(a));
                     let hands: Vec<crate::roster::Hand> = gone.into_iter().filter_map(|i| q.soldiers.remove(i).hand).collect();
                     home.push((q.home, hands));
+                }
+            }
+            // (Its wagon behind it, on its way to the battle, it waits for it: its town's, loaded, farther from its goal;
+            // not past `WAGON_WAIT_DAYS` since it set off, a wagon stuck left behind.)
+            {
+                let q = &b.squads[k];
+                let behind = !q.homeward && q.goal.is_some_and(|g| b.supplies.iter().any(|w| w.side == q.side && !w.homeward
+                    && w.camp == q.home && Some(w.battle) == q.bound && w.hex != q.hex && today < w.left + WAGON_WAIT_DAYS
+                    && food_points(&content, &w.load) > 0.0
+                    && w.hex.distance(g) > q.hex.distance(g)));
+                if behind {
+                    continue;
                 }
             }
             // (Its day's going: `pace` hexes of open ground, harder ground costing more of it, a road less.)
@@ -1028,7 +1070,10 @@ pub fn supply(world: &mut World) {
             }).collect();
             if !raiders.is_empty() {
                 let theirs: f64 = raiders.iter().map(|&j| strength(&content, &persons, &b.squads[j].soldiers)).sum();
-                let ours = strength(&content, &persons, &b.supplies[k].escort);
+                // (Its escort, and its side's squads on its hex: an army's wagons in its midst.)
+                let ours = strength(&content, &persons, &b.supplies[k].escort) + b.squads.iter()
+                    .filter(|q| q.side == side && q.battle.is_none() && !q.homeward && q.hex == at)
+                    .map(|q| strength(&content, &persons, &q.soldiers)).sum::<f64>();
                 if theirs > ours {
                     // Taken: its food into the raiders' packs, the rest spoilt; its escort fallen.
                     let mut stock = Stock(std::mem::take(&mut b.supplies[k].load));
@@ -1052,14 +1097,27 @@ pub fn supply(world: &mut World) {
                         .max_by_key(|h| (h.distance(at), *h)).unwrap_or(q.hex);
                 }
             }
+            // (A levy's wagon keeps with its town's squad bound for the battle: to its hex while it marches, to the
+            // battle once it's there; its squad gone home, home too.)
+            let w = &b.supplies[k];
+            let mine: Vec<&crate::battle::Squad> = b.squads.iter().filter(|q| q.side == side && !q.capital && q.home == w.camp
+                && q.bound == Some(w.battle)).collect();
+            let follows = mine.iter().find(|q| q.battle.is_none() && !q.homeward && !q.soldiers.is_empty()).map(|q| q.hex);
+            if !w.homeward && follows.is_none() && !mine.is_empty() && mine.iter().all(|q| q.homeward) {
+                b.supplies[k].homeward = true;
+                b.supplies[k].way.clear();
+            }
             let w = &b.supplies[k];
             let goal = if w.homeward {
                 hex_of.get(w.camp).copied().flatten().filter(|_| !b.ruins.contains(&w.camp))
                     .or_else(|| nearest(&towns_of[side], at).map(|x| x.1))
             } else {
-                b.battles.get(w.battle).map(|x| x.hex)
+                follows.or_else(|| b.battles.get(w.battle).map(|x| x.hex))
             };
             let Some(goal) = goal else { break };
+            if at == goal && follows.is_some() && !b.supplies[k].homeward {
+                break; // (With its squad: it goes on when it does.)
+            }
             if at == goal {
                 let w = &mut b.supplies[k];
                 if !w.homeward {
@@ -1597,6 +1655,9 @@ const REGROUP_DAYS: u64 = 3;
 /// levy waits there till all have come, or this many days after they set off. (Not a dial: a dial is saved with the
 /// world, and a new one is a new shape of save.)
 const MUSTER_DAYS: u64 = 10;
+
+/// The days a levy waits on the march for its wagon behind it, after the wagon set off (`march`).
+const WAGON_WAIT_DAYS: u64 = 30;
 
 /// A town's faction, if it's a faction's and not ruins.
 fn faction_of(world: &World, t: TownId) -> Option<Faction> {
