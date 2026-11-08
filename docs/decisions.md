@@ -3312,3 +3312,14 @@ weren't sent (its warehouse had no food to load) and feed only the battle's depo
 - Headless from seed 1717's day-930 save (`ENT_REPLAY_PAST`, the core alone), the Alliance razes Splintertree Post on
   day 985, the next on 1032 and the last on 1079, and wins the war. Still no new state: the levy's wagon is a
   `Supply` whose camp is its town.
+
+## Society: a hero is worth no more than the band it leads (2026-11-06)
+
+John (2026-11-06), on Grom'gol holding out: "Look into the fight math". Grom'gol, the Horde's last town on seed 1717's
+Alliance run, beat 43 attackers with 7, then 43 with 5: about 140 a defender's score to 16 an attacker's. Not arms
+(the Horde had no swords there; both chests dry): the Horde's last hero leads its largest force, now the garrison,
+and a hero fought as `hero_worth` (25) soldiers however few it led, so five fought as 30 (×6, before the walls' and
+home ground's 1.4).
+- **A hero is worth at most the soldiers it leads**: each lifts its army's score by `hero_worth` of its soldiers, no
+  more than there are; a hero doubles a band at most. An army of 25 or more is lifted as before.
+- Headless from the game run's day-1120 save, the Alliance razes Grom'gol on day 1173 and wins the war.

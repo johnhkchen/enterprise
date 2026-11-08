@@ -218,9 +218,11 @@ fn fight(content: &Content, army: &Army, persons: &Persons, twist: Twist, no: u6
             best = Some((one, h));
         }
     }
-    // (Its heroes, each `hero_worth` of its soldiers as they fought.)
+    // (Its heroes, each `hero_worth` of its soldiers as they fought, no more than the soldiers it leads: a hero
+    // doubles a band at most. Seven of Grom'gol's under the Horde's last hero fought as 32, and held it against 43.)
     if army.heroes > 0 && !army.soldiers.is_empty() {
-        score *= 1.0 + army.heroes as f64 * d.hero_worth.max(0.0) / army.soldiers.len() as f64;
+        let n = army.soldiers.len() as f64;
+        score *= 1.0 + army.heroes as f64 * d.hero_worth.max(0.0).min(n) / n;
     }
     if twist == Twist::River {
         score *= 0.75;

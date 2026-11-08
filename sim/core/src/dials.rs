@@ -409,7 +409,7 @@ dials! {
     /// the two scores, the winner fewer; and teaches each soldier `combat_skill` at arms, less as it nears a master's
     /// skill (`skill_cap` 5), whatever its trade's level. A capital's heroes (`hero_alliance`, `hero_horde` of them;
     /// John: "a heroic unit leading things"), sent when Theramore lands (for `hero_cost` each of its chest: none by
-    /// default, a hero added to a side, not bought from its war), lead its largest force: each fights as `hero_worth` of its soldiers; with any, its morale is `hero_morale` up and it never
+    /// default, a hero added to a side, not bought from its war), lead its largest force: each fights as `hero_worth` of its soldiers (as many as it leads at most); with any, its morale is `hero_morale` up and it never
     /// routs; each falls in a fight lost `hero_fall_odds` of the time.
     war_day: f64 = 0.0,
     expedition_size: f64 = 50.0,

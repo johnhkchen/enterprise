@@ -517,6 +517,22 @@ fn a_hero_carries_the_fight_for_whichever_side_it_leads() {
 }
 
 #[test]
+fn a_hero_doubles_a_small_band_at_most() {
+    // (Grom'gol's seven under the Horde's last hero fought as 32 and held against 43: a hero is worth no more than the
+    // soldiers it leads.) Five with a hero against twelve without, on the march: the twelve win.
+    let (mut s, _) = squads_world(Hex::new(4, 0), 5, Hex::new(6, 0), 12);
+    s.content_mut().dials.skirmish_odds = 0.0;
+    s.content_mut().dials.overrun_odds = 100.0;
+    s.content_mut().dials.hero_worth = 25.0;
+    s.world.resource_mut::<enterprise_core::battle::Battles>().campaign = Some(enterprise_core::battle::Campaign {
+        heroes_alive: [1, 0], won_by: Some((0, enterprise_core::battle::Faction::Horde)), ..Default::default() });
+    s.advance(10 * DAY);
+    let b = s.battles().battles.iter().find(|b| b.field).cloned().expect("they met");
+    assert_eq!(b.armies[0].heroes, 1, "the hero led the five");
+    assert_eq!(b.won_by, Some(b.factions[1]), "the twelve: {b:?}");
+}
+
+#[test]
 fn each_capital_sends_its_heroes_once_when_theramore_lands_to_lead_its_largest_force() {
     let (mut s, _) = war_world(20000.0);
     s.content_mut().dials.hero_alliance = 1.0;
